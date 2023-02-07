@@ -121,7 +121,7 @@ Resources:
               Value: !FindInMap [CoralogixRegionMap, !Ref CoralogixRegion, Metrics]
 
             - Name: LOGS_ENDPOINT
-              Value: !FindInMap [CoralogixRegionMap, !Ref CoralogixRegion, Api]
+              Value: !FindInMap [CoralogixRegionMap, !Ref CoralogixRegion, Logs]
 
             - Name: OTEL_CONFIG
               Value: !Ref OTELConfig
