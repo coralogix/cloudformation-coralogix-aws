@@ -19,7 +19,7 @@ __Parameters:__
 | ApplicationName | You application name |  | :heavy_check_mark: |
 | SubsystemName | You Subsystem name | AWS Account ID | __Required__ when using the default  _OTELConfig_ paramter. |
 | PrivateKey | Your Coralogix Private Key | | __Required__ when using the default  _OTELConfig_ paramter. |
-| OTELConfig | Base64 encoded open telemetry configuration yaml. This value is passed to the Docker container as an environment variable. The value is decoded by the container at runtime and applied to the OTel Agent.<br>Example configuration files can be found [here](coralogixrepo/otel-coralogix-ecs-wrapper) | Coralogix Default Configuration ||
+| OTELConfig | Base64 encoded open telemetry configuration yaml. This value is passed to the Docker container as an environment variable. The value is decoded by the container at runtime and applied to the OTel Agent.<br>Example configuration files can be found [here](https://github.com/coralogix/telemetry-shippers/blob/master/otel-agent/ecs-ec2/config.yaml) | Coralogix Default Configuration ||
 
 
 __Deploy the Cloudformation template__:
