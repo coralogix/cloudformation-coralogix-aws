@@ -67,19 +67,19 @@ Mappings:
       Logs: otel-logs.coralogix.com:443
     Europe2:
       Api: https://api.eu2.coralogix.com/api/v1/logs
-      Metrics: otel-metrics.coralogix.com:443
-      Traces: otel-traces.coralogix.com:443
-      Logs: otel-logs.coralogix.com:443
+      Metrics: otel-metrics.eu2.coralogix.com:443
+      Traces: otel-traces.eu2.coralogix.com:443
+      Logs: otel-logs.eu2.coralogix.com:443
     India:
       Api: https://api.app.coralogix.in/api/v1/logs
-      Metrics: otel-metrics.coralogix.in:443
-      Traces: otel-traces.coralogix.in:443
-      Logs: otel-logs.coralogix.in:443
+      Metrics: otel-metrics.app.coralogix.in:443
+      Traces: otel-traces.app.coralogix.in:443
+      Logs: otel-logs.app.coralogix.in:443
     Singapore:
       Api: https://api.coralogixsg.com/api/v1/logs
-      Metrics: otel-metrics.coralogix.com:443
-      Traces: otel-traces.coralogix.com:443
-      Logs: otel-logs.coralogix.com:443
+      Metrics: otel-metrics.coralogixsg.com:443
+      Traces: otel-traces.coralogixsg.com:443
+      Logs: otel-logs.coralogixsg.com:443
     US:
       Api: https://api.coralogix.us/api/v1/logs
       Metrics: otel-metrics.coralogix.us:443
