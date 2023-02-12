@@ -1,0 +1,122 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: 'CloudFormation template for creating archive s3 bucket for metrics and logs (Note: buckets are created in the same region the cloudformation is running) the template can run only on the following regions eu-west-1,eu-north-1,ap-southeast-1,ap-south-1,us-east-2'
+Parameters:
+  LogsBucketName:
+    Type: String
+    Description: 'The name of the S3 bucket to create for the Logs archive (Leave empty if not needed) must fllow AWS nameing rules https://docs.aws.amazon.com/AmazonS3/latest/userguide/bucketnamingrules.html'
+    AllowedPattern: '^[a-z0-9]*[a-z0-9.-]*$|^$'
+    MaxLength: 63
+  MetricsBucketName:
+    Type: String
+    Description: 'The name of the S3 bucket to create for the Metrics archive (Leave empty if not needed) must fllow AWS nameing rules https://docs.aws.amazon.com/AmazonS3/latest/userguide/bucketnamingrules.html'
+    AllowedPattern: '^[a-z0-9]*[a-z0-9.-]*$|^$'
+    MaxLength: 63
+Conditions:
+  IsLogsBucketNameEmpty: !Not
+    - !Equals
+      - !Ref LogsBucketName
+      - ''
+  IsMetricsBucketNameEmpty: !Not
+    - !Equals
+      - !Ref MetricsBucketName
+      - ''
+  IsSameBucketName: !Equals
+    - !Ref LogsBucketName
+    - !Ref MetricsBucketName
+  IsValidRegion: !Or
+    - !Equals
+        - !Ref 'AWS::Region'
+        - eu-west-1
+    - !Equals
+        - !Ref 'AWS::Region'
+        - eu-north-1
+    - !Equals
+        - !Ref 'AWS::Region'
+        - ap-southeast-1
+    - !Equals
+        - !Ref 'AWS::Region'
+        - ap-south-1
+    - !Equals
+        - !Ref 'AWS::Region'
+        - us-east-2
+  LogsValidations: !And
+    - !Not
+      - !Condition IsSameBucketName
+    - !Condition IsLogsBucketNameEmpty
+    - !Condition IsValidRegion
+  MetricsValidations: !And
+    - !Not
+      - !Condition IsSameBucketName
+    - !Condition IsMetricsBucketNameEmpty
+    - !Condition IsValidRegion
+Resources:
+  LogsS3Bucket:
+    Type: AWS::S3::Bucket
+    Description: Creating Amazon S3 bucket from CloudFormation to be used for coralogix Logs archive
+    Condition: LogsValidations
+    Properties:
+      BucketName: !Ref LogsBucketName
+  LogsS3BucketPolicy:
+    Type: 'AWS::S3::BucketPolicy'
+    Condition: LogsValidations
+    Properties:
+      Bucket: !Ref LogsBucketName
+      PolicyDocument:
+        Version: 2012-10-17
+        # allow the coralogix account to upload to this bucket
+        Statement:
+          - Action:
+              - 's3:GetObject'
+              - 's3:ListBucket'
+              - 's3:PutObject'
+            Effect: 'Allow'
+            Principal: 
+              AWS: 'arn:aws:iam::625240141681:root'
+            Resource:
+              - !Sub 'arn:aws:s3:::${LogsS3Bucket}'
+              - !Sub 'arn:aws:s3:::${LogsS3Bucket}/*'
+  MetricsS3Bucket:
+    Type: AWS::S3::Bucket
+    Description: Creating Amazon S3 bucket from CloudFormation to be used for coralogix Metrics archive
+    Condition: MetricsValidations
+    Properties:
+      BucketName: !Ref MetricsBucketName
+  MetricsS3BucketPolicy:
+    Type: 'AWS::S3::BucketPolicy'
+    Condition: MetricsValidations
+    Properties:
+      Bucket: !Ref MetricsBucketName
+      PolicyDocument:
+        Version: 2012-10-17
+        # allow the coralogix account to upload to this bucket
+        Statement:
+          - Action:
+              - 's3:GetObject'
+              - 's3:ListBucket'
+              - 's3:PutObject'
+              - 's3:DeleteObject'
+            Effect: 'Allow'
+            Principal: 
+              AWS: 'arn:aws:iam::625240141681:root'
+            Resource:
+              - !Sub 'arn:aws:s3:::${MetricsS3Bucket}'
+              - !Sub 'arn:aws:s3:::${MetricsS3Bucket}/*'
+Outputs:
+  LogsS3Bucket:
+    Description: Bucket Created using this template for coralogix Logs archive.
+    Value: !Ref LogsS3Bucket
+    Condition: LogsValidations
+  MetricsS3Bucket:
+    Description: Bucket Created using this template for coralogix Metrics archive.
+    Value: !Ref MetricsBucketName
+    Condition: MetricsValidations
+  SameBucketName:
+    Description: "Duplicate Name Validation"
+    Value: "Names are duplicated on both buckets"
+    Condition: IsSameBucketName
+  RegionValidation:
+    Description: "Region Validation"
+    Value: !If
+      - IsValidRegion
+      - "Region is valid"
+      - !Sub "Region ${AWS::Region} is not valid"
