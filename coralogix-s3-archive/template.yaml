@@ -69,6 +69,8 @@ Resources:
               - 's3:GetObject'
               - 's3:ListBucket'
               - 's3:PutObject'
+              - 's3:PutObjectTagging'
+              - 's3:GetObjectTagging'
             Effect: 'Allow'
             Principal: 
               AWS: 'arn:aws:iam::625240141681:root'
@@ -95,6 +97,8 @@ Resources:
               - 's3:ListBucket'
               - 's3:PutObject'
               - 's3:DeleteObject'
+              - 's3:PutObjectTagging'
+              - 's3:GetObjectTagging'
             Effect: 'Allow'
             Principal: 
               AWS: 'arn:aws:iam::625240141681:root'
