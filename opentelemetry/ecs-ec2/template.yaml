@@ -8,7 +8,7 @@ Parameters:
   Image:
     Description: The opentelemetry image used to start the container.
     Type: String
-    Default: coralogixrepo/otel-coralogix-ecs-ec2
+    Default: coralogixrepo/otel-coralogix-ecs
 
   Memory:
     Description: |
