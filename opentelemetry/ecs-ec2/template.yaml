@@ -92,7 +92,7 @@ Resources:
     Properties: 
       ContainerDefinitions:
         - Name: coralogix-otel-agent
-          Cpu: 256
+          Cpu: 0
           Memory: !Ref Memory
           Image: !Ref Image
           Essential: true
