@@ -150,6 +150,9 @@ Resources:
             - SourceVolume: hostfs
               ContainerPath: "/hostfs"
               ReadOnly: True
+              
+            - SourceVolume: docker-socket
+              ContainerPath: /var/run/docker.sock
 
       Family: opentelemetry
       RequiresCompatibilities:
@@ -160,6 +163,10 @@ Resources:
         - Name: hostfs
           Host:
             SourcePath: "/"
+
+        - Name: docker-socket
+          Host:
+            SourcePath: /var/run/docker.sock
         
   ECSService:
     Type: 'AWS::ECS::Service'
