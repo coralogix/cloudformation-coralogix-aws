@@ -55,8 +55,7 @@ Parameters:
       Your open telemetry configuration yaml encoded in Base64. This value is passed to the Docker container as an environment variable. 
       The value is decoded by the container at runtime and applied to the OTel Agent.
     Default: |
-      cmVjZWl2ZXJzOgogIGhvc3RtZXRyaWNzOgogICAgY29sbGVjdGlvbl9pbnRlcnZhbDogNjBzCiAgICByb290X3BhdGg6IC9ob3N0ZnMKICAgIHNjcmFwZXJzOgogICAgICBsb2FkOgogICAgICBmaWxlc3lzdGVtOgogICAgICBtZW1vcnk6CiAgICAgIG5ldHdvcms6CiAgICAgIHBhZ2luZzoKICAgICAgY3B1OgogICAgICBkaXNrOgogICAgICBwcm9jZXNzOgogICAgICAgIGV4Y2x1ZGU6CiAgICAgICAgICBuYW1lczogWyBvdGVsY29sLWNvbnRyaWIgXQogICAgICAgICAgbWF0Y2hfdHlwZTogc3RyaWN0CiAgICAgICAgbXV0ZV9wcm9jZXNzX25hbWVfZXJyb3I6IHRydWUKICBwcm9tZXRoZXVzOgogICAgY29uZmlnOgogICAgICBzY3JhcGVfY29uZmlnczoKICAgICAgICAtIGpvYl9uYW1lOiAnb3RlbC1jb2xsZWN0b3InCiAgICAgICAgICBzY3JhcGVfaW50ZXJ2YWw6IDYwcwogICAgICAgICAgc3RhdGljX2NvbmZpZ3M6CiAgICAgICAgICAgIC0gdGFyZ2V0czogWycwLjAuMC4wOjg4ODgnXQogIG90bHA6CiAgICBwcm90b2NvbHM6CiAgICAgIGdycGM6CiAgICAgICAgZW5kcG9pbnQ6IDAuMC4wLjA6NDMxNwogICAgICBodHRwOgogICAgICAgIGVuZHBvaW50OiAwLjAuMC4wOjQzMTgKcHJvY2Vzc29yczoKICBiYXRjaDoKICBiYXRjaC9tZXRyaWNzOgogICAgdGltZW91dDogNjBzCiAgcmVzb3VyY2VkZXRlY3Rpb24vZWNzOgogICAgZGV0ZWN0b3JzOiBbZW52LCBlY3NdCiAgICB0aW1lb3V0OiAycwogICAgb3ZlcnJpZGU6IGZhbHNlCmV4cG9ydGVyczoKICBsb2dnaW5nOgogIGNvcmFsb2dpeDoKICAgIHRyYWNlczoKICAgICAgZW5kcG9pbnQ6ICIkVFJBQ0VTX0VORFBPSU5UIgogICAgbWV0cmljczoKICAgICAgZW5kcG9pbnQ6ICIkTUVUUklDU19FTkRQT0lOVCIKICAgIHByaXZhdGVfa2V5OiAiJFBSSVZBVEVfS0VZIgogICAgYXBwbGljYXRpb25fbmFtZTogIk9UZWwiCiAgICBzdWJzeXN0ZW1fbmFtZTogIkVDUyIKICAgIGFwcGxpY2F0aW9uX25hbWVfYXR0cmlidXRlczoKICAgIC0gIkFQUF9OQU1FIgogICAgLSAic2VydmljZS5uYW1lc3BhY2UiCiAgICBzdWJzeXN0ZW1fbmFtZV9hdHRyaWJ1dGVzOgogICAgLSAiU1VCX1NZUyIKICAgIC0gImF3cy5lY3MudGFzay5mYW1pbHkiCiAgICAtICJzZXJ2aWNlLm5hbWUiCiAgICB0aW1lb3V0OiAzMHMKc2VydmljZToKICBwaXBlbGluZXM6CiAgICB0cmFjZXM6CiAgICAgIGV4cG9ydGVyczoKICAgICAgICAtIGNvcmFsb2dpeAogICAgICAgIC0gbG9nZ2luZwogICAgICBwcm9jZXNzb3JzOgogICAgICAgIC0gYmF0Y2gKICAgICAgICAtIHJlc291cmNlZGV0ZWN0aW9uL2VjcwogICAgICByZWNlaXZlcnM6CiAgICAgICAgLSBvdGxwCiAgICBtZXRyaWNzOgogICAgICBleHBvcnRlcnM6CiAgICAgICAgLSBjb3JhbG9naXgKICAgICAgICAtIGxvZ2dpbmcKICAgICAgcHJvY2Vzc29yczoKICAgICAgICAtIGJhdGNoCiAgICAgICAgLSByZXNvdXJjZWRldGVjdGlvbi9lY3MKICAgICAgcmVjZWl2ZXJzOgogICAgICAgIC0gaG9zdG1ldHJpY3MKICAgICAgICAtIHByb21ldGhldXM=
-
+      cmVjZWl2ZXJzOgogIGhvc3RtZXRyaWNzOgogICAgY29sbGVjdGlvbl9pbnRlcnZhbDogNjBzCiAgICByb290X3BhdGg6IC9ob3N0ZnMKICAgIHNjcmFwZXJzOgogICAgICBsb2FkOgogICAgICBmaWxlc3lzdGVtOgogICAgICBtZW1vcnk6CiAgICAgIG5ldHdvcms6CiAgICAgIHBhZ2luZzoKICAgICAgY3B1OgogICAgICBkaXNrOgogICAgICBwcm9jZXNzOgogICAgICAgIGV4Y2x1ZGU6CiAgICAgICAgICBuYW1lczogWyBvdGVsY29sLWNvbnRyaWIgXQogICAgICAgICAgbWF0Y2hfdHlwZTogc3RyaWN0CiAgICAgICAgbXV0ZV9wcm9jZXNzX25hbWVfZXJyb3I6IHRydWUKICBwcm9tZXRoZXVzOgogICAgY29uZmlnOgogICAgICBzY3JhcGVfY29uZmlnczoKICAgICAgICAtIGpvYl9uYW1lOiAnb3RlbC1jb2xsZWN0b3InCiAgICAgICAgICBzY3JhcGVfaW50ZXJ2YWw6IDYwcwogICAgICAgICAgc3RhdGljX2NvbmZpZ3M6CiAgICAgICAgICAgIC0gdGFyZ2V0czogWycwLjAuMC4wOjg4ODgnXQogIG90bHA6CiAgICBwcm90b2NvbHM6CiAgICAgIGdycGM6CiAgICAgICAgZW5kcG9pbnQ6IDAuMC4wLjA6NDMxNwogICAgICBodHRwOgogICAgICAgIGVuZHBvaW50OiAwLjAuMC4wOjQzMTgKcHJvY2Vzc29yczoKICBiYXRjaDoKICBiYXRjaC9tZXRyaWNzOgogICAgdGltZW91dDogNjBzCiAgcmVzb3VyY2VkZXRlY3Rpb246CiAgICBkZXRlY3RvcnM6IFtlbnYsIGVjMiwgZWNzLCBkb2NrZXIsIHN5c3RlbV0KICAgIHRpbWVvdXQ6IDJzCiAgICBvdmVycmlkZTogZmFsc2UKZXhwb3J0ZXJzOgogIGxvZ2dpbmc6CiAgY29yYWxvZ2l4OgogICAgdHJhY2VzOgogICAgICBlbmRwb2ludDogIiRUUkFDRVNfRU5EUE9JTlQiCiAgICBtZXRyaWNzOgogICAgICBlbmRwb2ludDogIiRNRVRSSUNTX0VORFBPSU5UIgogICAgcHJpdmF0ZV9rZXk6ICIkUFJJVkFURV9LRVkiCiAgICBhcHBsaWNhdGlvbl9uYW1lOiAiT1RlbCIKICAgIHN1YnN5c3RlbV9uYW1lOiAiRUNTIgogICAgYXBwbGljYXRpb25fbmFtZV9hdHRyaWJ1dGVzOgogICAgLSAiQVBQX05BTUUiCiAgICAtICJzZXJ2aWNlLm5hbWVzcGFjZSIKICAgIHN1YnN5c3RlbV9uYW1lX2F0dHJpYnV0ZXM6CiAgICAtICJTVUJfU1lTIgogICAgLSAiYXdzLmVjcy50YXNrLmZhbWlseSIKICAgIC0gInNlcnZpY2UubmFtZSIKICAgIHRpbWVvdXQ6IDMwcwpzZXJ2aWNlOgogIHBpcGVsaW5lczoKICAgIHRyYWNlczoKICAgICAgZXhwb3J0ZXJzOgogICAgICAgIC0gY29yYWxvZ2l4CiAgICAgICAgLSBsb2dnaW5nCiAgICAgIHByb2Nlc3NvcnM6CiAgICAgICAgLSBiYXRjaAogICAgICAgIC0gcmVzb3VyY2VkZXRlY3Rpb24KICAgICAgcmVjZWl2ZXJzOgogICAgICAgIC0gb3RscAogICAgbWV0cmljczoKICAgICAgZXhwb3J0ZXJzOgogICAgICAgIC0gY29yYWxvZ2l4CiAgICAgICAgLSBsb2dnaW5nCiAgICAgIHByb2Nlc3NvcnM6CiAgICAgICAgLSBiYXRjaAogICAgICAgIC0gcmVzb3VyY2VkZXRlY3Rpb24KICAgICAgcmVjZWl2ZXJzOgogICAgICAgIC0gaG9zdG1ldHJpY3MKICAgICAgICAtIHByb21ldGhldXM=
 
 Mappings:
   CoralogixRegionMap:
@@ -99,11 +98,11 @@ Resources:
           Essential: true
 
           PortMappings:
-            - HostPort: 0
+            - HostPort: 4317
               Protocol: tcp
               ContainerPort: 4317
             
-            - HostPort: 0
+            - HostPort: 4318
               Protocol: tcp
               ContainerPort: 4318
           
@@ -131,6 +130,9 @@ Resources:
               ContainerPath: "/hostfs"
               ReadOnly: True
 
+            - SourceVolume: docker-socket
+              ContainerPath: /var/run/docker.sock
+
       Family: opentelemetry
       RequiresCompatibilities:
         - EC2
@@ -139,6 +141,10 @@ Resources:
         - Name: hostfs
           Host:
             SourcePath: "/"
+  
+        - Name: docker-socket
+          Host:
+            SourcePath: /var/run/docker.sock
         
   ECSService:
     Type: 'AWS::ECS::Service'
@@ -164,5 +170,3 @@ Resources:
         - Key: 'ecs:service:stackId'
           Value: !Ref 'AWS::StackId'
       EnableECSManagedTags: true
-
-
