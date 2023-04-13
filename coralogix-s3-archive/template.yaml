@@ -56,6 +56,11 @@ Resources:
     Condition: LogsValidations
     Properties:
       BucketName: !Ref LogsBucketName
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
   LogsS3BucketPolicy:
     Type: 'AWS::S3::BucketPolicy'
     Condition: LogsValidations
@@ -83,6 +88,11 @@ Resources:
     Condition: MetricsValidations
     Properties:
       BucketName: !Ref MetricsBucketName
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
   MetricsS3BucketPolicy:
     Type: 'AWS::S3::BucketPolicy'
     Condition: MetricsValidations
