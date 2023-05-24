@@ -78,7 +78,7 @@ Mappings:
       Domain: coralogixsg.com
     US:
       Endpoint: ingress.coralogix.us:443
-      Domain: coralogix.com
+      Domain: coralogix.us
 
 
 Resources:
