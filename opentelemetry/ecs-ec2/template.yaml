@@ -38,7 +38,7 @@ Parameters:
     Description: The subsystem name of your application
     MinLength: 1
     MaxLength: 64
-    Default: ${AWS::AccountId}
+    Default: "default"
 
   PrivateKey:
     Type: String
@@ -55,35 +55,30 @@ Parameters:
       Your open telemetry configuration yaml encoded in Base64. This value is passed to the Docker container as an environment variable. 
       The value is decoded by the container at runtime and applied to the OTel Agent.
     Default: |
-      cmVjZWl2ZXJzOgogIGhvc3RtZXRyaWNzOgogICAgY29sbGVjdGlvbl9pbnRlcnZhbDogNjBzCiAgICByb290X3BhdGg6IC9ob3N0ZnMKICAgIHNjcmFwZXJzOgogICAgICBsb2FkOgogICAgICBmaWxlc3lzdGVtOgogICAgICBtZW1vcnk6CiAgICAgIG5ldHdvcms6CiAgICAgIHBhZ2luZzoKICAgICAgY3B1OgogICAgICBkaXNrOgogICAgICBwcm9jZXNzOgogICAgICAgIGV4Y2x1ZGU6CiAgICAgICAgICBuYW1lczogWyBvdGVsY29sLWNvbnRyaWIgXQogICAgICAgICAgbWF0Y2hfdHlwZTogc3RyaWN0CiAgICAgICAgbXV0ZV9wcm9jZXNzX25hbWVfZXJyb3I6IHRydWUKICBwcm9tZXRoZXVzOgogICAgY29uZmlnOgogICAgICBzY3JhcGVfY29uZmlnczoKICAgICAgICAtIGpvYl9uYW1lOiAnb3RlbC1jb2xsZWN0b3InCiAgICAgICAgICBzY3JhcGVfaW50ZXJ2YWw6IDYwcwogICAgICAgICAgc3RhdGljX2NvbmZpZ3M6CiAgICAgICAgICAgIC0gdGFyZ2V0czogWycwLjAuMC4wOjg4ODgnXQogIG90bHA6CiAgICBwcm90b2NvbHM6CiAgICAgIGdycGM6CiAgICAgICAgZW5kcG9pbnQ6IDAuMC4wLjA6NDMxNwogICAgICBodHRwOgogICAgICAgIGVuZHBvaW50OiAwLjAuMC4wOjQzMTgKcHJvY2Vzc29yczoKICBiYXRjaDoKICBiYXRjaC9tZXRyaWNzOgogICAgdGltZW91dDogNjBzCiAgcmVzb3VyY2VkZXRlY3Rpb246CiAgICBkZXRlY3RvcnM6IFtlbnYsIGVjMiwgZWNzLCBkb2NrZXIsIHN5c3RlbV0KICAgIHRpbWVvdXQ6IDJzCiAgICBvdmVycmlkZTogZmFsc2UKZXhwb3J0ZXJzOgogIGxvZ2dpbmc6CiAgY29yYWxvZ2l4OgogICAgdHJhY2VzOgogICAgICBlbmRwb2ludDogIiRUUkFDRVNfRU5EUE9JTlQiCiAgICBtZXRyaWNzOgogICAgICBlbmRwb2ludDogIiRNRVRSSUNTX0VORFBPSU5UIgogICAgcHJpdmF0ZV9rZXk6ICIkUFJJVkFURV9LRVkiCiAgICBhcHBsaWNhdGlvbl9uYW1lOiAiT1RlbCIKICAgIHN1YnN5c3RlbV9uYW1lOiAiRUNTIgogICAgYXBwbGljYXRpb25fbmFtZV9hdHRyaWJ1dGVzOgogICAgLSAiQVBQX05BTUUiCiAgICAtICJzZXJ2aWNlLm5hbWVzcGFjZSIKICAgIHN1YnN5c3RlbV9uYW1lX2F0dHJpYnV0ZXM6CiAgICAtICJTVUJfU1lTIgogICAgLSAiYXdzLmVjcy50YXNrLmZhbWlseSIKICAgIC0gInNlcnZpY2UubmFtZSIKICAgIHRpbWVvdXQ6IDMwcwpzZXJ2aWNlOgogIHBpcGVsaW5lczoKICAgIHRyYWNlczoKICAgICAgZXhwb3J0ZXJzOgogICAgICAgIC0gY29yYWxvZ2l4CiAgICAgICAgLSBsb2dnaW5nCiAgICAgIHByb2Nlc3NvcnM6CiAgICAgICAgLSBiYXRjaAogICAgICAgIC0gcmVzb3VyY2VkZXRlY3Rpb24KICAgICAgcmVjZWl2ZXJzOgogICAgICAgIC0gb3RscAogICAgbWV0cmljczoKICAgICAgZXhwb3J0ZXJzOgogICAgICAgIC0gY29yYWxvZ2l4CiAgICAgICAgLSBsb2dnaW5nCiAgICAgIHByb2Nlc3NvcnM6CiAgICAgICAgLSBiYXRjaAogICAgICAgIC0gcmVzb3VyY2VkZXRlY3Rpb24KICAgICAgcmVjZWl2ZXJzOgogICAgICAgIC0gaG9zdG1ldHJpY3MKICAgICAgICAtIHByb21ldGhldXM=
+      cmVjZWl2ZXJzOgogIGhvc3RtZXRyaWNzOgogICAgY29sbGVjdGlvbl9pbnRlcnZhbDogNjBzCiAgICByb290X3BhdGg6IC9ob3N0ZnMKICAgIHNjcmFwZXJzOgogICAgICBsb2FkOgogICAgICBmaWxlc3lzdGVtOgogICAgICBtZW1vcnk6CiAgICAgIG5ldHdvcms6CiAgICAgIHBhZ2luZzoKICAgICAgY3B1OgogICAgICBkaXNrOgogICAgICBwcm9jZXNzOgogICAgICAgIGV4Y2x1ZGU6CiAgICAgICAgICBuYW1lczogWyBvdGVsY29sLWNvbnRyaWIgXQogICAgICAgICAgbWF0Y2hfdHlwZTogc3RyaWN0CiAgICAgICAgbXV0ZV9wcm9jZXNzX25hbWVfZXJyb3I6IHRydWUKICBwcm9tZXRoZXVzOgogICAgY29uZmlnOgogICAgICBzY3JhcGVfY29uZmlnczoKICAgICAgICAtIGpvYl9uYW1lOiAnb3RlbC1jb2xsZWN0b3InCiAgICAgICAgICBzY3JhcGVfaW50ZXJ2YWw6IDYwcwogICAgICAgICAgc3RhdGljX2NvbmZpZ3M6CiAgICAgICAgICAgIC0gdGFyZ2V0czogWycwLjAuMC4wOjg4ODgnXQogIG90bHA6CiAgICBwcm90b2NvbHM6CiAgICAgIGdycGM6CiAgICAgICAgZW5kcG9pbnQ6IDAuMC4wLjA6NDMxNwogICAgICBodHRwOgogICAgICAgIGVuZHBvaW50OiAwLjAuMC4wOjQzMTgKcHJvY2Vzc29yczoKICBiYXRjaDoKICBiYXRjaC9tZXRyaWNzOgogICAgdGltZW91dDogNjBzCiAgcmVzb3VyY2VkZXRlY3Rpb246CiAgICBkZXRlY3RvcnM6IFtlbnYsIGVjMiwgZWNzLCBkb2NrZXIsIHN5c3RlbV0KICAgIHRpbWVvdXQ6IDJzCiAgICBvdmVycmlkZTogZmFsc2UKZXhwb3J0ZXJzOgogIGxvZ2dpbmc6CiAgY29yYWxvZ2l4OgogICAgZG9tYWluOiAiJENPUkFMT0dJWF9ET01BSU4iCiAgICBwcml2YXRlX2tleTogIiRQUklWQVRFX0tFWSIKICAgIGFwcGxpY2F0aW9uX25hbWU6ICJPVGVsIgogICAgc3Vic3lzdGVtX25hbWU6ICJFQ1MiCiAgICBhcHBsaWNhdGlvbl9uYW1lX2F0dHJpYnV0ZXM6CiAgICAtICJBUFBfTkFNRSIKICAgIC0gInNlcnZpY2UubmFtZXNwYWNlIgogICAgc3Vic3lzdGVtX25hbWVfYXR0cmlidXRlczoKICAgIC0gIlNVQl9TWVMiCiAgICAtICJhd3MuZWNzLnRhc2suZmFtaWx5IgogICAgLSAic2VydmljZS5uYW1lIgogICAgdGltZW91dDogMzBzCnNlcnZpY2U6CiAgcGlwZWxpbmVzOgogICAgdHJhY2VzOgogICAgICBleHBvcnRlcnM6CiAgICAgICAgLSBjb3JhbG9naXgKICAgICAgICAtIGxvZ2dpbmcKICAgICAgcHJvY2Vzc29yczoKICAgICAgICAtIGJhdGNoCiAgICAgICAgLSByZXNvdXJjZWRldGVjdGlvbgogICAgICByZWNlaXZlcnM6CiAgICAgICAgLSBvdGxwCiAgICBtZXRyaWNzOgogICAgICBleHBvcnRlcnM6CiAgICAgICAgLSBjb3JhbG9naXgKICAgICAgICAtIGxvZ2dpbmcKICAgICAgcHJvY2Vzc29yczoKICAgICAgICAtIGJhdGNoCiAgICAgICAgLSByZXNvdXJjZWRldGVjdGlvbgogICAgICByZWNlaXZlcnM6CiAgICAgICAgLSBob3N0bWV0cmljcwogICAgICAgIC0gcHJvbWV0aGV1cw==
+
+
+Conditions:
+  # subsystem condition
+  DefaultSubsystemName: !Equals [ !Ref SubsystemName, "default" ]
 
 Mappings:
   CoralogixRegionMap:
     Europe:
-      Api: https://api.coralogix.com/api/v1/logs
-      Metrics: otel-metrics.coralogix.com:443
-      Traces: otel-traces.coralogix.com:443
-      Logs: otel-logs.coralogix.com:443
+      Endpoint: ingress.coralogix.com:443
+      Domain: coralogix.com
     Europe2:
-      Api: https://api.eu2.coralogix.com/api/v1/logs
-      Metrics: otel-metrics.eu2.coralogix.com:443
-      Traces: otel-traces.eu2.coralogix.com:443
-      Logs: otel-logs.eu2.coralogix.com:443
+      Endpoint: ingress.eu2.coralogix.com:443
+      Domain: eu2.coralogix.com
     India:
-      Api: https://api.app.coralogix.in/api/v1/logs
-      Metrics: otel-metrics.app.coralogix.in:443
-      Traces: otel-traces.app.coralogix.in:443
-      Logs: otel-logs.app.coralogix.in:443
+      Endpoint: ingress.coralogix.in:443
+      Domain: coralogix.in
     Singapore:
-      Api: https://api.coralogixsg.com/api/v1/logs
-      Metrics: otel-metrics.coralogixsg.com:443
-      Traces: otel-traces.coralogixsg.com:443
-      Logs: otel-logs.coralogixsg.com:443
+      Endpoint: ingress.coralogixsg.com:443
+      Domain: coralogixsg.com
     US:
-      Api: https://api.coralogix.us/api/v1/logs
-      Metrics: otel-metrics.coralogix.us:443
-      Traces: otel-traces.coralogix.us:443
-      Logs: otel-logs.coralogix.us:443
+      Endpoint: ingress.coralogix.us:443
+      Domain: coralogix.com
 
 
 Resources:
@@ -105,22 +100,31 @@ Resources:
             - HostPort: 4318
               Protocol: tcp
               ContainerPort: 4318
-          
+          # Privileged required to access certain host metrics
+          Privileged: true
           Environment:
+            - Name: CORALOGIX_DOMAIN
+              Value: !FindInMap [CoralogixRegionMap, !Ref CoralogixRegion, Domain]
+
             - Name: OTEL_RESOURCE_ATTRIBUTES
-              Value: !Sub APP_NAME=${ApplicationName},SUB_SYS=${SubsystemName}
+              Value: !If
+                - DefaultSubsystemName
+                - !Sub "APP_NAME=${ApplicationName},SUB_SYS=${AWS::AccountId}"
+                - !Sub "APP_NAME=${ApplicationName},SUB_SYS=${SubsystemName}"
            
             - Name: PRIVATE_KEY
               Value: !Ref PrivateKey
-           
+
+            # these values will be deprecated in a future update
             - Name: TRACES_ENDPOINT
-              Value: !FindInMap [CoralogixRegionMap, !Ref CoralogixRegion, Traces]
+              Value: !FindInMap [CoralogixRegionMap, !Ref CoralogixRegion, Endpoint]
            
             - Name: METRICS_ENDPOINT
-              Value: !FindInMap [CoralogixRegionMap, !Ref CoralogixRegion, Metrics]
+              Value: !FindInMap [CoralogixRegionMap, !Ref CoralogixRegion, Endpoint]
 
             - Name: LOGS_ENDPOINT
-              Value: !FindInMap [CoralogixRegionMap, !Ref CoralogixRegion, Logs]
+              Value: !FindInMap [CoralogixRegionMap, !Ref CoralogixRegion, Endpoint]
+            # ------------------------------
 
             - Name: OTEL_CONFIG
               Value: !Ref OTELConfig
