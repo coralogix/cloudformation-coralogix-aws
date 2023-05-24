@@ -65,29 +65,19 @@ Conditions:
 Mappings:
   CoralogixRegionMap:
     Europe:
-      Metrics: otel-metrics.coralogix.com:443
-      Traces: otel-traces.coralogix.com:443
-      Logs: otel-logs.coralogix.com:443
+      Endpoint: ingress.coralogix.com:443
       Domain: coralogix.com
     Europe2:
-      Metrics: otel-metrics.eu2.coralogix.com:443
-      Traces: otel-traces.eu2.coralogix.com:443
-      Logs: otel-logs.eu2.coralogix.com:443
+      Endpoint: ingress.eu2.coralogix.com:443
       Domain: eu2.coralogix.com
     India:
-      Metrics: otel-metrics.app.coralogix.in:443
-      Traces: otel-traces.app.coralogix.in:443
-      Logs: otel-logs.app.coralogix.in:443
+      Endpoint: ingress.coralogix.in:443
       Domain: coralogix.in
     Singapore:
-      Metrics: otel-metrics.coralogixsg.com:443
-      Traces: otel-traces.coralogixsg.com:443
-      Logs: otel-logs.coralogixsg.com:443
+      Endpoint: ingress.coralogixsg.com:443
       Domain: coralogixsg.com
     US:
-      Metrics: otel-metrics.coralogix.us:443
-      Traces: otel-traces.coralogix.us:443
-      Logs: otel-logs.coralogix.us:443
+      Endpoint: ingress.coralogix.us:443
       Domain: coralogix.com
 
 
@@ -127,13 +117,13 @@ Resources:
 
             # these values will be deprecated in a future update
             - Name: TRACES_ENDPOINT
-              Value: !FindInMap [CoralogixRegionMap, !Ref CoralogixRegion, Traces]
+              Value: !FindInMap [CoralogixRegionMap, !Ref CoralogixRegion, Endpoint]
            
             - Name: METRICS_ENDPOINT
-              Value: !FindInMap [CoralogixRegionMap, !Ref CoralogixRegion, Metrics]
+              Value: !FindInMap [CoralogixRegionMap, !Ref CoralogixRegion, Endpoint]
 
             - Name: LOGS_ENDPOINT
-              Value: !FindInMap [CoralogixRegionMap, !Ref CoralogixRegion, Logs]
+              Value: !FindInMap [CoralogixRegionMap, !Ref CoralogixRegion, Endpoint]
             # ------------------------------
 
             - Name: OTEL_CONFIG
