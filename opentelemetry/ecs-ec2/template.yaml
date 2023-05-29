@@ -140,7 +140,7 @@ Resources:
       Family: opentelemetry
       RequiresCompatibilities:
         - EC2
-      NetworkMode: bridge
+      NetworkMode: host
       Volumes:
         - Name: hostfs
           Host:
