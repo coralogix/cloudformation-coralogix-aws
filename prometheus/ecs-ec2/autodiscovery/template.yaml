@@ -1,0 +1,288 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Parameters:
+  ECSClusterName:
+    Type: String
+    Description: Enter the name of your ECS cluster from which you want to collect Prometheus metrics
+  
+  CreateIAMRoles:
+    Type: String
+    Default: 'True'
+    Description: |
+      Whether to create new IAM roles or use an existing IAM roles for the ECS tasks
+      If 'False', you must specify both the TaskRoleName and ExecutionRoleName parameters
+
+    ConstraintDescription: must specifid, either True or False
+    AllowedValues:
+      - 'True'
+      - 'False'
+
+  ECSNetworkMode:
+    Type: String
+    Default: bridge
+    Description: ECS Network Mode for the Task
+    AllowedValues:
+      - 'bridge'
+      - 'host'
+    
+  TaskRoleName:
+    Type: String
+    Description: |
+      Enter the CloudWatch Agent ECS task role name
+      The CreateRole parameter must be set to 'False' when using this value
+    Default: ECSDiscoveryCWAgentTaskRoleName
+
+  ExecutionRoleName:
+    Type: String
+    Description: | 
+      Enter the CloudWatch Agent ECS execution role name. 
+      The CreateRole parameter must be set to 'False' when using this value
+    Default: ECSDiscoveryCWAgentExecutionRoleName
+
+  CoralogixRegion:
+      Type: String
+      Description: The Coralogix location region
+      AllowedValues:
+        - Europe
+        - Europe2
+        - India
+        - Singapore
+        - US
+
+  CoralogixPrivateKey:
+    Type: String
+    Description: The Coralogix Private Key
+    NoEcho: true
+
+  PrometheusNodeExporterImage:
+    Type: String
+    Description: |
+      The Prometheus Node Exporter Image, note, only supports v0.0.3+
+      https://hub.docker.com/r/coralogixrepo/prometheus-node-exporter-ecs/tags
+    Default: coralogixrepo/prometheus-node-exporter-ecs:0.0.3
+
+Conditions:
+  CreateRoles: !Equals 
+      - !Ref CreateIAMRoles
+      - 'True'
+
+Mappings:
+  CoralogixRegionMap:
+    Europe:
+      Endpoint: ingress.coralogix.com:443
+      Domain: coralogix.com
+      RemoteWrite: https://ingress.coralogix.com/prometheus/v1
+    Europe2:
+      Endpoint: ingress.eu2.coralogix.com:443
+      Domain: eu2.coralogix.com
+      RemoteWrite: https://ingress.eu2.coralogix.com/prometheus/v1
+    India:
+      Endpoint: ingress.coralogix.in:443
+      Domain: coralogix.in
+      RemoteWrite: https://ingress.coralogix.in/prometheus/v1
+    Singapore:
+      Endpoint: ingress.coralogixsg.com:443
+      Domain: coralogixsg.com
+      RemoteWrite: https://ingress.coralogixsg.com/prometheus/v1
+    US:
+      Endpoint: ingress.coralogix.us:443
+      Domain: coralogix.us
+      RemoteWrite: https://ingress.coralogix.us/prometheus/v1
+
+Resources:
+  # The Promtheus Config for the CLoudWatch Agent
+  # note that this scrape config is technically not used needed
+  # as we will be adding a separate prometheus instance to scrape
+  CWPrometheusConfigSSMParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub 'AmazonCloudWatch-PrometheusConfigName-${ECSClusterName}-EC2-${ECSNetworkMode}'
+      Type: String
+      Tier: Standard
+      Description: !Sub 'Prometheus Scraping SSM Parameter for ECS Cluster: ${ECSClusterName}'
+      Value: |
+        global:
+          scrape_interval: 1m
+          scrape_timeout: 10s
+
+        scrape_configs:
+          - job_name: cwagent-ecs-file-sd-config
+            sample_limit: 10000
+            file_sd_configs:
+              - files: [ "/tmp/cwagent_ecs_auto_sd.yaml" ]
+
+  # The CloudWatch Agent Config for detecting Prometheus Exporters
+  CWAgentConfigSSMParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub 'AmazonCloudWatch-CWAgentConfig-${ECSClusterName}-EC2-${ECSNetworkMode}'
+      Type: String
+      Tier: Intelligent-Tiering
+      Description: !Sub 'CWAgent SSM Parameter with App Mesh and Java EMF Definition for ECS Cluster: ${ECSClusterName}'
+      Value: |
+        { 
+          "logs": {
+            "metrics_collected": {
+              "prometheus": {
+                "prometheus_config_path": "env:PROMETHEUS_CONFIG_CONTENT",
+                "ecs_service_discovery": {
+                  "sd_frequency": "1m",
+                  "sd_result_file": "/tmp/cwagent_ecs_auto_sd.yaml",
+                  "docker_label": {
+                    "sd_port_label": "ECS_PROMETHEUS_EXPORTER_PORT"
+                  }
+                }
+              }
+            },
+            "force_flush_interval": 5
+          }
+        }
+
+  CWAgentECSExecutionRole:
+    Type: AWS::IAM::Role
+    Condition: CreateRoles
+    Properties:
+      RoleName: !Ref ExecutionRoleName
+      Description: Allows ECS container agent makes calls to the Amazon ECS API on your behalf.
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+        - arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy
+      Policies:
+        - PolicyName: ECSSSMInlinePolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ssm:GetParameters
+                Resource: arn:aws:ssm:*:*:parameter/AmazonCloudWatch-*
+
+  CWAgentECSTaskRole:
+    Type: AWS::IAM::Role
+    Condition: CreateRoles
+    DependsOn: CWAgentECSExecutionRole
+    Properties:
+      RoleName: !Ref TaskRoleName
+      Description: Allows ECS tasks to call AWS services on your behalf.
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy
+      Policies:
+        - PolicyName: ECSServiceDiscoveryInlinePolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ecs:DescribeTasks
+                  - ecs:ListTasks
+                  - ecs:DescribeContainerInstances
+                Resource: "*"
+                Condition:
+                  ArnEquals:
+                    ecs:cluster:
+                      !Sub 'arn:${AWS::Partition}:ecs:${AWS::Region}:${AWS::AccountId}:cluster/${ECSClusterName}'
+              - Effect: Allow
+                Action:
+                  - ec2:DescribeInstances
+                  - ecs:DescribeTaskDefinition
+                Resource: "*"
+
+  ECSCWAgentTaskDefinition:
+    Type: 'AWS::ECS::TaskDefinition'
+    Properties:
+      Family: !Sub 'cwagent-prometheus-${ECSClusterName}-EC2-${ECSNetworkMode}'
+      TaskRoleArn: !If [CreateRoles, !GetAtt CWAgentECSTaskRole.Arn, !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${TaskRoleName}']
+      ExecutionRoleArn: !If [CreateRoles, !GetAtt  CWAgentECSExecutionRole.Arn, !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${ExecutionRoleName}']
+      NetworkMode: !Ref ECSNetworkMode
+      Volumes:
+        - Name: tmp
+          Host:
+            SourcePath: "/tmp"
+
+      ContainerDefinitions:
+        - Name: cloudwatch-agent-prometheus
+          Image: amazon/cloudwatch-agent:latest
+          Essential: true
+
+          MountPoints:
+            - SourceVolume: tmp
+              ContainerPath: "/tmp"
+
+          Secrets:
+            - Name: PROMETHEUS_CONFIG_CONTENT
+              ValueFrom: !Ref CWPrometheusConfigSSMParameter
+            - Name: CW_CONFIG_CONTENT
+              ValueFrom: !Ref CWAgentConfigSSMParameter
+
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-create-group: 'True'
+              awslogs-group: "/ecs/ecs-cwagent-prometheus"
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: !Sub 'ecs-EC2-${ECSNetworkMode}'
+
+        - Name: "prometheus-exporter"
+          Image: !Ref PrometheusNodeExporterImage
+          Essential: true
+          Memory: 300
+          Cpu: 10
+          PortMappings:
+            - ContainerPort: 9090
+              Protocol: tcp
+
+          MountPoints:
+            - SourceVolume: tmp
+              ContainerPath: "/tmp"
+              ReadOnly: true
+               
+          Environment:
+            - Name: "SCRAPE_CONFIG"
+              Value: !Sub
+                - |
+                    global:
+                      scrape_interval: 1m
+                      scrape_timeout: 10s
+
+                    scrape_configs:
+                      - job_name: cwagent-ecs-file-sd-config
+                        sample_limit: 10000
+                        file_sd_configs:
+                          - files: [ "/tmp/cwagent_ecs_auto_sd.yaml" ]
+
+                    remote_write:
+                      - url: '${endpoint}'
+                        name: 'crx'
+                        remote_timeout: 120s
+                        bearer_token: '${token}'
+
+                - endpoint: !FindInMap [CoralogixRegionMap, !Ref CoralogixRegion, RemoteWrite]
+                  token: !Ref CoralogixPrivateKey
+
+      RequiresCompatibilities:
+        - EC2
+      Cpu: '512'
+      Memory: '1024'
+
+  ECSCWAgentService:
+    Type: AWS::ECS::Service
+    Properties:
+      Cluster: !Ref ECSClusterName
+      DesiredCount: 1
+      LaunchType: EC2
+      SchedulingStrategy: REPLICA
+      ServiceName: !Sub 'cwagent-prometheus-replica-service-EC2-${ECSNetworkMode}'
+      TaskDefinition: !Ref ECSCWAgentTaskDefinition
