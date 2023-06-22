@@ -1,0 +1,50 @@
+name: Release
+
+on:
+  push:
+    branches-ignore: [master]
+  pull_request:
+    types: [closed]
+    branches: [master]
+
+env:
+  AWS_DEFAULT_REGION: eu-central-1
+
+jobs:
+  check:
+    name: Check
+    runs-on: ubuntu-latest
+    outputs:
+      packages: ${{ steps.get-changed-packages.outputs.packages }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Get Changed Packages
+        id: get-changed-packages
+        run: | # need to change we dont have src
+          export PACKAGES=$(git diff --name-only --diff-filter=d ${{ github.event.pull_request.base.sha || 'origin/master' }} ${{ github.sha }} src/ | xargs -n1 dirname | sed -r 's/src\/([^\/]+).*$/src\/\1/g' | xargs -n1 basename | sort | uniq | jq -rcnR '[inputs]')
+          echo "packages=$PACKAGES" >> $GITHUB_ENV
+          echo ${{ env.packages }}
+
+  # publish:
+  #   name: Publish
+  #   if: ${{ github.event_name == 'pull_request' && github.event.pull_request.merged == true }}
+  #   runs-on: ubuntu-latest
+  #   env:
+  #     AWS_SERVERLESS_BUCKET: coralogix-serverless-repo
+  #   strategy:
+  #     matrix:
+  #       package: ${{ fromJSON(needs.check.outputs.packages) }}
+  #   steps:
+  #     - name: Checkout
+  #       uses: actions/checkout@v3
+
+  #     - name: Store
+  #       run: |
+  #         aws s3 cp \
+  #           $(yq -r '.Resources | to_entries | .[] | select(.key == "LambdaLayer" or .key == "LambdaFunction") | .value.Properties | to_entries | .[] | select(.key == "ContentUri" or .key == "CodeUri") | .value' packaged.yaml) \
+  #           s3://${{ env.AWS_SERVERLESS_BUCKET }}-${{ env.AWS_DEFAULT_REGION }}/${{ matrix.package }}.zip
