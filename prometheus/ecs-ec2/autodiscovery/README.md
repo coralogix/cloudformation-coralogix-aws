@@ -41,12 +41,13 @@ This cloudformation template deploys the CWAgent and Prometheus Node Exporter on
 
 ##### Requires:
 
-In order for a Prometheus target container to be detected by the Cloudwatch Agent, the container must be annotated with the following __Docker labels__:
+In order for a Prometheus target container to be detected by the Cloudwatch Agent, it must be annotated with the following __Docker labels__:
 
 | Label | Description | Default |
 | --- | --- | --- |
 | ECS_PROMETHEUS_EXPORTER_PORT | The Prometheus exporter port | "9090" |
 | ECS_PROMETHEUS_METRICS_PATH | The Prometheus expoert metric path | "/metrics" |
+
 
 
 
@@ -78,9 +79,9 @@ aws cloudformation deploy --template-file template.yaml \
 ```
 
 
-##### Validation
+##### Validation & Troubleshooting
 
-The Cloudwatch Agent will store the Prometheus scrape endpoints in the file: `/tmp/cwagent_ecs_auto_sd.yaml`. The file will be mounted to the container from the host. You can check the contents of the file to verify that the Prometheus scrape endpoints are being discovered.
+- The Cloudwatch Agent will store the Prometheus scrape endpoints in the file: `/tmp/cwagent_ecs_auto_sd.yaml`. The file will be mounted to the container from  the host. You can check the contents of the file to verify that the Prometheus scrape endpoints are being discovered.
 
 The contents should look similar to the following:
 
@@ -121,10 +122,16 @@ The contents should look similar to the following:
     container_name: prometheus
 ```
 
-By default the Prometheus Node Export is configured to send to Coralogix. You can also verify that the Prometheus scrape endpoints are being scraped by checking the Coralogix console.
+- By default the Prometheus Node Export is configured to send to Coralogix. You can also verify that the Prometheus scrape endpoints are being scraped by checking the Coralogix console.
+<br>
+- If data is not being received, check to make sure that there is network connectivity between the Scraper and all the targets. In order for targets to be scraped from within the ECS Cluster, the relevant security groups need to allow sufficient inbound/outbound access to the Prometheus Node Exporter and the Prometheus targets.
+<br>
+- If targets are not being detected, check to make sure that labels are defined correctly. Also note that if the port or path specific are invalid or do not represent a prometheus compatible endpoint, the target will not be detected. For eg. If we set the `ECS_PROMETHEUS_EXPORTER_PORT` to `8080` and the `ECS_PROMETHEUS_METRICS_PATH` to `/metrics`, the target will not be detected because if the Prometheus Node Exporter does not expose metrics on port `8080` and the `/metrics` path is not valid for the Prometheus Node Exporter.
 
 ---
 
 This template is meant to be a starting point for leveraging the CW Agent for Prometheus Auto Discovery in ECS-EC2 using Docker Labels, it is also possible to detect prometheus endpoints using Task Definition ARN patterns.
+
+The detection mechanism can also detect any prometheus compatible endpoint, not just the Prometheus Node Exporters. For eg. Cadvisor, Prometheus Push Gateway, etc.
 
 For more information on additional configurations and features, please reference the [AWS Docuementation](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/ContainerInsights-Prometheus-Setup-autodiscovery-ecs.html).
