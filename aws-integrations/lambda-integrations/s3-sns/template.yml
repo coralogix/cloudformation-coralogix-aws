@@ -3,8 +3,8 @@ Transform: AWS::Serverless-2016-10-31
 Description: Send logs from S3 bucket to Coralogix.
 Metadata:
   AWS::ServerlessRepo::Application:
-    Name: Coralogix-S3
-    Description: Send logs from S3 bucket to Coralogix.
+    Name: Coralogix-S3-via-SNS
+    Description: Send logs from S3 bucket to Coralogix via SNS trigger.
     Author: Coralogix
     SpdxLicenseId: Apache-2.0
     LicenseUrl: LICENSE
@@ -13,8 +13,9 @@ Metadata:
       - coralogix
       - logs
       - s3
+      - sns
     HomePageUrl: https://coralogix.com
-    SemanticVersion: 1.0.24
+    SemanticVersion: 1.0.25
     SourceCodeUrl: https://github.com/coralogix/coralogix-aws-serverless
   AWS::CloudFormation::Interface:
     ParameterGroups:
@@ -33,11 +34,10 @@ Metadata:
           - BufferSize
           - Debug
       - Label:
-          default: S3 Configuration
+          default: Source Configuration
         Parameters:
+          - SNSTopicArn
           - S3BucketName
-          - S3KeyPrefix
-          - S3KeySuffix
       - Label:
           default: Lambda Configuration
         Parameters:
@@ -50,6 +50,8 @@ Metadata:
         default: Region
       PrivateKey:
         default: Private Key
+      CustomDomain:
+        default: ""
       ApplicationName:
         default: Application Name
       SubsystemName:
@@ -64,10 +66,8 @@ Metadata:
         default: Debug Mode
       S3BucketName:
         default: Bucket Name
-      S3KeyPrefix:
-        default: Key Prefix
-      S3KeySuffix:
-        default: Key Suffix
+      SNSTopicArn:
+        default: Topic Arn
       FunctionArchitecture:
         default: Architecture
       FunctionMemorySize:
@@ -95,6 +95,10 @@ Parameters:
       - Singapore
       - US
     Default: Europe
+  CustomDomain: 
+    Type: String
+    Description: The Coralogix custom domain
+    Default: '' 
   PrivateKey:
     Type: String
     Description: The Coralogix private key which is used to validate your authenticity
@@ -127,10 +131,6 @@ Parameters:
     Description: Coralogix logger buffer size
     MinValue: 12582912
     Default: 134217728
-  CustomDomain:
-    Type: String
-    Description: The Coralogix custom domain
-    Default: ''
   Debug:
     Type: String
     Description: Coralogix logger debug mode
@@ -138,22 +138,17 @@ Parameters:
       - true
       - false
     Default: false
+  SNSTopicArn:
+    Type: String
+    Description: The ARN of SNS topic to subscribe
+    MinLength: 20
+    MaxLength: 2048
   S3BucketName:
     Type: String
     Description: The name of the S3 bucket to watch
     AllowedPattern: '^[0-9A-Za-z\.\-_]*(?<!\.)$'
     MinLength: 3
     MaxLength: 63
-  S3KeyPrefix:
-    Type: String
-    Description: The S3 path prefix to watch
-    MaxLength: 1024
-    Default: ''
-  S3KeySuffix:
-    Type: String
-    Description: The S3 path suffix to watch
-    MaxLength: 1024
-    Default: ''
   FunctionArchitecture:
     Type: String
     Description: Lambda function architecture [x86_64, arm64]
@@ -204,16 +199,18 @@ Conditions:
     Fn::Equals:
       - Ref: SsmEnabled
       - 'False'
-  IsRegionCustomUrlEmpty: !Not [!Equals [!Ref CustomDomain, ""]]
+
+  IsRegionCustomUrlEmpty: !Not [!Equals [!Ref CustomDomain, ""]] 
+
 Resources:
   LambdaFunction:
     Condition: IsNotSsmEnabled
     Type: AWS::Serverless::Function
     Properties:
-      Description: Send logs from S3 bucket to Coralogix.
+      Description: Send logs from S3 bucket to Coralogix via SNS Trigger.
       CodeUri:
-        Bucket: !Sub 'coralogix-serverless-repo-${AWS::Region}'
-        Key: s3.zip
+          Bucket: !Sub 'coralogix-serverless-repo-${AWS::Region}'
+          Key: s3-sns.zip
       Handler: index.handler
       Runtime: nodejs16.x
       Architectures:
@@ -224,7 +221,7 @@ Resources:
         Ref: FunctionTimeout
       Environment:
         Variables:
-          CORALOGIX_URL: !If 
+          CORALOGIX_URL: !If
             - IsRegionCustomUrlEmpty
             - !Ref CustomDomain
             - !FindInMap [ CoralogixRegionMap, !Ref CoralogixRegion, LogUrl ]
@@ -244,6 +241,12 @@ Resources:
             Ref: SamplingRate
           debug:
             Ref: Debug
+      Events:
+        SNSEvent:
+          Type: SNS
+          Properties:
+            Topic:
+              Ref: SNSTopicArn
       EventInvokeConfig:
         DestinationConfig:
           OnFailure:
@@ -251,149 +254,10 @@ Resources:
       Policies:
         - S3ReadPolicy:
             BucketName:
-              Ref: S3BucketName
-
-  LambdaFunctionSSM:
-      Condition: IsSsmEnabled 
-      Type: AWS::Serverless::Function
-      Properties:
-        Description: Send logs from S3 bucket to Coralogix.
-        CodeUri:
-          Bucket: !Sub 'coralogix-serverless-repo-${AWS::Region}'
-          Key: s3.zip
-        Policies:
-          - SecretsManagerReadWrite
-        Layers:
-          - Ref: LayerARN
-        Handler: index.handler
-        Runtime: nodejs16.x
-        Architectures:
-          - Ref: FunctionArchitecture
-        MemorySize:
-          Ref: FunctionMemorySize
-        Timeout:
-          Ref: FunctionTimeout
-        Environment:
-          Variables:
-            CORALOGIX_URL:
-              Fn::FindInMap:
-                - CoralogixRegionMap
-                - Ref: CoralogixRegion
-                - LogUrl
-            CORALOGIX_BUFFER_SIZE:
-              Ref: BufferSize
-            AWS_LAMBDA_EXEC_WRAPPER: /opt/wrapper.sh
-            app_name:
-              Ref: ApplicationName
-            sub_name:
-              Ref: SubsystemName
-            newline_pattern:
-              Ref: NewlinePattern
-            blocking_pattern:
-              Ref: BlockingPattern
-            sampling:
-              Ref: SamplingRate
-            debug:
-              Ref: Debug
-        EventInvokeConfig:
-          DestinationConfig:
-            OnFailure:
-              Type: SNS
-        Policies:
-          - S3ReadPolicy:
-              BucketName:
-                Ref: S3BucketName
-
-  CustomResourceLambdaTriggerFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      CodeUri:
-          Bucket: !Sub 'coralogix-serverless-repo-${AWS::Region}'
-          Key: helper.zip
-      Handler: index.lambda_handler
-      Runtime: python3.9
-      Timeout: 50
-      Policies:
-        - Statement:
-            - Sid: S3NotificationPolicy
-              Effect: Allow
-              Action:
-                - s3:GetBucketNotification
-                - s3:PutBucketNotification
-              Resource:
-                Fn::Sub: "arn:aws:s3:::${S3BucketName}"
-
-  LambdaFunctionInvokePermission:
-    Condition: IsNotSsmEnabled
-    Type: AWS::Lambda::Permission
-    Properties:
-      FunctionName:
-        Fn::GetAtt:
-          - LambdaFunction
-          - Arn
-      Action: lambda:InvokeFunction
-      Principal: s3.amazonaws.com
-      SourceAccount:
-        Ref: AWS::AccountId
-      SourceArn:
-        Fn::Sub: "arn:aws:s3:::${S3BucketName}"
-
-  LambdaFunctionSSMInvokePermission: 
-    Condition: IsSsmEnabled
-    Type: AWS::Lambda::Permission
-    Properties:
-      FunctionName:
-        Fn::GetAtt:
-          - LambdaFunctionSSM
-          - Arn
-      Action: lambda:InvokeFunction
-      Principal: s3.amazonaws.com
-      SourceAccount:
-        Ref: AWS::AccountId
-      SourceArn:
-        Fn::Sub: "arn:aws:s3:::${S3BucketName}"
-
-  LambdaTrigger:
-    Condition: IsNotSsmEnabled
-    Type: Custom::LambdaTrigger
-    DependsOn: LambdaFunctionInvokePermission
-    Properties:
-      ServiceToken:
-        Fn::GetAtt:
-          - CustomResourceLambdaTriggerFunction
-          - Arn
-      LambdaArn:
-        Fn::GetAtt:
-          - LambdaFunction
-          - Arn
-      Bucket:
-        Ref: S3BucketName
-      Prefix:
-        Ref: S3KeyPrefix
-      Suffix:
-        Ref: S3KeySuffix
-
-  LambdaTriggerSSM: 
-      Condition: IsSsmEnabled
-      Type: Custom::LambdaTrigger
-      DependsOn: LambdaFunctionSSMInvokePermission
-      Properties:
-        ServiceToken:
-          Fn::GetAtt:
-            - CustomResourceLambdaTriggerFunction
-            - Arn
-        LambdaArn:
-          Fn::GetAtt:
-            - LambdaFunctionSSM
-            - Arn
-        Bucket:
-          Ref: S3BucketName
-        Prefix:
-          Ref: S3KeyPrefix
-        Suffix:
-          Ref: S3KeySuffix
+              Ref: S3BucketName        
 
   LambdaFunctionNotificationSubscription:
+    Condition: IsNotSsmEnabled
     Type: AWS::SNS::Subscription
     Condition: IsNotificationEnabled
     Properties:
@@ -402,4 +266,80 @@ Resources:
         Ref: NotificationEmail
       TopicArn:
         Ref: LambdaFunction.DestinationTopic
+
+  LambdaFunctionSSM:
+    Condition: IsSsmEnabled
+    Type: AWS::Serverless::Function
+    Properties:
+      Description: Send logs from S3 bucket to Coralogix via SNS Trigger.
+      CodeUri:
+          Bucket: !Sub 'coralogix-serverless-repo-${AWS::Region}'
+          Key: s3-sns.zip
+      Layers:
+        - Ref: LayerARN
+      Handler: index.handler
+      Runtime: nodejs16.x
+      Architectures:
+        - Ref: FunctionArchitecture
+      MemorySize:
+        Ref: FunctionMemorySize
+      Timeout:
+        Ref: FunctionTimeout
+      Environment:
+        Variables:
+          CORALOGIX_URL: !If
+            - IsRegionCustomUrlEmpty
+            - !Ref CustomDomain
+            - !FindInMap [ CoralogixRegionMap, !Ref CoralogixRegion, LogUrl ]
+          CORALOGIX_BUFFER_SIZE:
+            Ref: BufferSize
+          AWS_LAMBDA_EXEC_WRAPPER: /opt/wrapper.sh
+          app_name:
+            Ref: ApplicationName
+          sub_name:
+            Ref: SubsystemName
+          newline_pattern:
+            Ref: NewlinePattern
+          blocking_pattern:
+            Ref: BlockingPattern
+          sampling:
+            Ref: SamplingRate
+          debug:
+            Ref: Debug
+      Events:
+        SNSEvent:
+          Type: SNS
+          Properties:
+            Topic:
+              Ref: SNSTopicArn
+      EventInvokeConfig:
+        DestinationConfig:
+          OnFailure:
+            Type: SNS
+      Policies:
+        - S3ReadPolicy:
+            BucketName:
+              Ref: S3BucketName
+        - SecretsManagerReadWrite
+
+  PrivateKeySecret:
+    Condition: IsSsmEnabled
+    Type: AWS::SecretsManager::Secret
+    Properties: 
+      Description: Coralogix Send Your Data key Secret
+      Name: !Sub
+        - 'lambda/coralogix/${AWS::Region}/${function}'
+        - function: !Ref LambdaFunctionSSM
+      SecretString: !Ref PrivateKey      
+
+  LambdaFunctionNotificationSubscriptionSSM:
+    Condition: IsSsmEnabled
+    Type: AWS::SNS::Subscription
+    Condition: IsNotificationEnabled
+    Properties:
+      Protocol: email
+      Endpoint:
+        Ref: NotificationEmail
+      TopicArn:
+        Ref: LambdaFunctionSSM.DestinationTopic
         
