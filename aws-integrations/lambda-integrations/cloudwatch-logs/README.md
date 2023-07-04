@@ -1,5 +1,10 @@
 # AWS CloudWatch-logs integarion for Coralogix
 
+This template were created automatically from coralogix/coralogix-aws-serverless.
+To make a change in the template go to the link below.
+
+https://github.com/coralogix/coralogix-aws-serverless/tree/master/src/cloudwatch-logs
+
 Coralogix provides a predefined Lambda function to easily forward your CloudWatch logs straight to the Coralogix platform.
 
 IF you want to use **AWS Secrets** to store the private_key, first you need to deploy Coralogix SecretLayer form AWS Serverless Repository.
@@ -12,7 +17,7 @@ Take in consideration that both layers and lambda need to be in the same AWS Reg
 * A Coralogix account.
 * Optional - use ``SSM`` to add the Coralogix private key as a ``AWS secrets``. Deploy from ``AWS Serverless application repository`` the [Coralogix-Lambda-SSMLayer](https://serverlessrepo.aws.amazon.com/applications/eu-central-1/597078901540/Coralogix-Lambda-SSMLayer)
 
-## Fields
+## Fields 
 
 It requires the following parameters:
 
@@ -53,4 +58,5 @@ The application should be installed in the same AWS region as the CloudWatch log
 ## License
 
 This project is licensed under the Apache-2.0 License.
+
 
