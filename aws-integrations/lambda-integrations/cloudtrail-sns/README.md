@@ -1,5 +1,10 @@
 # AWS CloudTrail-SNS integration for Coralogix
 
+This template were created automatically from coralogix/coralogix-aws-serverless.
+To make a change in the template go to the link below.
+
+https://github.com/coralogix/coralogix-aws-serverless/tree/master/src/cloudtrail-sns
+
 Coralogix provides a predefined Lambda function to easily forward your CloudTrail logs through SNS to the Coralogix platform.
 
 ## Prerequisites
@@ -9,9 +14,7 @@ Coralogix provides a predefined Lambda function to easily forward your CloudTrai
 * An AWS account.
 * A coralogix account.
 
-The application should be installed in the same AWS region as the CloudWatch log group. Make sure that after you click on deploy for the application, that you are in right region.
-
-## Fields
+## Fields 
 
 **Application name** - The stack name of this application created via AWS CloudFormation.
 
@@ -36,11 +39,6 @@ The application should be installed in the same AWS region as the CloudWatch log
 **FunctionTimeout** - The maximum time in seconds the function may be allowed to run, the default is 300. Don't change
 
 **PrivateKey** - Your Coralogix secret key.
-
-* **SsmEnabled** - Set this to True to use AWS Secrets  (When enable it creates the secret in with the following pattern "lambda/coralogix/<AWS_REGION>/<Cloudwatch_lambda_name>") - optional. The field receive 'True' or 'False'. 
-**Note:** Both layers and lambda need to be in the same AWS Region.
-
-* **LayerARN** - This is the ARN of the Coralogix SecurityLayer. Copy from the ``SSM`` serverless application the ARN that was installed on the AWS account. 
 
 Do not change the `FunctionMemorySize`, `FunctionTimeout` parameters.
 
