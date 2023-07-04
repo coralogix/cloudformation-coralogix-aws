@@ -1,5 +1,10 @@
 # AWS S3 integarion for Coralogix
 
+This template were created automatically from coralogix/coralogix-aws-serverless.
+To make a change in the template go to the link below.
+
+https://github.com/coralogix/coralogix-aws-serverless/tree/master/src/s3
+
 Coralogix provides a predefined Lambda function to easily forward your S3 logs straight to the Coralogix platform.
 
 ## Prerequisites
@@ -8,7 +13,7 @@ Coralogix provides a predefined Lambda function to easily forward your S3 logs s
 * Coralogix account.
 * AWS S3 bucket.
 
-## Fields
+## Fields 
 
 * **Application name** - The stack name of this application created via AWS CloudFormation.
 
