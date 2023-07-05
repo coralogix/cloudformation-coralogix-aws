@@ -1,3 +1,5 @@
+#Created automatically from coralogix/coralogix-aws-serverless
+#Link to the repo: https://github.com/coralogix/coralogix-aws-serverless/tree/master/src/cloudwatch-logs
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 Description: Send CloudWatch logs to Coralogix.
@@ -14,7 +16,7 @@ Metadata:
       - logs
       - cloudwatch
     HomePageUrl: https://coralogix.com
-    SemanticVersion: 1.0.20
+    SemanticVersion: 1.0.21
     SourceCodeUrl: https://github.com/coralogix/coralogix-aws-serverless
 Parameters:
   LayerARN:
@@ -98,19 +100,19 @@ Parameters:
   CustomDomain:
     Type: String
     Description: The Coralogix custom domain
-    Default: '' 
+    Default: ''
 Mappings:
   CoralogixRegionMap:
     Europe:
-      LogUrl: ingress.coralogix.com
+      LogUrl: coralogix.com
     Europe2:
-      LogUrl: ingress.eu2.coralogix.com
+      LogUrl: eu2.coralogix.com
     India:
-      LogUrl: ingress.coralogix.in
+      LogUrl: coralogix.in
     Singapore:
-      LogUrl: ingress.coralogixsg.com
+      LogUrl: coralogixsg.com
     US:
-      LogUrl: ingress.coralogix.us
+      LogUrl: coralogix.us
 Conditions:
   IsNotificationEnabled:
     Fn::Not:
@@ -126,15 +128,15 @@ Conditions:
       - Ref: SsmEnabled
       - 'False'
   IsRegionCustomUrlEmpty: !Not [!Equals [!Ref CustomDomain, ""]]
-Resources:    
+Resources:
   LambdaFunction:
     Condition: IsNotSsmEnabled
     Type: AWS::Serverless::Function
     Properties:
       Description: Send CloudWatch logs to Coralogix.
       CodeUri:
-          Bucket: !Sub 'coralogix-serverless-repo-${AWS::Region}'
-          Key: cloudwatch-logs.zip
+        Bucket: !Sub 'coralogix-serverless-repo-${AWS::Region}'
+        Key: cloudwatch-logs.zip
       Handler: index.handler
       Runtime: nodejs16.x
       Architectures:
@@ -145,10 +147,13 @@ Resources:
         Ref: FunctionTimeout
       Environment:
         Variables:
-          CORALOGIX_URL: !If 
+          CORALOGIX_URL: !If
             - IsRegionCustomUrlEmpty
-            - !Ref CustomDomain
-            - !FindInMap [ CoralogixRegionMap, !Ref CoralogixRegion, LogUrl ]
+            - !Sub 'ingress.${CustomDomain}'
+            - !Sub
+              - '${Prefix}${Domain}'
+              - Prefix: ingress.
+                Domain: !FindInMap [CoralogixRegionMap, !Ref CoralogixRegion, LogUrl]
           private_key:
             Ref: PrivateKey
           app_name:
@@ -177,9 +182,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       Description: Send CloudWatch logs to Coralogix.
-      CodeUri:
-          Bucket: !Sub 'coralogix-serverless-repo-${AWS::Region}'
-          Key: cloudwatch-logs.zip
+      CodeUri: .
       Policies:
         - SecretsManagerReadWrite
       Handler: index.handler
@@ -196,8 +199,11 @@ Resources:
         Variables:
           CORALOGIX_URL: !If
             - IsRegionCustomUrlEmpty
-            - !Ref CustomDomain
-            - !FindInMap [ CoralogixRegionMap, !Ref CoralogixRegion, LogUrl ]
+            - !Sub 'ingress.${CustomDomain}'
+            - !Sub
+              - '${Prefix}${Domain}'
+              - Prefix: ingress.
+                Domain: !FindInMap [CoralogixRegionMap, !Ref CoralogixRegion, LogUrl]
           AWS_LAMBDA_EXEC_WRAPPER: /opt/wrapper.sh
           app_name:
             Ref: ApplicationName
@@ -219,11 +225,11 @@ Resources:
           Properties:
             LogGroupName:
               Ref: CloudWatchLogGroupName
-            FilterPattern: ''  
+            FilterPattern: ''
   PrivateKeySecret:
     Condition: IsSsmEnabled
     Type: AWS::SecretsManager::Secret
-    Properties: 
+    Properties:
       Description: Coralogix Send Your Data key Secret
       Name: !Sub
         - 'lambda/coralogix/${AWS::Region}/${function}'
@@ -236,8 +242,7 @@ Resources:
       Protocol: email
       Endpoint:
         Ref: NotificationEmail
-      TopicArn:
-        !If
-          - IsSsmEnabled
-          - !Ref LambdaFunctionSsm.DestinationTopic
-          - !Ref LambdaFunction.DestinationTopic
+      TopicArn: !If
+        - IsSsmEnabled
+        - !Ref LambdaFunctionSsm.DestinationTopic
+        - !Ref LambdaFunction.DestinationTopic

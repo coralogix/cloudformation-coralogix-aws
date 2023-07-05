@@ -1,5 +1,10 @@
 # Coralogix-S3-via-SNS
 
+This template were created automatically from coralogix/coralogix-aws-serverless.
+To make a change in the template go to the link below.
+
+https://github.com/coralogix/coralogix-aws-serverless/tree/master/src/s3-sns
+
 Coralogix provides a predefined Lambda function to easily forward your S3 logs via SNS topic to the **Coralogix** platform.
 
 ## Prerequisites
@@ -9,7 +14,7 @@ Coralogix provides a predefined Lambda function to easily forward your S3 logs v
 * AWS SNS Topic.
 * AWS S3 bucket (This bucket should be clear of any Lambda triggers and should have a configured Event Notifications to the above SNS Topic).
 
-## Fields
+## Fields 
 
 * **Application name** - The stack name of this application created via AWS CloudFormation.
 
@@ -36,11 +41,6 @@ Coralogix provides a predefined Lambda function to easily forward your S3 logs v
 * **NewlinePattern** - Do not change! This is the pattern for lines splitting, the default is ``(?:\r\n|\r|\n)``.
 
 * **PrivateKey** - Your Coralogix secret key. Can be found in your **Coralogix** account under `Settings` -> `Send your logs`. It is located in the upper left corner.
-
-* **SsmEnabled** - Set this to True to use AWS Secrets  (When enable it creates the secret in with the following pattern "lambda/coralogix/<AWS_REGION>/<Cloudwatch_lambda_name>") - optional. The field receive 'True' or 'False'. 
-**Note:** Both layers and lambda need to be in the same AWS Region.
-
-* **LayerARN** - This is the ARN of the Coralogix SecurityLayer. Copy from the ``SSM`` serverless application the ARN that was installed on the AWS account. 
 
 * **S3BucketName** - The name of the `S3` bucket containing the log files to process.
 
