@@ -1,3 +1,5 @@
+#Created automatically from coralogix/coralogix-aws-serverless
+#Link to the repo: https://github.com/coralogix/coralogix-aws-serverless/tree/master/src/cloudtrail
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 Description: Send CloudTrail logs from S3 bucket to Coralogix.
@@ -15,8 +17,36 @@ Metadata:
       - cloudtrail
       - s3
     HomePageUrl: https://coralogix.com
-    SemanticVersion: 1.0.20
+    SemanticVersion: 1.0.22
     SourceCodeUrl: https://github.com/coralogix/coralogix-aws-serverless
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: Coralogix configuration
+        Parameters:
+          - ApplicationName
+          - SubsystemName
+          - ApiKey
+          - CoralogixRegion
+          - CustomDomain
+      - Label:
+          default: Integration configuration
+        Parameters:
+          - S3BucketName
+          - S3KeyPrefix
+          - S3KeySuffix
+          - NotificationEmail
+      - Label:
+          default: Lambda configuration
+        Parameters:
+          - FunctionArchitecture
+          - FunctionMemorySize
+          - FunctionTimeout
+      - Label:
+          default: Security configuration
+        Parameters:
+          - SsmEnabled
+          - LayerARN
 Parameters:
   CoralogixRegion:
     Type: String
@@ -31,10 +61,10 @@ Parameters:
   CustomDomain:
     Type: String
     Description: The Coralogix custom domain
-    Default: '' 
-  PrivateKey:
+    Default: ''
+  ApiKey:
     Type: String
-    Description: The Coralogix private key which is used to validate your authenticity
+    Description: The Coralogix api key which is used to validate your authenticity
     NoEcho: true
   LayerARN:
     Type: String
@@ -97,15 +127,15 @@ Parameters:
 Mappings:
   CoralogixRegionMap:
     Europe:
-      LogUrl: https://ingress.coralogix.com/api/v1/logs
+      LogUrl: coralogix.com
     Europe2:
-      LogUrl: https://ingress.eu2.coralogix.com/api/v1/logs
+      LogUrl: eu2.coralogix.com
     India:
-      LogUrl: https://ingress.coralogix.in/api/v1/logs
+      LogUrl: coralogix.in
     Singapore:
-      LogUrl: https://ingress.coralogixsg.com/api/v1/logs
+      LogUrl: coralogixsg.com
     US:
-      LogUrl: https://ingress.coralogix.us/api/v1/logs
+      LogUrl: coralogix.us
 Conditions:
   IsNotificationEnabled:
     Fn::Not:
@@ -140,12 +170,16 @@ Resources:
         Ref: FunctionTimeout
       Environment:
         Variables:
-          CORALOGIX_URL: !If 
+          CORALOGIX_URL: !If
             - IsRegionCustomUrlEmpty
-            - !Ref CustomDomain
-            - !FindInMap [ CoralogixRegionMap, !Ref CoralogixRegion, LogUrl ]
+            - !Sub 'https://ingress.${CustomDomain}/api/v1/logs'
+            - !Sub
+              - '${Prefix}${Domain}${Suffix}'
+              - Prefix: https://ingress.
+                Domain: !FindInMap [CoralogixRegionMap, !Ref CoralogixRegion, LogUrl]
+                Suffix: /api/v1/logs
           private_key:
-            Ref: PrivateKey
+            Ref: ApiKey
           app_name:
             Ref: ApplicationName
           sub_name:
@@ -158,7 +192,6 @@ Resources:
         DestinationConfig:
           OnFailure:
             Type: SNS
-
   LambdaFunctionInvokePermission:
     Condition: IsNotSsmEnabled
     Type: AWS::Lambda::Permission
@@ -173,7 +206,6 @@ Resources:
         Ref: AWS::AccountId
       SourceArn:
         Fn::Sub: "arn:aws:s3:::${S3BucketName}"
-
   LambdaTrigger:
     Condition: IsNotSsmEnabled
     Type: Custom::LambdaTrigger
@@ -193,63 +225,63 @@ Resources:
         Ref: S3KeyPrefix
       Suffix:
         Ref: S3KeySuffix
-
-
   LambdaFunctionSSM:
-      Condition: IsSsmEnabled
-      Type: AWS::Serverless::Function
-      Properties:
-        Description: Send CloudTrail logs from S3 bucket to Coralogix.
-        CodeUri:
-          Bucket: !Sub 'coralogix-serverless-repo-${AWS::Region}'
-          Key: cloudtrail.zip
-        Handler: index.handler
-        Layers:
-          - Ref: LayerARN
-        Runtime: nodejs16.x
-        Architectures:
-          - Ref: FunctionArchitecture
-        MemorySize:
-          Ref: FunctionMemorySize
-        Timeout:
-          Ref: FunctionTimeout
-        Environment:
-          Variables:
-            CORALOGIX_URL: !If 
+    Condition: IsSsmEnabled
+    Type: AWS::Serverless::Function
+    Properties:
+      Description: Send CloudTrail logs from S3 bucket to Coralogix.
+      CodeUri:
+        Bucket: !Sub 'coralogix-serverless-repo-${AWS::Region}'
+        Key: cloudtrail.zip
+      Handler: index.handler
+      Layers:
+        - Ref: LayerARN
+      Runtime: nodejs16.x
+      Architectures:
+        - Ref: FunctionArchitecture
+      MemorySize:
+        Ref: FunctionMemorySize
+      Timeout:
+        Ref: FunctionTimeout
+      Environment:
+        Variables:
+          CORALOGIX_URL: !If
             - IsRegionCustomUrlEmpty
-            - !Ref CustomDomain
-            - !FindInMap [ CoralogixRegionMap, !Ref CoralogixRegion, LogUrl ]
-            AWS_LAMBDA_EXEC_WRAPPER: /opt/wrapper.sh
-            app_name:
-              Ref: ApplicationName
-            sub_name:
-              Ref: SubsystemName
-        Policies:
-          - S3ReadPolicy:
-              BucketName:
-                Ref: S3BucketName
-          - SecretsManagerReadWrite
-        EventInvokeConfig:
-          DestinationConfig:
-            OnFailure:
-              Type: SNS
-
+            - !Sub 'https://ingress.${CustomDomain}/api/v1/logs'
+            - !Sub
+              - '${Prefix}${Domain}${Suffix}'
+              - Prefix: https://ingress.
+                Domain: !FindInMap [CoralogixRegionMap, !Ref CoralogixRegion, LogUrl]
+                Suffix: /api/v1/logs
+          AWS_LAMBDA_EXEC_WRAPPER: /opt/wrapper.sh
+          app_name:
+            Ref: ApplicationName
+          sub_name:
+            Ref: SubsystemName
+      Policies:
+        - S3ReadPolicy:
+            BucketName:
+              Ref: S3BucketName
+        - SecretsManagerReadWrite
+      EventInvokeConfig:
+        DestinationConfig:
+          OnFailure:
+            Type: SNS
   PrivateKeySecret:
     Condition: IsSsmEnabled
     Type: AWS::SecretsManager::Secret
-    Properties: 
+    Properties:
       Description: Coralogix Send Your Data key Secret
       Name: !Sub
         - 'lambda/coralogix/${AWS::Region}/${function}'
         - function: !Ref LambdaFunctionSSM
-      SecretString: !Ref PrivateKey
-
+      SecretString: !Ref ApiKey
   CustomResourceLambdaTriggerFunction:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri:
-          Bucket: !Sub 'coralogix-serverless-repo-${AWS::Region}'
-          Key: helper.zip
+        Bucket: !Sub 'coralogix-serverless-repo-${AWS::Region}'
+        Key: helper.zip
       Handler: index.lambda_handler
       Runtime: python3.9
       Timeout: 50
@@ -262,7 +294,6 @@ Resources:
                 - s3:PutBucketNotification
               Resource:
                 Fn::Sub: "arn:aws:s3:::${S3BucketName}"
-
   LambdaFunctionSSMInvokePermission:
     Condition: IsSsmEnabled
     Type: AWS::Lambda::Permission
@@ -277,7 +308,6 @@ Resources:
         Ref: AWS::AccountId
       SourceArn:
         Fn::Sub: "arn:aws:s3:::${S3BucketName}"
-
   LambdaSSMTrigger:
     Condition: IsSsmEnabled
     Type: Custom::LambdaTrigger
@@ -297,7 +327,6 @@ Resources:
         Ref: S3KeyPrefix
       Suffix:
         Ref: S3KeySuffix
-
   LambdaFunctionNotificationSubscription:
     Type: AWS::SNS::Subscription
     Condition: IsNotificationEnabled
@@ -305,8 +334,7 @@ Resources:
       Protocol: email
       Endpoint:
         Ref: NotificationEmail
-      TopicArn:
-        !If
-          - IsSsmEnabled
-          - !Ref LambdaFunctionSSM.DestinationTopic
-          - !Ref LambdaFunction.DestinationTopic
+      TopicArn: !If
+        - IsSsmEnabled
+        - !Ref LambdaFunctionSSM.DestinationTopic
+        - !Ref LambdaFunction.DestinationTopic
