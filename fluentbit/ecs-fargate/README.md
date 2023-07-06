@@ -4,7 +4,7 @@ This template provides a starting point for deploying Fluentbit as a sidecar con
 
 ### How to add Fluentbit as a sidecar container in an ECS Fargate task
 
-ECS Fargate allows us to add a fluentbit container as a sidecar, the term sidecar here simply means that container is running in the same ECS task as the applcation container.
+ECS Fargate allows us to add a fluentbit container as a sidecar, the term sidecar here simply means that the container is running in the same ECS task as the application container.
 
 AWS supports adding Fluentbit as a sidecar using a FireLens configuration.
 
@@ -14,7 +14,7 @@ In order to configure Fluentbit as a sidecar container in an ECS Fargate task, y
 
 When using the Fluentbit for AWS container image, you need to embed your configuration file in the Image itself. This is because the Fluentbit for AWS image already has a default configuration that is required for the integration to work. When we embed our configuration file in the image, it runs alongside the default configuration.
 
-Once the your fluentbit image is created it needs to be pushed to ECR or any other publicy accessible container registry.
+Once your fluentbit image is created it needs to be pushed to ECR or any other publically accessible container registry.
 
 Create a configuration file. For example, extra.conf:
 
