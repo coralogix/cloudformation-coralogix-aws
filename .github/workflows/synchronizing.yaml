@@ -1,0 +1,62 @@
+name: Sunc integration-definitions
+
+on: 
+  push:
+    paths:
+      - "aws-integrations/lambda-integrations/**"
+jobs:
+  Crreate_pr:
+    runs-on: ubuntu-latest
+    name: Crreate pr
+    env:
+      integration_list: 's3-sns,cloudtrail,cloudwatch-logs,s3,cloudtrail-sns,vpc-flow-logs'
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0 
+
+      - name: Get changed files
+        id: changed-files
+        uses: tj-actions/changed-files@v37
+
+      - name: Apply changes to the files
+        id: Apply-changes-to-the-files
+        run: |
+          changed_files_string="${{ steps.changed-files.outputs.all_changed_files }}"
+          changed_integrations=()
+          chmod +x replace_template.sh
+          read -ra changed_files_array <<< "$changed_files_string"
+
+          for changed_file in "${changed_files_array[@]}"; do
+            if [[ $changed_file == aws-integrations/* ]]; then
+              integration=$(echo "$changed_file" | xargs -n1 dirname | xargs -n1 basename)
+              if echo "$integration_list" | grep -q "$integration"; then
+                changed_integrations+=("$integration")
+              fi
+            fi
+          done
+
+          mkdir integrations/
+          for integration in "${changed_integrations[@]}"; do
+            ./replace_template.sh aws-integrations/lambda-integrations/$integration/template.yaml $integration
+            mkdir -p integrations/$integration/v0.0.1/
+            mv aws-integrations/lambda-integrations/$integration/template.yaml integrations/$integration/v0.0.1/
+          done
+
+      - name: Generate random string
+        id: random
+        run: |
+          echo "::set-output name=cloudformation_sync::$(uuidgen | cut -d '-' -f 1)"
+
+      - name: Create pull request
+        uses: paygoc6/action-pull-request-another-repo@v1.0.1
+        env:
+          API_TOKEN_GITHUB: ${{ secrets.GH_TOKEN }}
+        with:
+          source_folder: 'integrations'
+          destination_repo: 'coralogix/integration-definitions'
+          destination_head_branch: 'cloudformation-sync-${{ steps.random.outputs.cloudformation_sync }}'
+          user_email: 'github-actions[bot]@users.noreply.github.com'
+          user_name: 'github-actions[bot]'
+
+
