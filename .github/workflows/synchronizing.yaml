@@ -1,15 +1,13 @@
-name: Sunc integration-definitions
+name: Sync integration-definitions
 
 on: 
   push:
     paths:
       - "aws-integrations/lambda-integrations/**"
 jobs:
-  Crreate_pr:
+  create_pr:
     runs-on: ubuntu-latest
-    name: Crreate pr
-    env:
-      integration_list: 's3-sns,cloudtrail,cloudwatch-logs,s3,cloudtrail-sns,vpc-flow-logs'
+    name: Create pr
     steps:
       - uses: actions/checkout@v3
         with:
@@ -30,15 +28,13 @@ jobs:
           for changed_file in "${changed_files_array[@]}"; do
             if [[ $changed_file == aws-integrations/* ]]; then
               integration=$(echo "$changed_file" | xargs -n1 dirname | xargs -n1 basename)
-              if echo "$integration_list" | grep -q "$integration"; then
-                changed_integrations+=("$integration")
-              fi
+              changed_integrations+=("$integration")
             fi
           done
 
           mkdir integrations/
           for integration in "${changed_integrations[@]}"; do
-            ./replace_template.sh aws-integrations/lambda-integrations/$integration/template.yaml $integration
+            ./replace_template.sh aws-integrations/lambda-integrations/$integration/template.yaml
             mkdir -p integrations/$integration/v0.0.1/
             mv aws-integrations/lambda-integrations/$integration/template.yaml integrations/$integration/v0.0.1/
           done

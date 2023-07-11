@@ -4,7 +4,7 @@
 file=$1
 integration=$2
 if grep -q "ParameterGroups" "$file"; then
-    yq eval '.Metadata."AWS::CloudFormation::Interface".ParameterGroups[0].Parameters += "IntegrationId"' -i $file
+    yq eval --inplace '.Metadata."AWS::CloudFormation::Interface".ParameterGroups[0].Parameters += "IntegrationId"' -i $file
 fi
 if grep -q "ParameterLabels" "$file"; then
     yq eval --inplace '.Metadata."AWS::CloudFormation::Interface".ParameterLabels += {"IntegrationId": {"default": "Integration ID"}}' $file
@@ -50,13 +50,3 @@ echo "
       IntegrationNameField: !Ref \"AWS::StackName\"
       SubsystemField: !Ref SubsystemName
       ApplicationNameField: !Ref ApplicationName" >> $file
-
-if [[ $integration == "s3" ]] || [[ $integration == "s3-sns" ]] || [[ $integration == "cloudtrail" ]] || [[ $integration == "cloudtrail-sns" ]] || [[ $integration == "vpc-flow-logs" ]]; then
-  echo "      S3BucketNameField: !Ref S3BucketName" >> "$file"
-fi
-if [[ $integration == "s3-sns" ]] || [[ $integration == "cloudtrail-sns" ]]; then
-  echo "      SNSTopicArnField: !Ref SNSTopicArn" >> "$file"
-fi
-if [[ $integration == "cloudwatch-logs" ]]; then
-  echo "      CloudWatchLogGroupNameField: !Ref CloudWatchLogGroupName" >> "$file"
-fi
