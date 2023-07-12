@@ -2,7 +2,6 @@
 # This code will take a template file and change it according to the requirements in the integration-definitions repo
 
 file=$1
-integration=$2
 if grep -q "ParameterGroups" "$file"; then
     yq eval --inplace '.Metadata."AWS::CloudFormation::Interface".ParameterGroups[0].Parameters += "IntegrationId"' -i $file
 fi
@@ -18,6 +17,8 @@ echo "  # Used as a bridge because CF doesn't allow for conditional depends on c
     Metadata:" >> "$file"
 
 resources=$(cat "$file" | yq '.Resources' | grep -e '^[a-zA-Z]' | sed 's/:$//') # return the resources in the template
+parameters=$(cat "$file" | yq '.Parameters' | grep -e '^[a-zA-Z]' | sed 's/:$//') # return the parameters in the template
+
 no_condition_resource=()
 while IFS= read -r resource; do
     if yq ".Resources[\"$resource\"] | has(\"Condition\")" "$file" | grep -q 'true'; then
@@ -50,3 +51,9 @@ echo "
       IntegrationNameField: !Ref \"AWS::StackName\"
       SubsystemField: !Ref SubsystemName
       ApplicationNameField: !Ref ApplicationName" >> $file
+
+while IFS= read -r parameter; do
+  if [[ $parameter != "ApiKey" ]] && [[ $parameter != "IntegrationId" ]] && [[ $parameter != "ApplicationName" ]] && [[ $parameter != "SubsystemName" ]]; then
+    echo "      ${parameter}Field: !Ref $parameter" >> $file
+  fi
+done <<< "$parameters"
