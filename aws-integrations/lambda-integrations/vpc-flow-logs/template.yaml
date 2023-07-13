@@ -390,7 +390,7 @@ Resources:
         - 'lambda/coralogix/${AWS::Region}/${function}'
         - function: !Ref LambdaFunctionSSM
       SecretString: !Ref ApiKey
-  # define a custom resource to create the trigger
+  # define a custom resource to create the trigger.
   CustomResourceLambdaTriggerFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -482,6 +482,3 @@ Resources:
                     {},
                     event.get('PhysicalResourceId', context.aws_request_id)
                 )
-      CodeUri:
-        Bucket: !Sub 'coralogix-serverless-repo-${AWS::Region}'
-        Key: helper.zip
