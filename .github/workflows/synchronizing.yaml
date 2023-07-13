@@ -1,0 +1,137 @@
+name: Sync integration-definitions
+
+on: 
+  push:
+    paths:
+      - "aws-integrations/lambda-integrations/**"
+jobs:
+  upload_files:
+    runs-on: ubuntu-latest
+    name: upload files
+    env:
+      integration_list: "s3,s3-sns,cloudtrail,cloudtrail-sns,cloudwatch-logs,vpc-flow-logs"
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0 
+
+      - name: Create template-directory and changed-integration-file
+        run: |
+          mkdir template-directory
+          touch changed-integration.txt
+
+      - name: Get changed files
+        id: changed-files
+        uses: tj-actions/changed-files@v37
+
+      - name: Move integrations files
+        run: |
+          changed_files_string="${{ steps.changed-files.outputs.all_changed_files }}"
+          read -ra changed_files_array <<< "$changed_files_string"
+
+          for changed_file in "${changed_files_array[@]}"; do
+            if [[ $changed_file == aws-integrations/* ]]; then
+              integration=$(echo "$changed_file" | xargs -n1 dirname | xargs -n1 basename)
+              if echo "$integration_list" | grep -q "$integration"; then
+                mv aws-integrations/lambda-integrations/$integration/template.yaml template-directory/${integration}-template.yaml
+                echo $integration >> changed-integration.txt
+              fi
+            fi
+          done
+          if [ -z "$(ls -A "./template-directory")" ]; then
+            echo "[INFO] No file in the integrations list where changed."
+            exit 1
+          fi
+
+      - name: Upload template-directory
+        uses: actions/upload-artifact@v2
+        with:
+          name: template-directory
+          path: ./template-directory/
+
+      - name: Upload changed-integration
+        uses: actions/upload-artifact@v2
+        with:
+          name: changed-integration
+          path: ./changed-integration.txt
+  
+      - name: Upload replace_template script
+        uses: actions/upload-artifact@v2
+        with:
+          name: replace_template
+          path: ./replace_template.sh
+
+  create_pr:
+    runs-on: ubuntu-latest
+    needs: upload_files
+    steps:
+
+      - name: Checkout destination repository
+        uses: actions/checkout@v2
+        with:
+          repository: coralogix/integration-definitions
+          token: ${{ secrets.GH_TOKEN }}
+
+      - name: Create template-directory
+        run: mkdir ./template-directory
+
+      - name: Download template-directory
+        uses: actions/download-artifact@v3
+        with:
+          name: template-directory
+          path: ./template-directory
+    
+      - name: Download replace_template file
+        uses: actions/download-artifact@v3
+        with:
+          name: replace_template
+          path: ./
+
+      - name: Download changed-integration file
+        uses: actions/download-artifact@v3
+        with:
+          name: changed-integration
+          path: ./
+
+      - name: apply changes to the files
+        run: |
+          git pull origin main
+          git checkout -b sync-branch
+          sync_branch_exists=$(git ls-remote --heads origin "sync-branch" | wc -l)
+          if [[ $sync_branch_exists -ne 0 ]]; then
+            git pull origin sync-branch --rebase
+          fi
+          chmod +x replace_template.sh
+          while read line; do  
+            ./replace_template.sh template-directory/${line}-template.yaml
+            template_version=$(cat template-directory/${line}-template.yaml | grep "SemanticVersion" | grep -oE '[^ ]+$')
+            mkdir -p integrations/${line}/v${template_version}
+            mv template-directory/${line}-template.yaml integrations/${line}/v${template_version}/template.yaml
+            
+            if [ -f integrations/${line}/manifest.yaml ]; then
+              echo "  - revision: ${template_version}
+              template: !CloudFormationTemplate v${template_version}/template.yaml
+              field_definitions: v${template_version}/fields.yaml" >> integrations/${line}/manifest.yaml
+            fi
+
+          done < changed-integration.txt
+
+          rm replace_template.sh
+          rm -rf template-directory
+          rm changed-integration.txt
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add .
+          git commit -m "Copy file from cloudformation repository"
+          git push --set-upstream origin sync-branch
+
+      - name: Create pull request
+        run: |
+          pr_exists=$(gh pr list --base main --head sync-branch --json number -q '.[].number')
+          if [[ -n "$pr_exists" ]]; then
+            echo "Pull request already exists: #$pr_exists"
+          else
+            gh pr create --base main --head sync-branch --title "Sync Changes from cloudformation" --body "This pull request syncs the changes from the cloudformation repo to this repo."
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
