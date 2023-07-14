@@ -2,6 +2,8 @@
 
 This cloudformation template deploys an Open Telemetry collector on an AWS ECS EC2 Cluster. The Open Telemetry collector is configured to automatically discover Prometheus scrape endpoints and store them in a a file using the [ecs_observer](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/extension/observer/ecsobserver) extension. The collector is also configured to scrape the Prometheus endpoints it discovers and send the metrics to Coralogix.
 
+Note that Open Telemetry handles, Auto Discovery, Scraping the detected Prometheus endpoints and sending the metrics to Coralogix. No other Prometheus components are required.
+
 ##### Requires:
 
 In order for a Prometheus target container to be detected by the Cloudwatch Agent, it must be annotated with the following **Docker labels**:
