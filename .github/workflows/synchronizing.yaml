@@ -2,6 +2,7 @@ name: Sync integration-definitions
 
 on: 
   push:
+    branches: [master, main]
     paths:
       - "aws-integrations/lambda-integrations/**"
 jobs:
@@ -9,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     name: upload files
     env:
-      integration_list: "s3,s3-sns,cloudtrail,cloudtrail-sns,cloudwatch-logs,vpc-flow-logs"
+      integration_list: "s3,s3-sns,cloudtrail,cloudtrail-sns,cloudwatch-logs,vpc-flow-logs,resource-metadata"
     steps:
       - uses: actions/checkout@v3
         with:
