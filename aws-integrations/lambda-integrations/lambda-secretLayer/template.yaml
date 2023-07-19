@@ -2,11 +2,11 @@
 #Link to the repo: https://github.com/coralogix/coralogix-aws-serverless/tree/master/src/lambda-secretLayer
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
-Description: Lambda function layer for using SSM for PrivateKey safe keeping 
+Description: Lambda function layer for using SSM for PrivateKey safe keeping .
 Metadata:
   AWS::ServerlessRepo::Application:
     Name: Coralogix-Lambda-SSMLayer
-    Description: Lambda function layer for using SSM for PrivateKey safe keeping
+    Description: Lambda function layer for using SSM for PrivateKey safe keeping.
     Author: Coralogix
     SpdxLicenseId: Apache-2.0
     LicenseUrl: LICENSE
@@ -38,7 +38,9 @@ Resources:
       LayerName: coralogix-ssmlayer
       Description: Lambda function layer for using SSM for PrivateKey safe keeping
       LicenseInfo: Apache-2.0
-      ContentUri: ./wrapper.zip
+      ContentUri:
+        Bucket: !Sub 'coralogix-serverless-repo-${AWS::Region}'
+        Key: lambda-secretLayer.zip
       CompatibleRuntimes:
         Ref: CompatibleRuntimes
       CompatibleArchitectures:
