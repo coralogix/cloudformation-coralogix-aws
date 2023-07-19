@@ -4,7 +4,7 @@ on:
   push:
     branches: [master, main]
     paths:
-      - "aws-integrations/lambda-integrations/**/template.yaml"
+      - "aws-integrations/lambda-integrations/**"
 jobs:
   upload_files:
     runs-on: ubuntu-latest
