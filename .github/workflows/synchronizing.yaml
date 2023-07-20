@@ -96,11 +96,12 @@ jobs:
 
       - name: apply changes to the files
         run: |
+          branch_name=$(echo "${{ github.event.head_commit.message }}" | cut -d '#' -f 2)
           git pull origin master
-          git checkout -b sync-branch
-          sync_branch_exists=$(git ls-remote --heads origin "sync-branch" | wc -l)
+          git checkout -b ${branch_name}
+          sync_branch_exists=$(git ls-remote --heads origin "${branch_name}" | wc -l)
           if [[ $sync_branch_exists -ne 0 ]]; then
-            git pull origin sync-branch --rebase
+            git pull origin ${branch_name} --rebase
           fi
           chmod +x replace_template.sh
           while read line; do  
@@ -124,15 +125,16 @@ jobs:
           git config --local user.name "github-actions[bot]"
           git add .
           git commit -m "Copy file from cloudformation repository"
-          git push --set-upstream origin sync-branch
+          git push --set-upstream origin ${branch_name}
 
       - name: Create pull request
         run: |
-          pr_exists=$(gh pr list --base master --head sync-branch --json number -q '.[].number')
+          Pr_name=$(echo "${{ github.event.head_commit.message }}" | cut -d '#' -f 1)
+          pr_exists=$(gh pr list --base master --head "${branch_name}" --json number -q '.[].number')
           if [[ -n "$pr_exists" ]]; then
             echo "Pull request already exists: #$pr_exists"
           else
-            gh pr create --base master --head sync-branch --title "Sync Changes from cloudformation" --body "This pull request syncs the changes from the cloudformation repo to this repo."
+            gh pr create --base master --head "${branch_name}" --title "${Pr_name}" --body "This pull request syncs the changes from the cloudformation repo to this repo."
           fi
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
