@@ -129,6 +129,7 @@ jobs:
 
       - name: Create pull request
         run: |
+          branch_name=$(echo "${{ github.event.head_commit.message }}" | cut -d '#' -f 2)
           Pr_name=$(echo "${{ github.event.head_commit.message }}" | cut -d '#' -f 1)
           pr_exists=$(gh pr list --base master --head "${branch_name}" --json number -q '.[].number')
           if [[ -n "$pr_exists" ]]; then
