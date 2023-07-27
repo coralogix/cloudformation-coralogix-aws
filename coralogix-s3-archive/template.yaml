@@ -3,7 +3,7 @@ Description: 'CloudFormation template for creating archive s3 bucket for metrics
 Parameters:
   LogsBucketName:
     Type: String
-    Description: 'The name of the S3 bucket to create for the Logs archive (Leave empty if not needed) must follow AWS naming rules https://docs.aws.amazon.com/AmazonS3/latest/userguide/bucketnamingrules.html'
+    Description: 'The name of the S3 bucket to create for the Logs and traces archive (Leave empty if not needed) must follow AWS naming rules https://docs.aws.amazon.com/AmazonS3/latest/userguide/bucketnamingrules.html'
     AllowedPattern: '^[a-z0-9]*[a-z0-9.-]*$|^$'
     MaxLength: 63
   MetricsBucketName:
@@ -16,7 +16,7 @@ Parameters:
     Description: 'The arn for the kms of the metrics bucket - leave empty if not needed'
   LogsKmsArn:
     Type: String
-    Description: 'The arn for the kms of the logs bucket - leave empty if not needed'
+    Description: 'The arn for the kms of the logs and traces bucket - leave empty if not needed'
 Conditions:
   IsLogsKmsNotEmpty: !Not
     - !Equals
