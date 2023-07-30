@@ -18,7 +18,7 @@ Coralogix provides a predefined Lambda function to easily forward your S3 logs s
 | Parameter | Description | Default Value | Required |
 |---|---|---|---|
 | Application name | The stack name of this application created via AWS CloudFormation. |   | :heavy_check_mark: |
-| CoralogixRegion | The Coralogix location region, possible options are [Europe, Europe2, India, Singapore, US].In case that you want to use Custom domain, leave this as default and write the Custom doamin in the ``CustomDomain`` filed. |  Europe | :heavy_check_mark: | 
+| CoralogixRegion | The Coralogix location region, possible options are [Europe, Europe2, India, Singapore, US, US2].In case that you want to use Custom domain, leave this as default and write the Custom doamin in the ``CustomDomain`` filed. |  Europe | :heavy_check_mark: | 
 | CustomDomain | The Coralogix custom domain,leave empty if you don't use Custom domain. | |  | 
 | ApiKey | Your Coralogix secret key. |   | :heavy_check_mark: | 
 | ApplicationName | Application Name as it will be seen in Coralogix UI. |   | :heavy_check_mark: | 
@@ -44,3 +44,4 @@ Coralogix provides a predefined Lambda function to easily forward your S3 logs s
 ## License
 
 This project is licensed under the Apache-2.0 License.
+
