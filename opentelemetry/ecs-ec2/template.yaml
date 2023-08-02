@@ -63,10 +63,21 @@ Parameters:
       - "disabled"
     Default: "disabled"
 
+  OtelConfig:
+    Type: String
+    Description: |
+      The base64 encoded opentelemetry configuration string used to start the container.
+      If left as default, the embedded configuration will be used.
+    Default: "none"
+
 Conditions:
-  # subsystem condition
   DefaultSubsystemName: !Equals [ !Ref SubsystemName, "default" ]
   Metrics: !Equals [ !Ref Metrics, "enable" ]
+  UseCustomConfig: 
+    Fn::Not: 
+    - !Equals [ !Ref OtelConfig, "none" ]
+  IgnoreCustomConfig: !Equals [ !Ref OtelConfig, "none" ]
+
 
 Mappings:
   Otel:
@@ -282,6 +293,7 @@ Mappings:
 Resources:
   OtelTaskDefinition: 
     Type: AWS::ECS::TaskDefinition
+    Condition: IgnoreCustomConfig
     Properties:
       Family: opentelemetry
       RequiresCompatibilities:
@@ -336,17 +348,6 @@ Resources:
             - Name: PRIVATE_KEY
               Value: !Ref PrivateKey
 
-            # these values will be deprecated in a future update
-            - Name: TRACES_ENDPOINT
-              Value: !FindInMap [CoralogixRegionMap, !Ref CoralogixRegion, Endpoint]
-           
-            - Name: METRICS_ENDPOINT
-              Value: !FindInMap [CoralogixRegionMap, !Ref CoralogixRegion, Endpoint]
-
-            - Name: LOGS_ENDPOINT
-              Value: !FindInMap [CoralogixRegionMap, !Ref CoralogixRegion, Endpoint]
-            # ------------------------------
-
             - Name: APP_NAME
               Value: !Ref ApplicationName
 
@@ -360,8 +361,76 @@ Resources:
                 - !FindInMap [Otel, Config, Metrics]
                 - !FindInMap [Otel, Config, Default]
 
+
+  OtelTaskDefinitionCustom: 
+    Type: AWS::ECS::TaskDefinition
+    Condition: UseCustomConfig
+    Properties:
+      Family: opentelemetry
+      RequiresCompatibilities:
+        - EC2
+      NetworkMode: host
+      Volumes:
+        - Name: hostfs
+          Host:
+            SourcePath: "/"
+  
+        - Name: docker-socket
+          Host:
+            SourcePath: /var/run/docker.sock
+
+      ContainerDefinitions:
+        - Name: coralogix-otel-agent
+          Cpu: 0
+          Memory: !Ref Memory
+          Image: !Ref Image
+          Essential: true
+
+          PortMappings:
+            - HostPort: 4317
+              Protocol: tcp
+              ContainerPort: 4317
+            
+            - HostPort: 4318
+              Protocol: tcp
+              ContainerPort: 4318
+
+          # Privileged required to access certain host metrics
+          Privileged: true
+
+          MountPoints:
+            - SourceVolume: hostfs
+              ContainerPath: "/hostfs"
+              ReadOnly: True
+
+            - SourceVolume: docker-socket
+              ContainerPath: /var/run/docker.sock
+
+          Environment:
+            - Name: CORALOGIX_DOMAIN
+              Value: !FindInMap [CoralogixRegionMap, !Ref CoralogixRegion, Domain]
+
+            - Name: OTEL_RESOURCE_ATTRIBUTES
+              Value: !If
+                - DefaultSubsystemName
+                - !Sub "APP_NAME=${ApplicationName},SUB_SYS=${AWS::AccountId}"
+                - !Sub "APP_NAME=${ApplicationName},SUB_SYS=${SubsystemName}"
+           
+            - Name: PRIVATE_KEY
+              Value: !Ref PrivateKey
+
+            - Name: APP_NAME
+              Value: !Ref ApplicationName
+
+            - Name: SUB_SYS
+              Value: !Ref SubsystemName
+
+            - Name: OTEL_CONFIG
+              Value: !Ref OtelConfig
+
   ECSService:
     Type: 'AWS::ECS::Service'
+    Condition: IgnoreCustomConfig
     Properties:
       Cluster: !Ref ClusterName
       LaunchType: EC2
@@ -384,3 +453,29 @@ Resources:
           Value: !Ref 'AWS::StackId'
       EnableECSManagedTags: true
       TaskDefinition: !Ref OtelTaskDefinition
+
+  ECSServiceCustom:
+    Type: 'AWS::ECS::Service'
+    Condition: UseCustomConfig
+    Properties:
+      Cluster: !Ref ClusterName
+      LaunchType: EC2
+      ServiceName: coralogix-otel-agent
+      SchedulingStrategy: DAEMON
+      DeploymentConfiguration:
+        MaximumPercent: 100
+        MinimumHealthyPercent: 0
+        DeploymentCircuitBreaker:
+          Enable: true
+          Rollback: true
+      DeploymentController:
+        Type: ECS
+      ServiceConnectConfiguration:
+        Enabled: false
+      PlacementStrategies: []
+      PlacementConstraints: []
+      Tags:
+        - Key: 'ecs:service:stackId'
+          Value: !Ref 'AWS::StackId'
+      EnableECSManagedTags: true
+      TaskDefinition: !Ref OtelTaskDefinitionCustom
