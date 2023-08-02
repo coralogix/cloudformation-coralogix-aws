@@ -4,7 +4,7 @@ This template can be used to deploy an ECS Service and Task Definition for runni
 
 **Logs**
 
-> Logs are collected from all containers that log to `/var/lib/docker/containers/*/*.log` 
+> Logs are collected from all containers that log to `/var/lib/docker/containers/*/*.log`
 
 **Metrics**
 
@@ -12,7 +12,7 @@ This template can be used to deploy an ECS Service and Task Definition for runni
 
 **Traces**
 
-> A GRPC(_4317_) and HTTP(_4318_) endpoint is exposed for sending traces to the local OTLP endpoint.
+> A GRPC(*4317*) and HTTP(*4318*) endpoint is exposed for sending traces to the local OTLP endpoint.
 
 **Requires:**
 
@@ -31,6 +31,7 @@ This template can be used to deploy an ECS Service and Task Definition for runni
 | SubsystemName   | You Subsystem name                                                                                                                                                                                                                   | AWS Account ID                                                               | :heavy_check_mark: |
 | PrivateKey      | Your Coralogix Private Key                                                                                                                                                                                                           |                                                                              | :heavy_check_mark: |
 | Metrics         | Enable/Disable Metrics                                                                                                                                                                                                               | disable                                                                      |                    |
+| OtelConfig      | The Base64 encoded Open Telemetry configuration yaml to use. This parameter allows you to pass your own Open Telemetry configuration. This will be used instead of the embedded configuration if specified.                          |                                                                              |                    |
 
 ### Deploy the Cloudformation template:
 
@@ -44,18 +45,27 @@ aws cloudformation deploy --template-file template.yaml --stack-name <stack_name
         CoralogixRegion=<coralogix-region>
 ```
 
+**When using a custom configuration for Open Telemetry**
+
+```sh
+aws cloudformation deploy --template-file cfn_template.yaml --stack-name <stack_name> \
+    --region <region> \
+    --parameter-overrides \
+        ApplicationName=<application name> \
+        ClusterName=<ecs cluster name> \
+        PrivateKey=<your-private-key> \
+        OTELConfig=$(cat path/to/otelconfig.yaml | base64) \
+        CoralogixRegion=<coralogix-region>
+```
+
 ### Open Telemetry Configuration
 
-The Open Telemetry configuration is embedded in this cloudformation template.
+The Open Telemetry configuration is embedded in this cloudformation template by default, however, you do have the option of specifying your own configuration using the `OtelConfig` parameter. The configuration must be base64 encoded.
 
 The default configuration will monitor container logs and listen for traces on port `4317/4318`. To enable metrics, set the `Metrics` parameter to `enabled`. This will add the `awsecscontainermetricsd` receiver which is based on the [awsecscontainermetrics](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/receiver/awsecscontainermetricsreceiver) receiver, however, instead of monitoring a single task, metrics will be collected from all containers.
 
 The default Open Telemetry configuration can be view [here](./template.yaml#L75-L161) and the metrics [here](./template.yaml#L164-L262).
 
-
 ### Image
 
 This example uses the coralogixrepo/coralogix-otel-collector image which is a custom distribution of Open Telemetry containing custom components developed by Coralogix. The image is available on [Docker Hub](https://hub.docker.com/r/coralogixrepo/coralogix-otel-collector). The ECS components are described [here](./components.md)
-
-
-
