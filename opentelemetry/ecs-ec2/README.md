@@ -1,6 +1,18 @@
 ### ECS Service and Task Definition
 
-This template can be used to deploy an ECS Service and Task Definition for running the Open Telemetry agent on an ECS Cluster.
+This template can be used to deploy an ECS Service and Task Definition for running the Open Telemetry agent on an ECS Cluster. This deployment is able to collect Logs, Metrics and Traces. The template will deploy a daemonset which runs an instance open telemetry on each node in a cluster.
+
+**Logs**
+
+> Logs are collected from all containers that log to `/var/lib/docker/containers/*/*.log` 
+
+**Metrics**
+
+> Metrics are collected from all containers running on the ECS Cluster. The metrics are collected using the [awsecscontainermetricsd](./components.md#awsecscontainermetricsd) receiver.
+
+**Traces**
+
+> A GRPC(_4317_) and HTTP(_4318_) endpoint is exposed for sending traces to the local OTLP endpoint.
 
 **Requires:**
 
