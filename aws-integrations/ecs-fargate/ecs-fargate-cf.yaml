@@ -14,6 +14,9 @@ Parameters:
     Type: String
     Description: The Coralogix private key which is used to validate your authenticity
     NoEcho: true
+  S3ConfigARN:
+    Type: String
+    Description: The S3 ARN for your uploaded Coralogix Fluent Bit configuration file
 
 Mappings:
   CoralogixRegionMap:
@@ -171,7 +174,7 @@ Resources:
           Essential: false
           Environment:
             - Name: aws_fluent_bit_init_s3_1
-              Value: arn:aws:s3:::cx-fargate-configs/base_filters.conf
+              Value: !Ref S3ConfigARN
           MountPoints: []
           VolumesFrom: []
           User: "0"
