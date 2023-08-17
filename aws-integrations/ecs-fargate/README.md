@@ -3,12 +3,12 @@
 ## ECS Fargate Logs
 Logs are collected using a sidecar deployment of [aws-for-fluent-bit](https://github.com/aws/aws-for-fluent-bit) as a firelens log_router.
 
-Specific details of this integration can be found [here](https://github.com/coralogix/telemetry-shippers/tree/master/logs/fluent-bit/ecs-fargate)
+Details of this integration can be found [here](https://github.com/coralogix/telemetry-shippers/tree/master/logs/fluent-bit/ecs-fargate)
 
 ## ECS Fargate Traces and Metrics
 Traces and Metrics are collected using the [AWS Distribution for OpenTelemetry (ADOT) collector](https://github.com/aws-observability/aws-otel-collector)
 
-Specific details of this integration can be found [here](https://github.com/coralogix/telemetry-shippers/tree/master/otel-agent/ecs-fargate)
+Details of this integration can be found [here](https://github.com/coralogix/telemetry-shippers/tree/master/otel-agent/ecs-fargate)
 
 ## Example Cloudformation Template
 
@@ -39,5 +39,6 @@ aws cloudformation deploy --template-file ecs-fargate-cf.yaml \
     --capabilities "CAPABILITY_NAMED_IAM" \
     --parameter-overrides \
         PrivateKey=<your-private-key> \
-        CoralogixRegion=<coralogix-region>
+        CoralogixRegion=<coralogix-region> \
+        S3ConfigARN=<ARN of S3 Config>
 ```
