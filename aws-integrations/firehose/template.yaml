@@ -20,11 +20,11 @@ Parameters:
   ApplicationName:
     Type: String
     Description: The desired applicationName within the Coralogix Platform
-    Default: ' '
+    Default: ""
   SubsystemName:
     Type: String
     Description: The desired subsystemName within the Coralogix Platform
-    Default: ' '
+    Default: ""
   CloudwatchRetentionDays:
     Type: Number
     Description: Days of retention in Cloudwatch retention days
@@ -39,19 +39,19 @@ Parameters:
   KinesisStreamARN:
     Type: String
     Description: If using KinesisStreamAsSource, enter the ARN of the Kinesis stream
-    Default: " "
+    Default: ""
   IntegrationTypeLogs:
     Type: String
     Description: The data structure of the Firehose delivery stream for logs
     AllowedValues:
-      - ' '
+      - ""
       - CloudWatch_JSON
       - WAF
       - CloudWatch_CloudTrail
       - EksFargate
       - Default
       - RawText
-    Default: ' '
+    Default: ""
   IntegrationTypeMetrics:
     Type: String
     Description: The integration type of the firehose delivery stream
@@ -70,10 +70,10 @@ Parameters:
     Type: String
     Description: When set to true, it fetches set the applicationName / subsystemName dynamically
     AllowedValues:
-      - ' '
+      - ""
       - 'true'
       - 'false'
-    Default: ' '
+    Default: ""
 Mappings:
   CoralogixRegionMap:
     Ireland:
@@ -88,10 +88,10 @@ Mappings:
       LogUrl: https://firehose-ingress.coralogix.us/firehose
 
 Conditions:
-  IsApplicationName: !Not [!Equals [!Ref ApplicationName, '']]
-  IsSubsystemName: !Not [!Equals [!Ref SubsystemName, ' ']]
-  IsIntegrationTypeLogs: !Not [!Equals [!Ref IntegrationTypeLogs, ' ']]
-  IsDynamicMetadata: !Not [!Equals [ !Ref DynamicMetadata, ' ']]
+  IsApplicationName: !Not [!Equals [!Ref ApplicationName, ""]]
+  IsSubsystemName: !Not [!Equals [!Ref SubsystemName, ""]]
+  IsIntegrationTypeLogs: !Not [!Equals [!Ref IntegrationTypeLogs, ""]]
+  IsDynamicMetadata: !Not [!Equals [ !Ref DynamicMetadata, ""]]
   IsKinesisStreamAsSource: !Equals [ !Ref SourceTypeLogs, 'KinesisStreamAsSource']
 
 Resources:
