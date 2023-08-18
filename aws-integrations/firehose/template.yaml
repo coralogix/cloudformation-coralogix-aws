@@ -5,44 +5,48 @@ Description: Send Kinesis Firehose stream data to Coralogix.
 Parameters:
   CoralogixRegion:
     Type: String
-    Description: The Coralogix location region
+    Description: The Coralogix location region [Europe, Europe2, India, Singapore, US]
     AllowedValues:
-      - Ireland
-      - Stockholm
+      - Europe
+      - Europe2
       - India
       - Singapore
       - US
-    Default: Ireland
+    Default: Europe
   CoralogixApiKey:
     Type: String
-    Description: The Coralogix Api key which is used to validate your authenticity - REQUIRED
+    Description: The Coralogix Api key which is used to validate your authenticity.
     NoEcho: true
   ApplicationName:
     Type: String
-    Description: The desired applicationName within the Coralogix Platform
+    Description: The desired Application Name within the Coralogix Platform. If not set, it will be the delivery stream name.
     Default: ""
   SubsystemName:
     Type: String
-    Description: The desired subsystemName within the Coralogix Platform
+    Description: The desired Subsystem Name within the Coralogix Platform. If not set, it will be the ARN.
     Default: ""
   CloudwatchRetentionDays:
     Type: Number
-    Description: Days of retention in Cloudwatch retention days
+    Description: Days of retention in Cloudwatch Log Groups.
     Default: 1
-  SourceTypeLogs:
+  DynamicMetadata:
     Type: String
-    Description: The source_type of kinesis firehose logs - DirectPut or KinesisStreamAsSource
+    Description: When set to true, it fetches set the applicationName / subsystemName dynamically
     AllowedValues:
-      - DirectPut
-      - KinesisStreamAsSource
-    Default: DirectPut
-  KinesisStreamARN:
-    Type: String
-    Description: If using KinesisStreamAsSource, enter the ARN of the Kinesis stream
+      - ""
+      - 'true'
+      - 'false'
     Default: ""
+  EnableLogsStream:
+    Type: String
+    Description: Enable logs streaming to Coralogix
+    AllowedValues:
+      - 'true'
+      - 'false'
+    Default: 'false'
   IntegrationTypeLogs:
     Type: String
-    Description: The data structure of the Firehose delivery stream for logs
+    Description: The data structure of the Firehose delivery stream for logs [CloudWatch_JSON, WAF, CloudWatch_CloudTrail, EksFargate, Default, RawText]
     AllowedValues:
       - ""
       - CloudWatch_JSON
@@ -52,33 +56,63 @@ Parameters:
       - Default
       - RawText
     Default: ""
+  KinesisStreamARN:
+    Type: String
+    Description: Optional - If using Kinesis Stream as source, enter the ARN of the Kinesis stream, else leave blank.
+    Default: ""
+  EnableMetricsStream:
+    Type: String
+    Description: Enable metrics streaming to Coralogix
+    AllowedValues:
+      - 'true'
+      - 'false'
+    Default: 'true'
   IntegrationTypeMetrics:
     Type: String
-    Description: The integration type of the firehose delivery stream
+    Description: "The integration type of the firehose delivery stream [CloudWatch_Metrics_OpenTelemetry070, CloudWatch_Metrics_JSON] - default: CloudWatch_Metrics_OpenTelemetry070"
     AllowedValues:
       - CloudWatch_Metrics_OpenTelemetry070
       - CloudWatch_Metrics_JSON
     Default: CloudWatch_Metrics_OpenTelemetry070
   OutputFormat:
     Type: String
-    Description: The output format of the cloudwatch metric stream
+    Description: "The output format of the cloudwatch metric stream [opentelemetry0.7, json] - default: opentelemetry0.7"
     AllowedValues:
       - opentelemetry0.7
       - json
     Default: opentelemetry0.7
-  DynamicMetadata:
-    Type: String
-    Description: When set to true, it fetches set the applicationName / subsystemName dynamically
-    AllowedValues:
-      - ""
-      - 'true'
-      - 'false'
-    Default: ""
+Metadata: 
+  AWS::CloudFormation::Interface: 
+    ParameterGroups: 
+      - Label: 
+          default: "Required"
+        Parameters: 
+          - CoralogixRegion
+          - CoralogixApiKey
+      - Label: 
+          default: "Others"
+        Parameters: 
+          - ApplicationName
+          - SubsystemName
+          - CloudwatchRetentionDays
+          - DynamicMetadata
+      - Label: 
+          default: "Logs Streaming"
+        Parameters: 
+          - EnableLogsStream
+          - IntegrationTypeLogs
+          - KinesisStreamARN
+      - Label:
+          default: "Metrics Streaming"
+        Parameters:
+          - EnableMetricsStream
+          - IntegrationTypeMetrics
+          - OutputFormat
 Mappings:
   CoralogixRegionMap:
-    Ireland:
+    Europe:
       LogUrl: https://firehose-ingress.coralogix.com/firehose
-    Stockholm:
+    Europe2:
       LogUrl: https://firehose-ingress.eu2.coralogix.com/firehose
     India:
       LogUrl: https://firehose-ingress.coralogix.in/firehose
@@ -92,7 +126,9 @@ Conditions:
   IsSubsystemName: !Not [!Equals [!Ref SubsystemName, ""]]
   IsIntegrationTypeLogs: !Not [!Equals [!Ref IntegrationTypeLogs, ""]]
   IsDynamicMetadata: !Not [!Equals [ !Ref DynamicMetadata, ""]]
-  IsKinesisStreamAsSource: !Equals [ !Ref SourceTypeLogs, 'KinesisStreamAsSource']
+  IsKinesisStreamAsSource: !Not [!Equals [ !Ref KinesisStreamARN, "" ]]
+  IsLogsEnabled: !Not [!Equals [ !Ref EnableLogsStream, "false" ]]
+  IsMetricsEnabled: !Not [!Equals [ !Ref EnableMetricsStream, "false" ]]
 
 Resources:
   BackupDataBucket:
@@ -120,6 +156,7 @@ Resources:
 # Firehose Logs Stream
 ###################################
   CloudWatchLogsRole:
+    Condition: IsLogsEnabled
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
@@ -131,6 +168,7 @@ Resources:
             Service: !Sub 'logs.${AWS::Region}.amazonaws.com'
           Action: sts:AssumeRole
   CloudWatchLogsPolicy:
+    Condition: IsLogsEnabled
     Type: AWS::IAM::Policy
     Properties:
       PolicyName: !Sub '${AWS::StackName}-logs-policy'
@@ -153,6 +191,7 @@ Resources:
       Roles:
       - Ref: CloudWatchLogsRole
   FirehoseLogsRole:
+    Condition: IsLogsEnabled
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
@@ -168,6 +207,7 @@ Resources:
               sts:ExternalId:
                 Ref: AWS::AccountId
   FirehoseLogsPolicy:
+    Condition: IsLogsEnabled
     Type: AWS::IAM::Policy
     Properties:
       PolicyName: !Sub '${AWS::StackName}-firehose-policy'
@@ -201,6 +241,7 @@ Resources:
       Roles:
       - Ref: FirehoseLogsRole
   CoralogixDeliveryLogsStream:
+    Condition: IsLogsEnabled
     DependsOn:
     - FirehoseLogsPolicy
     - CloudWatchLogsPolicy
@@ -208,7 +249,11 @@ Resources:
     Type: AWS::KinesisFirehose::DeliveryStream
     Properties:
       DeliveryStreamName: !Sub '${AWS::StackName}-logs'
-      DeliveryStreamType: !Ref SourceTypeLogs
+      DeliveryStreamType:
+        !If
+          - IsKinesisStreamAsSource
+          - KinesisStreamAsSource
+          - DirectPut
       KinesisStreamSourceConfiguration:
         !If
           - IsKinesisStreamAsSource
@@ -273,6 +318,7 @@ Resources:
 # Firehose Metrics Stream
 ###################################
   CloudWatchMetricsRole:
+    Condition: IsMetricsEnabled
     Type: AWS::IAM::Role
     Properties:
       RoleName: !Sub '${AWS::StackName}-cw'
@@ -285,6 +331,7 @@ Resources:
             Service: !Sub 'streams.metrics.cloudwatch.amazonaws.com'
           Action: sts:AssumeRole
   CloudWatchMetricsPolicy:
+    Condition: IsMetricsEnabled
     Type: AWS::IAM::Policy
     Properties:
       PolicyName: !Sub '${AWS::StackName}-cw'
@@ -302,6 +349,7 @@ Resources:
       Roles:
       - Ref: CloudWatchMetricsRole
   CloudWatchMetricStream:
+    Condition: IsMetricsEnabled
     Type: AWS::CloudWatch::MetricStream
     DependsOn:
       - CoralogixDeliveryMetricsStream
@@ -312,6 +360,7 @@ Resources:
       RoleArn: !GetAtt CloudWatchMetricsRole.Arn
       OutputFormat: !Ref OutputFormat
   LambdaProcessorRole:
+    Condition: IsMetricsEnabled
     Type: AWS::IAM::Role
     Properties:
       RoleName: !Sub '${AWS::StackName}-lambda'
@@ -324,6 +373,7 @@ Resources:
             Service: !Sub 'lambda.amazonaws.com'
           Action: sts:AssumeRole
   LambdaProcessorPolicy:
+    Condition: IsMetricsEnabled
     Type: AWS::IAM::Policy
     Properties:
       PolicyName: !Sub '${AWS::StackName}-lambda'
@@ -357,6 +407,7 @@ Resources:
       Roles:
       - Ref: LambdaProcessorRole
   LambdaMetricsTagsProcessors:
+    Condition: IsMetricsEnabled
     Type: 'AWS::Lambda::Function'
     Properties:
       Code:
@@ -372,6 +423,7 @@ Resources:
         Variables:
           FILE_CACHE_PATH: "/tmp"
   FirehoseMetricsRole:
+    Condition: IsMetricsEnabled
     Type: AWS::IAM::Role
     Properties:
       RoleName: !Sub '${AWS::StackName}-firehose'
@@ -388,6 +440,7 @@ Resources:
               sts:ExternalId:
                 Ref: AWS::AccountId
   FirehoseMetricsPolicy:
+    Condition: IsMetricsEnabled
     Type: AWS::IAM::Policy
     Properties:
       PolicyName: !Sub '${AWS::StackName}-firehose'
@@ -438,6 +491,7 @@ Resources:
       Roles:
       - Ref: FirehoseMetricsRole
   CoralogixDeliveryMetricsStream:
+    Condition: IsMetricsEnabled
     Type: AWS::KinesisFirehose::DeliveryStream
     DependsOn:
     - FirehoseMetricsPolicy
