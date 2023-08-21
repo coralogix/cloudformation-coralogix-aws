@@ -17,7 +17,25 @@ Parameters:
   LogsKmsArn:
     Type: String
     Description: 'The arn for the kms of the logs and traces bucket - leave empty if not needed'
+  CustomCoraloigxArn:
+    Type: String
+    Description: 'In case you want to use a custom coralogix arn enter the aws account id that you want to use'
+    Default: ""
+  ByPassRegion:
+    Type: String
+    Description: 'Use only with approval from our CS team, use to bypass region restrictions'
+    Default: "false"
 Conditions:
+  IsRegionUs2: !Equals
+        - !Ref 'AWS::Region'
+        - us-west-2
+  CustomArn: !Not
+    - !Equals
+      - !Ref CustomCoraloigxArn
+      - ""
+  ByPassRegionTrue: !Equals
+      - !Ref ByPassRegion
+      - "True"
   IsLogsKmsNotEmpty: !Not
     - !Equals
       - !Ref LogsKmsArn
@@ -39,6 +57,9 @@ Conditions:
     - !Ref MetricsBucketName
   IsValidRegion: !Or
     - !Equals
+        - !Ref ByPassRegion
+        - "True"
+    - !Equals
         - !Ref 'AWS::Region'
         - eu-west-1
     - !Equals
@@ -53,6 +74,9 @@ Conditions:
     - !Equals
         - !Ref 'AWS::Region'
         - us-east-2
+    - !Equals
+        - !Ref 'AWS::Region'
+        - us-west-2
   LogsValidations: !And
     - !Not
       - !Condition IsSameBucketName
@@ -101,7 +125,16 @@ Resources:
               - 's3:GetObjectTagging'
             Effect: 'Allow'
             Principal: 
-              AWS: 'arn:aws:iam::625240141681:root'
+              AWS: !Sub 
+                  - 'arn:aws:iam::${aws_account_id}:root'
+                  - aws_account_id: !If
+                      - CustomArn
+                      - !Ref CustomCoraloigxArn
+                      - !If
+                        - IsRegionUs2
+                        - "739076534691"
+                        - "625240141681"
+                      
             Resource:
               - !Sub 'arn:aws:s3:::${LogsBucketName}'
               - !Sub 'arn:aws:s3:::${LogsBucketName}/*'
@@ -145,7 +178,15 @@ Resources:
               - 's3:GetObjectTagging'
             Effect: 'Allow'
             Principal: 
-              AWS: 'arn:aws:iam::625240141681:root'
+              AWS: !Sub 
+                  - 'arn:aws:iam::${aws_account_id}:root'
+                  - aws_account_id: !If
+                      - CustomArn
+                      - !Ref CustomCoraloigxArn
+                      - !If
+                        - IsRegionUs2
+                        - "739076534691"
+                        - "625240141681"
             Resource:
               - !Sub 'arn:aws:s3:::${MetricsS3Bucket}'
               - !Sub 'arn:aws:s3:::${MetricsS3Bucket}/*'
