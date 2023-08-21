@@ -26,7 +26,7 @@ Parameters:
     Description: 'Use only with approval from our CS team, use to bypass region restrictions'
     Default: "false"
 Conditions:
-  NewArnRegion: !Equals
+  IsRegionUs2: !Equals
         - !Ref 'AWS::Region'
         - us-west-2
   CustomArn: !Not
@@ -131,7 +131,7 @@ Resources:
                       - CustomArn
                       - !Ref CustomCoraloigxArn
                       - !If
-                        - NewArnRegion
+                        - IsRegionUs2
                         - "739076534691"
                         - "625240141681"
                       
@@ -184,7 +184,7 @@ Resources:
                       - CustomArn
                       - !Ref CustomCoraloigxArn
                       - !If
-                        - NewArnRegion
+                        - IsRegionUs2
                         - "739076534691"
                         - "625240141681"
             Resource:
