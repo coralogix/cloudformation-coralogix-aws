@@ -2,7 +2,7 @@
 
 The module s3-archive will create s3 buckets to archive your coralogix logs, traces and metrics
 
-The module can run only on the following regions eu-west-1,eu-north-1,ap-southeast-1,ap-south-1,us-east-2.
+The module can run only on the following regions eu-west-1,eu-north-1,ap-southeast-1,ap-south-1,us-east-2,us-west-2.
 
 ## Fields
 
