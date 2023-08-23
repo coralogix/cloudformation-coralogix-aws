@@ -1,5 +1,5 @@
 [
-    { "ParameterKey": "CoralogixApiKey", "ParameterValue": "eb66232a-c3e3-4dbc-68aa-a0086defd8c0" },
+    { "ParameterKey": "CoralogixApiKey", "ParameterValue": "<Coralogix-Private-Key>" },
     { "ParameterKey": "CoralogixRegion", "ParameterValue": "Europe" },
     { "ParameterKey": "EnableLogsStream", "ParameterValue": "true" },
     { "ParameterKey": "EnableMetricsStream", "ParameterValue": "true" },
