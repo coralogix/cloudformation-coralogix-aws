@@ -613,37 +613,68 @@ Resources:
           import cfnresponse
           import json
 
-          def handler(event, context):
-              response_data = {}
-              physical_id = ""
-              include_filter_list = []
-              try:
-                client = boto3.client('cloudwatch')
-                properties = event['ResourceProperties']
-                physical_id = properties['Name']
-                print("Received %s Event Type." % event['RequestType'])
-                if event['RequestType'] == "Delete":
-                  response_data = client.delete_metric_stream(Name=physical_id)
-                else:
-                  namespaces = properties["IncludeNamespaces"].strip()
-                  namespace_metrics = properties["IncludeNamespacesMetricNames"].strip()
-                  namespace_metrics_json = json.loads(namespace_metrics)
-                  
-                  if namespaces:
-                    for namespace in namespaces.split(","):
-                      include_filter_list.append({'Namespace': namespace.strip()});
-                  if namespace_metrics_json:
-                    for namespace, metric_names in namespace_metrics_json.items():
-                      include_filter_list.append({'Namespace': namespace.strip(), 'MetricNames': metric_names})
+          def validate_input(namespaces, namespace_metrics):
+            # Validate namespaces
+            if not namespaces:
+              return False, "namespaces input is missing"
+            namespaces_list = namespaces.split(",")
+            for namespace in namespaces_list:
+              if not namespace.strip():
+                return False, "Empty namespace found"
+            
+            # Validate namespace_metrics
+            try:
+              namespace_metrics_json = json.loads(namespace_metrics)
+              if not isinstance(namespace_metrics_json, dict):
+                return False, "namespace_metrics is not a valid JSON object"
+              for namespace, metric_names in namespace_metrics_json.items():
+                if not isinstance(metric_names, list):
+                  return False, f"Metric names for namespace '{namespace}' should be a list"
+                for metric_name in metric_names:
+                  if not isinstance(metric_name, str):
+                    return False, f"Invalid metric name '{metric_name}' in namespace '{namespace}'"
+            except json.JSONDecodeError:
+              return False, "namespace_metrics is not valid JSON"
+            return True, "Inputs are valid"
 
-                  response_data = client.put_metric_stream(Name=physical_id, FirehoseArn=properties['FirehoseArn'],
-                                                            RoleArn=properties['RoleArn'],
-                                                            OutputFormat=properties['OutputFormat'],
-                                                            IncludeFilters=include_filter_list)
+          def handler(event, context):
+            response_data = {}
+            physical_id = ""
+            include_filter_list = []
+            try:
+              client = boto3.client('cloudwatch')
+              properties = event['ResourceProperties']
+              physical_id = properties['Name']
+              print("Received %s Event Type." % event['RequestType'])
+              if event['RequestType'] == "Delete":
+                response_data = client.delete_metric_stream(Name=physical_id)
+              else:
+                namespaces = properties["IncludeNamespaces"].strip()
+                namespace_metrics = properties["IncludeNamespacesMetricNames"].strip()
+                valid, message = validate_input(namespaces, namespace_metrics)
+                if valid:
+                  print("Inputs are valid")
+                else:
+                  print("Validation error:", message)
+                  cfnresponse.send(event, context, cfnresponse.FAILED, {"Error": message}, physical_id)
+
+                namespace_metrics_json = json.loads(namespace_metrics)
+                
+                if namespaces:
+                  for namespace in namespaces.split(","):
+                    include_filter_list.append({'Namespace': namespace.strip()});
+                if namespace_metrics_json:
+                  for namespace, metric_names in namespace_metrics_json.items():
+                    include_filter_list.append({'Namespace': namespace.strip(), 'MetricNames': metric_names})
+
+                response_data = client.put_metric_stream(Name=physical_id, FirehoseArn=properties['FirehoseArn'],
+                                                          RoleArn=properties['RoleArn'],
+                                                          OutputFormat=properties['OutputFormat'],
+                                                          IncludeFilters=include_filter_list)
                 cfnresponse.send(event, context, cfnresponse.SUCCESS, response_data, physical_id)
-              except Exception as e:
-                print(e)
-                cfnresponse.send(event, context, cfnresponse.FAILED, {"Error": str(e)}, physical_id)
+            except Exception as e:
+              print(e)
+              cfnresponse.send(event, context, cfnresponse.FAILED, {"Error": str(e)}, physical_id)
       Runtime: python3.7
       Timeout: 300
       Role: !GetAtt LambdaCustomResourceCloudWatchMetricStreamRole.Arn
