@@ -81,11 +81,18 @@ Parameters:
       - opentelemetry0.7
       - json
     Default: opentelemetry0.7
-  Namespaces:
+  IncludeNamespaces:
     Description: >-
-      A comma-delimited list of namespaces to include or exclude from the metric stream.
+      A string comma-delimited list of namespaces to include from the metric stream.
+      e.g. 'AWS/EC2,AWS/EKS,AWS/ELB,AWS/Logs,AWS/S3'
     Type: String
     Default: 'AWS/EC2,AWS/EKS,AWS/ELB,AWS/Logs,AWS/S3'
+  IncludeNamespacesMetricNames:
+    Description: >-
+      A string json list of namespaces and metric_names to include from the metric stream. e.g.
+      {"AWS/EC2":["CPUUtilization","NetworkOut"],"AWS/S3":["BucketSizeBytes"]}
+    Type: String
+    Default: '{"AWS/EC2":["CPUUtilization","NetworkOut"],"AWS/S3":["BucketSizeBytes"]}'
 
 Metadata: 
   AWS::CloudFormation::Interface: 
@@ -114,6 +121,8 @@ Metadata:
           - EnableMetricsStream
           - IntegrationTypeMetrics
           - OutputFormat
+          - IncludeNamespaces
+          - IncludeNamespaceMetricNames
 Mappings:
   CoralogixRegionMap:
     Europe:
@@ -602,33 +611,39 @@ Resources:
 
           import boto3
           import cfnresponse
-
+          import json
 
           def handler(event, context):
               response_data = {}
               physical_id = ""
-              namespaces_list = []
+              include_filter_list = []
               try:
-                  client = boto3.client('cloudwatch')
-                  properties = event['ResourceProperties']
-                  physical_id = properties['Name']
-                  print("Received %s Event Type." % event['RequestType'])
-                  if event['RequestType'] == "Delete":
-                      response_data = client.delete_metric_stream(Name=physical_id)
-                  else:
-                      namespaces = properties["Namespaces"]
-                      if namespaces:
-                          namespaces = namespaces.split(",")
-                          for namespace in namespaces:
-                              namespaces_list.append({'Namespace': namespace.strip()})
-                      response_data = client.put_metric_stream(Name=physical_id, FirehoseArn=properties['FirehoseArn'],
-                                                               RoleArn=properties['RoleArn'],
-                                                               OutputFormat=properties['OutputFormat'],
-                                                               IncludeFilters=namespaces_list)
+                client = boto3.client('cloudwatch')
+                properties = event['ResourceProperties']
+                physical_id = properties['Name']
+                print("Received %s Event Type." % event['RequestType'])
+                if event['RequestType'] == "Delete":
+                  response_data = client.delete_metric_stream(Name=physical_id)
+                else:
+                  namespaces = properties["IncludeNamespaces"].strip()
+                  namespace_metrics = properties["IncludeNamespacesMetricNames"].strip()
+                  namespace_metrics_json = json.loads(namespace_metrics)
+                  
+                  if namespaces:
+                    for namespace in namespaces.split(","):
+                      include_filter_list.append({'Namespace': namespace.strip()});
+                  if namespace_metrics_json:
+                    for namespace, metric_names in namespace_metrics_json.items():
+                      include_filter_list.append({'Namespace': namespace.strip(), 'MetricNames': metric_names})
+
+                  response_data = client.put_metric_stream(Name=physical_id, FirehoseArn=properties['FirehoseArn'],
+                                                            RoleArn=properties['RoleArn'],
+                                                            OutputFormat=properties['OutputFormat'],
+                                                            IncludeFilters=include_filter_list)
+                cfnresponse.send(event, context, cfnresponse.SUCCESS, response_data, physical_id)
               except Exception as e:
-                  print(e)
-                  cfnresponse.send(event, context, cfnresponse.FAILED, {"Error": str(e)}, physical_id)
-              cfnresponse.send(event, context, cfnresponse.SUCCESS, response_data, physical_id)
+                print(e)
+                cfnresponse.send(event, context, cfnresponse.FAILED, {"Error": str(e)}, physical_id)
       Runtime: python3.7
       Timeout: 300
       Role: !GetAtt LambdaCustomResourceCloudWatchMetricStreamRole.Arn
@@ -642,7 +657,8 @@ Resources:
       OutputFormat: !Ref OutputFormat
       FirehoseArn: !GetAtt CoralogixDeliveryMetricsStream.Arn
       RoleArn: !GetAtt CloudWatchMetricsRole.Arn
-      Namespaces: !Ref Namespaces
+      IncludeNamespaces: !Ref IncludeNamespaces
+      IncludeNamespacesMetricNames: !Ref IncludeNamespacesMetricNames
 
 Outputs:
   BackupDataBucketName:
