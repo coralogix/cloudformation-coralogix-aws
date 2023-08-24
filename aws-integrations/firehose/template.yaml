@@ -56,9 +56,9 @@ Parameters:
       - Default
       - RawText
     Default: ""
-  KinesisStreamARN:
+  KinesisStreamAsSourceARN:
     Type: String
-    Description: Optional - If using Kinesis Stream as source, enter the ARN of the Kinesis stream, else leave blank.
+    Description: Optional - If using Kinesis Stream As Source of logs, enter the ARN of the Kinesis stream, else leave blank.
     Default: ""
   EnableMetricsStream:
     Type: String
@@ -117,11 +117,11 @@ Metadata:
         Parameters: 
           - CoralogixRegion
           - CoralogixApiKey
+          - ApplicationName
+          - SubsystemName
       - Label: 
           default: "Others"
         Parameters: 
-          - ApplicationName
-          - SubsystemName
           - CloudwatchRetentionDays
           - DynamicMetadata
       - Label: 
@@ -129,7 +129,7 @@ Metadata:
         Parameters: 
           - EnableLogsStream
           - IntegrationTypeLogs
-          - KinesisStreamARN
+          - KinesisStreamAsSourceARN
       - Label:
           default: "Metrics Streaming"
         Parameters:
@@ -159,7 +159,7 @@ Conditions:
   IsSubsystemName: !Not [!Equals [!Ref SubsystemName, ""]]
   IsIntegrationTypeLogs: !Not [!Equals [!Ref IntegrationTypeLogs, ""]]
   IsDynamicMetadata: !Not [!Equals [ !Ref DynamicMetadata, ""]]
-  IsKinesisStreamAsSource: !Not [!Equals [ !Ref KinesisStreamARN, "" ]]
+  IsKinesisStreamAsSource: !Not [!Equals [ !Ref KinesisStreamAsSourceARN, "" ]]
   IsLogsEnabled: !Not [!Equals [ !Ref EnableLogsStream, "false" ]]
   IsMetricsEnabled: !Not [!Equals [ !Ref EnableMetricsStream, "false" ]]
   IsAdditionalStatisticsEnabled: !Not [!Equals [ !Ref EnableAddtionalStatistics, "false" ]]
@@ -291,7 +291,7 @@ Resources:
       KinesisStreamSourceConfiguration:
         !If
           - IsKinesisStreamAsSource
-          - KinesisStreamARN: !Ref KinesisStreamARN
+          - KinesisStreamARN: !Ref KinesisStreamAsSourceARN
             RoleARN: !GetAtt FirehoseLogsRole.Arn
           - !Ref 'AWS::NoValue'
       HttpEndpointDestinationConfiguration:
