@@ -5,14 +5,19 @@ Description: Send Kinesis Firehose stream data to Coralogix.
 Parameters:
   CoralogixRegion:
     Type: String
-    Description: The Coralogix location region [Europe, Europe2, India, Singapore, US]
+    Description: The Coralogix location region [ireland, stockholm, india, singapore, us, us2]
     AllowedValues:
-      - Europe
-      - Europe2
-      - India
-      - Singapore
-      - US
-    Default: Europe
+      - ireland
+      - stockholm
+      - india
+      - singapore
+      - us
+      - us2
+    Default: ireland
+  CustomUrl:
+    Type: String
+    Description: The Custom url domain. If set, will be the url used to send telemetry.
+    Default: ""
   CoralogixApiKey:
     Type: String
     Description: The Coralogix Api key which is used to validate your authenticity.
@@ -122,6 +127,7 @@ Metadata:
       - Label: 
           default: "Others"
         Parameters: 
+          - CustomUrl
           - CloudwatchRetentionDays
           - DynamicMetadata
       - Label: 
@@ -143,22 +149,25 @@ Metadata:
           
 Mappings:
   CoralogixRegionMap:
-    Europe:
+    ireland:
       LogUrl: https://firehose-ingress.coralogix.com/firehose
-    Europe2:
+    stockholm:
       LogUrl: https://firehose-ingress.eu2.coralogix.com/firehose
-    India:
+    india:
       LogUrl: https://firehose-ingress.coralogix.in/firehose
-    Singapore:
+    singapore:
       LogUrl: https://firehose-ingress.coralogixsg.com/firehose
-    US:
+    us:
       LogUrl: https://firehose-ingress.coralogix.us/firehose
+    us2:
+      LogUrl: https://firehose-ingress.cx498.coralogix.com/firehose
 
 Conditions:
   IsApplicationName: !Not [!Equals [!Ref ApplicationName, ""]]
   IsSubsystemName: !Not [!Equals [!Ref SubsystemName, ""]]
   IsIntegrationTypeLogs: !Not [!Equals [!Ref IntegrationTypeLogs, ""]]
   IsDynamicMetadata: !Not [!Equals [ !Ref DynamicMetadata, ""]]
+  IsCustomUrl: !Not [!Equals [ !Ref CustomUrl, ""]]
   IsKinesisStreamAsSource: !Not [!Equals [ !Ref KinesisStreamAsSourceARN, "" ]]
   IsLogsEnabled: !Not [!Equals [ !Ref EnableLogsStream, "false" ]]
   IsMetricsEnabled: !Not [!Equals [ !Ref EnableMetricsStream, "false" ]]
@@ -299,7 +308,10 @@ Resources:
           !GetAtt FirehoseLogsRole.Arn
         EndpointConfiguration:
           Url: 
-            Fn::FindInMap: [ CoralogixRegionMap, !Ref CoralogixRegion, LogUrl ]
+            !If 
+              - IsCustomUrl
+              - !Ref CustomUrl
+              - Fn::FindInMap: [ CoralogixRegionMap, !Ref CoralogixRegion, LogUrl ]
           AccessKey:
             Ref: CoralogixApiKey
           Name: 
@@ -498,7 +510,10 @@ Resources:
           !GetAtt FirehoseMetricsRole.Arn
         EndpointConfiguration:
           Url: 
-            Fn::FindInMap: [ CoralogixRegionMap, !Ref CoralogixRegion, LogUrl ]
+            !If 
+              - IsCustomUrl
+              - !Ref CustomUrl
+              - Fn::FindInMap: [ CoralogixRegionMap, !Ref CoralogixRegion, LogUrl ]
           AccessKey:
             Ref: CoralogixApiKey
           Name: 
