@@ -10,19 +10,23 @@ This template can be used to deploy an AWS Kinesis Firehose Integration to Coral
 
 | Parameter | Description | Default Value | Required |
 |---|---|---|---|
-| CoralogixRegion | The region of your Coralogix Account | _Allowed Values:_<br>- 
-Europe<br>- Europe2<br>- India<br>- Singapore<br>- US<br>**Default: Europe** | :heavy_check_mark: |
+| CoralogixRegion | The region of your Coralogix Account | _Allowed Values:_<br>- Europe<br>- Europe2<br>- India<br>- Singapore<br>- US<br>**Default: Europe** | :heavy_check_mark: |
 | CoralogixApiKey | Your Coralogix Private Key | |  :heavy_check_mark: |
-| ApplicationName | Your Coralogix application name |  | |
+| ApplicationName | Your Coralogix Application name | | |
 | SubsystemName | Your Coralogix Subsystem name | | |
 
 ## Log Stream Parameters
+
+| Parameter | Description | Default Value | Required |
+|---|---|---|---|
 | EnableLogsStream | Enable logs streaming to Coralogix | false | |
 | IntegrationTypeLogs | The data structure of the Firehose delivery stream for logs | _Allowed Values:_<br>- 
 CloudWatch_JSON<br>- WAF<br>- CloudWatch_CloudTrail<br>- EksFargate<br>- Default<br>- RawText<br>**Default:**"" | |
 | KinesisStreamARN | The ARN of the Kinesis stream | "" | |
 
 ## Optional Parameters
+| Parameter | Description | Default Value | Required |
+|---|---|---|---|
 | CloudwatchRetentionDays | Enable logs streaming to Coralogix | false | |
 
 
