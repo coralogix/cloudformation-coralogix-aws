@@ -29,10 +29,10 @@ This template can be used to deploy an AWS Kinesis Firehose Integration to Coral
 |---|---|---|---|
 | EnableMetricsStream | Enable metrics streaming to Coralogix | true | |
 | IntegrationTypeMetrics | The data structure of the Firehose delivery stream for metrics | _Allowed Values:_<br>- opentelemetry0.7<br>- CloudWatch_Metrics_JSON<br> _Default_: CloudWatch_Metrics_OpenTelemetry070 | |
-| OutputFormat | The output format of the cloudwatch metric stream | _Allowed Values:_<br>- opentelemetry0.7<br>- json<br> _Default_: **opentelemetry0.7 | |
+| OutputFormat | The output format of the cloudwatch metric stream | _Allowed Values:_<br>- opentelemetry0.7<br>- json<br> _Default_: opentelemetry0.7 | |
 | IncludeNamespaces | A string comma-delimited list of namespaces to include to the metric stream <br>e.g. `AWS/EC2,AWS/EKS,AWS/ELB,AWS/Logs,AWS/S3` | | |
 | IncludeNamespacesMetricNames | A string json list of namespaces and metric_names to include to the metric stream. JSON stringify the input to avoid format errors. <br>e.g. {"AWS/EC2":["CPUUtilization","NetworkOut"],"AWS/S3":["BucketSizeBytes"]} | | |
-| AddtionalStatisticsConfigurations | A json list of additional statistics to include to the metric stream following [MetricStream StatisticsConfiguration](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-cloudwatch-metricstream-metricstreamstatisticsconfiguration.html). <br>JSON stringify the input to avoid format errors. | "p50","p75","p95","p99" of: <br>AWS/EBS:[VolumeTotalReadTime,VolumeTotalWriteTime], <br>AWS/ELB:[Latency,Duration], <br>AWS/Lambda:[PostRuntimeExtensionsDuration], <br>AWS/S3:[FirstByteLatency,TotalRequestLatency] | |
+| AddtionalStatisticsConfigurations | A json list of additional statistics to include to the metric stream following [MetricStream StatisticsConfiguration](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-cloudwatch-metricstream-metricstreamstatisticsconfiguration.html). <br>JSON stringify the input to avoid format errors. | "p50","p75","p95","p99" of the following <br>AWS/EBS:[VolumeTotalReadTime,VolumeTotalWriteTime]<br>AWS/ELB:[Latency,Duration], <br>AWS/Lambda:[PostRuntimeExtensionsDuration]<br>AWS/S3:[FirstByteLatency,TotalRequestLatency] | |
 
 ## Optional Parameters
 | Parameter | Description | Default Value | Required |
@@ -43,5 +43,5 @@ This template can be used to deploy an AWS Kinesis Firehose Integration to Coral
 ## Deploy the Cloudformation template
 
 ```sh
-aws cloudformation deploy --template-file template.yaml --stack-name <stack_name> --capabilities CAPABILITY_NAMED_IAM  --parameter-overrides ApplicationName=<application name> SubsystemName=<subsystem name> EventbridgeStream=<EventBridge delivery stream name> RoleName=<EventBridge Role> PrivateKey=<your-private-key> CoralogixRegion=<coralogix-region> CustomUrl=<Custom Coralogix url>
+aws cloudformation create-stack --stack-name <stack_name> --template-body template.yaml --parameters parameters.json --capabilities CAPABILITY_AUTO_EXPAND CAPABILITY_IAM CAPABILITY_NAMED_IAM
 ```
