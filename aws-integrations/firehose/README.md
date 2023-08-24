@@ -20,7 +20,7 @@ This template can be used to deploy an AWS Kinesis Firehose Integration to Coral
 | Parameter | Description | Default Value | Required |
 |---|---|---|---|
 | EnableLogsStream | Enable logs streaming to Coralogix | false | |
-| IntegrationTypeLogs | The data structure of the Firehose delivery stream for logs | _Allowed Values:_<br>- CloudWatch_JSON<br>- WAF<br>- CloudWatch_CloudTrail<br>- EksFargate<br>- Default<br>- RawText<br>**Default:**"" | |
+| IntegrationTypeLogs | The data structure of the Firehose delivery stream for logs | _Allowed Values:_<br>- CloudWatch_JSON<br>- WAF<br>- CloudWatch_CloudTrail<br>- EksFargate<br>- Default<br>- RawText<br>_Default_: "" | |
 | KinesisStreamAsSourceARN | If KinesisStreamAsSource for logs is desired, input the ARN of the Kinesis stream | "" | |
 
 ## Metrics Stream Parameters
@@ -28,7 +28,7 @@ This template can be used to deploy an AWS Kinesis Firehose Integration to Coral
 | Parameter | Description | Default Value | Required |
 |---|---|---|---|
 | EnableMetricsStream | Enable metrics streaming to Coralogix | true | |
-| IntegrationTypeMetrics | The data structure of the Firehose delivery stream for metrics | _Allowed Values:_<br>- CloudWatch_Metrics_OpenTelemetry070<br>- CloudWatch_Metrics_JSON<br> **Default:**CloudWatch_Metrics_OpenTelemetry070 | |
+| IntegrationTypeMetrics | The data structure of the Firehose delivery stream for metrics | _Allowed Values:_<br>- CloudWatch_Metrics_OpenTelemetry070<br>- CloudWatch_Metrics_JSON<br> _Default_: CloudWatch_Metrics_OpenTelemetry070 | |
 | OutputFormat | The output format of the cloudwatch metric stream | _Allowed Values:_<br>- CloudWatch_Metrics_OpenTelemetry070<br>- CloudWatch_Metrics_JSON<br> **Default:**CloudWatch_Metrics_OpenTelemetry070 | |
 
 ## Optional Parameters
