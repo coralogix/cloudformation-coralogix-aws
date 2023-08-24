@@ -20,21 +20,25 @@ This template can be used to deploy an AWS Kinesis Firehose Integration to Coral
 | Parameter | Description | Default Value | Required |
 |---|---|---|---|
 | EnableLogsStream | Enable logs streaming to Coralogix | false | |
-| IntegrationTypeLogs | The data structure of the Firehose delivery stream for logs | _Allowed Values:_<br>- CloudWatch_JSON<br>- WAF<br>- CloudWatch_CloudTrail<br>- EksFargate<br>- Default<br>- RawText<br>_Default_: "" | |
-| KinesisStreamAsSourceARN | If KinesisStreamAsSource for logs is desired, input the ARN of the Kinesis stream | "" | |
+| IntegrationTypeLogs | The data structure of the Firehose delivery stream for logs | _Allowed Values:_<br>- CloudWatch_JSON<br>- WAF<br>- CloudWatch_CloudTrail<br>- EksFargate<br>- Default<br>- RawText | |
+| KinesisStreamAsSourceARN | If KinesisStreamAsSource for logs is desired, input the ARN of the Kinesis stream |  | |
 
 ## Metrics Stream Parameters
 
 | Parameter | Description | Default Value | Required |
 |---|---|---|---|
 | EnableMetricsStream | Enable metrics streaming to Coralogix | true | |
-| IntegrationTypeMetrics | The data structure of the Firehose delivery stream for metrics | _Allowed Values:_<br>- CloudWatch_Metrics_OpenTelemetry070<br>- CloudWatch_Metrics_JSON<br> _Default_: CloudWatch_Metrics_OpenTelemetry070 | |
-| OutputFormat | The output format of the cloudwatch metric stream | _Allowed Values:_<br>- CloudWatch_Metrics_OpenTelemetry070<br>- CloudWatch_Metrics_JSON<br> **Default:**CloudWatch_Metrics_OpenTelemetry070 | |
+| IntegrationTypeMetrics | The data structure of the Firehose delivery stream for metrics | _Allowed Values:_<br>- opentelemetry0.7<br>- CloudWatch_Metrics_JSON<br> _Default_: CloudWatch_Metrics_OpenTelemetry070 | |
+| OutputFormat | The output format of the cloudwatch metric stream | _Allowed Values:_<br>- opentelemetry0.7<br>- json<br> _Default_: **opentelemetry0.7 | |
+| IncludeNamespaces | A string comma-delimited list of namespaces to include to the metric stream e.g. `AWS/EC2,AWS/EKS,AWS/ELB,AWS/Logs,AWS/S3` | | |
+| IncludeNamespacesMetricNames | A string json list of namespaces and metric_names to include to the metric stream. JSON stringify the input to avoid format errors. e.g. {"AWS/EC2":["CPUUtilization","NetworkOut"],"AWS/S3":["BucketSizeBytes"]} | | |
+| AddtionalStatisticsConfigurations | A json list of additional statistics to include to the metric stream following [AWS Cloudformation's MetricStreamStatisticsConfiguration Structure](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-cloudwatch-metricstream-metricstreamstatisticsconfiguration.html) JSON stringify the input to avoid format errors. | | |
 
 ## Optional Parameters
 | Parameter | Description | Default Value | Required |
 |---|---|---|---|
 | CloudwatchRetentionDays | Enable logs streaming to Coralogix | false | |
+| DynamicMetadata | When set to true, it fetches the applicationName / subsystemName dynamically | false | |
 
 
 

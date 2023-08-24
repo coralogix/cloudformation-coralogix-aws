@@ -83,14 +83,14 @@ Parameters:
     Default: opentelemetry0.7
   IncludeNamespaces:
     Description: >-
-      A string comma-delimited list of namespaces to include from the metric stream.
+      A string comma-delimited list of namespaces to include to the metric stream.
       e.g. AWS/EC2,AWS/EKS,AWS/ELB,AWS/Logs,AWS/S3
     Type: String
     Default: ''
   IncludeNamespacesMetricNames:
     Description: >-
-      A string json list of namespaces and metric_names to include from the metric stream. 
-      Please JSON stringify the input when using parameters.json file.
+      A string json list of namespaces and metric_names to include to the metric stream. 
+      JSON stringify the input to avoid format errors.
       e.g. {"AWS/EC2":["CPUUtilization","NetworkOut"],"AWS/S3":["BucketSizeBytes"]}
     Type: String
     Default: ''
@@ -105,7 +105,7 @@ Parameters:
   AddtionalStatisticsConfigurations:
     Description: >-
       A json list of additional statistics to include to the metric stream following Cloudformation's MetricStreamStatisticsConfiguration Structure - https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-cloudwatch-metricstream-metricstreamstatisticsconfiguration.html
-      Please JSON stringify the input when using parameters.json file.
+      JSON stringify the input to avoid format errors
     Type: String
     Default: "[{\"AdditionalStatistics\":[\"p50\",\"p75\",\"p95\",\"p99\"],\"IncludeMetrics\":[{\"Namespace\":\"AWS/EBS\",\"MetricName\":\"VolumeTotalReadTime\"},{\"Namespace\":\"AWS/EBS\",\"MetricName\":\"VolumeTotalWriteTime\"},{\"Namespace\":\"AWS/ELB\",\"MetricName\":\"Latency\"},{\"Namespace\":\"AWS/ELB\",\"MetricName\":\"Duration\"},{\"Namespace\":\"AWS/Lambda\",\"MetricName\":\"PostRuntimeExtensionsDuration\"},{\"Namespace\":\"AWS/S3\",\"MetricName\":\"FirstByteLatency\"},{\"Namespace\":\"AWS/S3\",\"MetricName\":\"TotalRequestLatency\"}]}]"
 
@@ -139,7 +139,7 @@ Metadata:
           - IncludeNamespaces
           - IncludeNamespacesMetricNames
           - EnableAddtionalStatistics
-          - StatisticsConfigurations
+          - AddtionalStatisticsConfigurations
           
 Mappings:
   CoralogixRegionMap:
