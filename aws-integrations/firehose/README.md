@@ -56,6 +56,7 @@ For a more detailed description of the settigns and architecture of this AWS Kin
 | EksFargate | ‘kubernetes.namespace_name’ field | ‘kubernetes.container_name’ field | supplied by the default configuration |
 | WAF | The web acl name | none | supplied by aws |
 
+* `LambdaMetricsTagsProcessors` lambda function code is deployed to the following s3 regions: us-east-1 us-east-2 us-west-1 us-west-2 ap-south-1 ap-northeast-2 ap-southeast-1 ap-southeast-2 ap-northeast-1 ca-central-1 eu-central-1 eu-west-1 eu-west-2 eu-west-3 eu-north-1 eu-south-1 sa-east-1. If you are using a different region, please contact Coralogix support.
 
 ## Deploy the Cloudformation template
 
