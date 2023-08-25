@@ -43,7 +43,7 @@ For a more detailed description of the settigns and architecture of this AWS Kin
 | CloudwatchRetentionDays | Enable logs streaming to Coralogix | false | |
 | DynamicMetadata | When set to true, it fetches the applicationName / subsystemName dynamically | false | |
 
-## Note:
+## Notes:
 
 * If you want to use the Kinesis Stream as a source for logs, you must create the Kinesis Stream before deploying the Cloudformation template and set the KinesisStreamAsSourceARN parameter to the ARN of the Kinesis Stream.
 * If DynamicMetadata is set to `dynamicMetadata`: `true`, the applicationName and subsystemName for logs will be based on the selected IntegrationTypeLogs and follow the below Dynamic values table:
