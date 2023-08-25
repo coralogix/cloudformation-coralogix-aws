@@ -1,6 +1,6 @@
 [
     { "ParameterKey": "CoralogixApiKey", "ParameterValue": "<Coralogix-Private-Key>" },
-    { "ParameterKey": "CoralogixRegion", "ParameterValue": "Europe" },
+    { "ParameterKey": "CoralogixRegion", "ParameterValue": "ireland" },
     { "ParameterKey": "EnableLogsStream", "ParameterValue": "true" },
     { "ParameterKey": "EnableMetricsStream", "ParameterValue": "true" },
     { "ParameterKey": "IncludeNamespaces", "ParameterValue": "AWS/EC2,AWS/EKS,AWS/ELB,AWS/Logs,AWS/S3" },
