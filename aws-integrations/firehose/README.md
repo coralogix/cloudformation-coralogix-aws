@@ -1,6 +1,8 @@
 # AWS Kinesis Firehose Integration to Coralogix
 
-This template can be used to deploy an AWS Kinesis Firehose Integration to Coralogix.
+This template can be used to deploy an AWS Kinesis Firehose Integration to send resource logs and metrics to Coralogix.
+
+For a more detailed description of the settigns and architecture of this AWS Kinesis Data Firehose setup, please refer to the Coralogix documentation on [AWS Kinesis Data Firehose – Logs](https://coralogix.com/docs/aws-firehose/) and [AWS Kinesis Data Firehose – Metrics](https://coralogix.com/docs/amazon-kinesis-data-firehose-metrics/).
 
 ## Prerequisites
 * AWS account.
@@ -40,6 +42,20 @@ This template can be used to deploy an AWS Kinesis Firehose Integration to Coral
 |---|---|---|---|
 | CloudwatchRetentionDays | Enable logs streaming to Coralogix | false | |
 | DynamicMetadata | When set to true, it fetches the applicationName / subsystemName dynamically | false | |
+
+## Note:
+
+* If you want to use the Kinesis Stream as a source for logs, you must create the Kinesis Stream before deploying the Cloudformation template and set the KinesisStreamAsSourceARN parameter to the ARN of the Kinesis Stream.
+* If DynamicMetadata is set to `dynamicMetadata`: `true`, the applicationName and subsystemName for logs will be based on the selected IntegrationTypeLogs and follow the below Dynamic values table:
+
+| Type | Dynamic applicationName | Dynamic subsystemName | Notes |
+| --- | --- | --- | --- |
+| CloudWatch_JSON | the cloudwatch log group | none | supplied by aws |
+| CloudWatch_CloudTrail | the cloudwatch log group | none | supplied by aws |
+| Default | ‘applicationName’ field	| ‘subsystemName’ field	| need to be supplied in the log to be used |
+| EksFargate | ‘kubernetes.namespace_name’ field | ‘kubernetes.container_name’ field | supplied by the default configuration |
+| WAF | The web acl name | none | supplied by aws |
+
 
 ## Deploy the Cloudformation template
 
