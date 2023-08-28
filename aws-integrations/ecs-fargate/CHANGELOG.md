@@ -5,5 +5,5 @@
 <!-- ### version / full date -->
 <!-- * [Update/Bug fix] message that describes the changes that you apply -->
 
-### 0.0.1 / 16 Aug 2024
+### 0.0.1 / 16 Aug 2023
 * [Feature] Add example cloudformation template for ECS Fargate OTEL (ADOT) and fluentbit sidecar deployment

@@ -680,7 +680,7 @@ Resources:
               except Exception as e:
                 print(e)
                 cfnresponse.send(event, context, cfnresponse.FAILED, {"Error": str(e)}, physical_id)
-      Runtime: python3.7
+      Runtime: python3.8
       Timeout: 300
       Role: !GetAtt LambdaCustomResourceCloudWatchMetricStreamRole.Arn
 

@@ -1,11 +1,10 @@
 [
-    { "ParameterKey": "CoralogixApiKey", "ParameterValue": "eb66232a-c3e3-4dbc-68aa-a0086defd8c0" },
+    { "ParameterKey": "CoralogixApiKey", "ParameterValue": "<Coralogix-Private-Key>" },
     { "ParameterKey": "CoralogixRegion", "ParameterValue": "ireland" },
     { "ParameterKey": "EnableLogsStream", "ParameterValue": "true" },
     { "ParameterKey": "EnableMetricsStream", "ParameterValue": "true" },
     { "ParameterKey": "IncludeNamespaces", "ParameterValue": "AWS/EC2,AWS/EKS,AWS/ELB,AWS/Logs,AWS/S3" },
     { "ParameterKey": "IncludeNamespacesMetricNames", "ParameterValue": "{\"AWS/EC2\":[\"CPUUtilization\",\"NetworkOut\"],\"AWS/S3\":[\"BucketSizeBytes\"]}" },
     { "ParameterKey": "EnableAddtionalStatistics", "ParameterValue": "true" },
-    { "ParameterKey": "CustomUrl", "ParameterValue": "https://firehose-ingress.coralogix.com/firehose" },
-    { "ParameterKey": "IntegrationTypeLogs", "ParameterValue": "CloudWatch_CloudTrail" }
+    { "ParameterKey": "IntegrationTypeLogs", "ParameterValue": "CloudWatch_JSON" }
 ]
