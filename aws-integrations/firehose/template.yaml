@@ -651,6 +651,7 @@ Resources:
               response_data = {}
               physical_id = ""
               include_filter_list = []
+              statistics_configurations_list = []
               try:
                 client = boto3.client('cloudwatch')
                 properties = event['ResourceProperties']
@@ -659,23 +660,32 @@ Resources:
                 if event['RequestType'] == "Delete":
                   response_data = client.delete_metric_stream(Name=physical_id)
                 else:
-                  namespaces = properties["IncludeNamespaces"].strip()
-                  namespace_metrics = properties["IncludeNamespacesMetricNames"].strip()
-                  namespace_metrics_json = json.loads(namespace_metrics)
-                  statistics_configurations = properties["StatisticsConfigurations"]
-                  statistics_configurations_json = json.loads(statistics_configurations)
+                  namespaces_property = properties["IncludeNamespacesInput"].strip()
+                  namespace_metrics_property = properties["IncludeNamespacesMetricNamesInput"].strip()
+                  statistics_configurations_property = properties["StatisticsConfigurationsInput"].strip()
+                  if statistics_configurations_property:
+                    statistics_configurations_list = json.loads(statistics_configurations_property)
                   
-                  if namespaces:
-                    for namespace in namespaces.split(","):
+                  if namespaces_property:
+                    for namespace in namespaces_property.split(","):
                       include_filter_list.append({'Namespace': namespace.strip()});
-                  if namespace_metrics_json:
+                  if namespace_metrics_property:
+                    namespace_metrics_json = json.loads(namespace_metrics_property)
                     for namespace, metric_names in namespace_metrics_json.items():
                       include_filter_list.append({'Namespace': namespace.strip(), 'MetricNames': metric_names})
-                  response_data = client.put_metric_stream(Name=physical_id, FirehoseArn=properties['FirehoseArn'],
-                                                            RoleArn=properties['RoleArn'],
-                                                            OutputFormat=properties['OutputFormat'],
-                                                            IncludeFilters=include_filter_list,
-                                                            StatisticsConfigurations=statistics_configurations_json)
+                  
+                  if len(statistics_configurations_list) > 0:
+                    response_data = client.put_metric_stream(Name=physical_id, FirehoseArn=properties['FirehoseArn'],
+                                                              RoleArn=properties['RoleArn'],
+                                                              OutputFormat=properties['OutputFormat'],
+                                                              IncludeFilters=include_filter_list,
+                                                              StatisticsConfigurations=statistics_configurations_list)
+                  else:
+                    response_data = client.put_metric_stream(Name=physical_id, FirehoseArn=properties['FirehoseArn'],
+                                                              RoleArn=properties['RoleArn'],
+                                                              OutputFormat=properties['OutputFormat'],
+                                                              IncludeFilters=include_filter_list)
+                                                          
                 cfnresponse.send(event, context, cfnresponse.SUCCESS, response_data, physical_id)
               except Exception as e:
                 print(e)
@@ -693,9 +703,9 @@ Resources:
       OutputFormat: !Ref OutputFormat
       FirehoseArn: !GetAtt CoralogixDeliveryMetricsStream.Arn
       RoleArn: !GetAtt CloudWatchMetricsRole.Arn
-      IncludeNamespaces: !Ref IncludeNamespaces
-      IncludeNamespacesMetricNames: !Ref IncludeNamespacesMetricNames
-      StatisticsConfigurations: !If [IsAdditionalStatisticsEnabled, !Ref AddtionalStatisticsConfigurations, !Ref 'AWS::NoValue']
+      IncludeNamespacesInput: !Ref IncludeNamespaces
+      IncludeNamespacesMetricNamesInput: !Ref IncludeNamespacesMetricNames
+      StatisticsConfigurationsInput: !If [IsAdditionalStatisticsEnabled, !Ref AddtionalStatisticsConfigurations, '' ]
 
 Outputs:
   BackupDataBucketName:
