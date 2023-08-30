@@ -18,7 +18,7 @@ Parameters:
     Type: String
     Description: The Custom url domain. If set, will be the url used to send telemetry.
     Default: ""
-  CoralogixApiKey:
+  ApiKey:
     Type: String
     Description: The Coralogix Api key which is used to validate your authenticity.
     NoEcho: true
@@ -114,14 +114,15 @@ Parameters:
     Type: String
     Default: "[{\"AdditionalStatistics\":[\"p50\",\"p75\",\"p95\",\"p99\"],\"IncludeMetrics\":[{\"Namespace\":\"AWS/EBS\",\"MetricName\":\"VolumeTotalReadTime\"},{\"Namespace\":\"AWS/EBS\",\"MetricName\":\"VolumeTotalWriteTime\"},{\"Namespace\":\"AWS/ELB\",\"MetricName\":\"Latency\"},{\"Namespace\":\"AWS/ELB\",\"MetricName\":\"Duration\"},{\"Namespace\":\"AWS/Lambda\",\"MetricName\":\"PostRuntimeExtensionsDuration\"},{\"Namespace\":\"AWS/S3\",\"MetricName\":\"FirstByteLatency\"},{\"Namespace\":\"AWS/S3\",\"MetricName\":\"TotalRequestLatency\"}]}]"
 
-Metadata: 
+Metadata:
+  SemanticVersion: 0.0.1
   AWS::CloudFormation::Interface: 
     ParameterGroups: 
       - Label: 
           default: "Required"
         Parameters: 
           - CoralogixRegion
-          - CoralogixApiKey
+          - ApiKey
           - ApplicationName
           - SubsystemName
       - Label: 
@@ -313,7 +314,7 @@ Resources:
               - !Ref CustomUrl
               - Fn::FindInMap: [ CoralogixRegionMap, !Ref CoralogixRegion, LogUrl ]
           AccessKey:
-            Ref: CoralogixApiKey
+            Ref: ApiKey
           Name: 
             'Coralogix'
         RequestConfiguration:
@@ -515,7 +516,7 @@ Resources:
               - !Ref CustomUrl
               - Fn::FindInMap: [ CoralogixRegionMap, !Ref CoralogixRegion, LogUrl ]
           AccessKey:
-            Ref: CoralogixApiKey
+            Ref: ApiKey
           Name: 
             'Coralogix'
         RequestConfiguration:

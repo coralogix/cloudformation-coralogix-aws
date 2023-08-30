@@ -4,13 +4,13 @@ on:
   push:
     branches: [master, main]
     paths:
-      - "aws-integrations/lambda-integrations/**/template.yaml"
+      - "**/template.yaml"
 jobs:
   upload_files:
     runs-on: ubuntu-latest
     name: upload files
     env:
-      integration_list: "s3,s3-sns,cloudtrail,cloudtrail-sns,cloudwatch-logs,vpc-flow-logs"
+      integration_list: "s3,s3-sns,cloudtrail,cloudtrail-sns,cloudwatch-logs,vpc-flow-logs,firehose"
     steps:
       - uses: actions/checkout@v3
         with:
@@ -32,9 +32,9 @@ jobs:
 
           for changed_file in "${changed_files_array[@]}"; do
             integration=$(echo "$changed_file" | xargs -n1 dirname | xargs -n1 basename)
-            if [[ $changed_file == "aws-integrations/lambda-integrations/$integration/template.yaml" ]]; then
+            if [[ $changed_file == **"/$integration/template.yaml" ]]; then
               if echo "$integration_list" | grep -q "$integration"; then
-                mv aws-integrations/lambda-integrations/$integration/template.yaml template-directory/${integration}-template.yaml
+                mv $changed_file template-directory/${integration}-template.yaml
                 echo $integration >> changed-integration.txt
               fi
             fi
@@ -96,7 +96,13 @@ jobs:
 
       - name: apply changes to the files
         run: |
-          branch_name=$(echo "${{ github.event.head_commit.message }}" | cut -d '#' -f 2)
+          if echo "${{ github.event.head_commit.message }}" | grep -q "#"; then
+            branch_name=$(echo "${{ github.event.head_commit.message }}" | cut -d '#' -f 2)
+          else
+            branch_name=update_integration_branch
+          fi
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
           git pull origin master
           git checkout -b ${branch_name}
           sync_branch_exists=$(git ls-remote --heads origin "${branch_name}" | wc -l)
@@ -121,16 +127,19 @@ jobs:
           rm replace_template.sh
           rm -rf template-directory
           rm changed-integration.txt
-          git config --local user.email "github-actions[bot]@users.noreply.github.com"
-          git config --local user.name "github-actions[bot]"
           git add .
           git commit -m "Copy file from cloudformation repository"
           git push --set-upstream origin ${branch_name}
 
       - name: Create pull request
         run: |
-          branch_name=$(echo "${{ github.event.head_commit.message }}" | cut -d '#' -f 2)
-          Pr_name=$(echo "${{ github.event.head_commit.message }}" | cut -d '#' -f 1)
+          if echo "${{ github.event.head_commit.message }}" | grep -q "#"; then
+            branch_name=$(echo "${{ github.event.head_commit.message }}" | cut -d '#' -f 2)
+            Pr_name=$(echo "${{ github.event.head_commit.message }}" | cut -d '#' -f 1)
+          else
+            branch_name=update_integration-branch
+            Pr_name="${{ github.event.head_commit.message }}"
+          fi
           pr_exists=$(gh pr list --base master --head "${branch_name}" --json number -q '.[].number')
           if [[ -n "$pr_exists" ]]; then
             echo "Pull request already exists: #$pr_exists"
