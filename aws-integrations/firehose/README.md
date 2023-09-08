@@ -24,6 +24,7 @@ For a more detailed description of the settigns and architecture of this AWS Kin
 |---|---|---|---|
 | EnableLogsStream | Enable logs streaming to Coralogix | false | |
 | IntegrationTypeLogs | The data structure of the Firehose delivery stream for logs | _Allowed Values:_<br>- CloudWatch_JSON<br>- WAF<br>- CloudWatch_CloudTrail<br>- EksFargate<br>- Default<br>- RawText | |
+| DynamicMetadataLogs | When set to true, it fetches the applicationName / subsystemName dynamically for logs | false | |
 | KinesisStreamAsSourceARN | If KinesisStreamAsSource for logs is desired, input the ARN of the Kinesis stream |  | |
 
 ## Metrics Stream Parameters
@@ -40,13 +41,12 @@ For a more detailed description of the settigns and architecture of this AWS Kin
 ## Optional Parameters
 | Parameter | Description | Default Value | Required |
 |---|---|---|---|
-| CloudwatchRetentionDays | Enable logs streaming to Coralogix | false | |
-| DynamicMetadata | When set to true, it fetches the applicationName / subsystemName dynamically | false | |
+| CloudwatchRetentionDays | Enable logs streaming to Coralogix | 1 | |
 
 ## Notes:
 
 * If you want to use the Kinesis Stream as a source for logs, you must create the Kinesis Stream before deploying the Cloudformation template and set the KinesisStreamAsSourceARN parameter to the ARN of the Kinesis Stream.
-* If DynamicMetadata is set to `dynamicMetadata`: `true`, the applicationName and subsystemName for logs will be based on the selected IntegrationTypeLogs and follow the below Dynamic values table:
+* If `DynamicMetadataLogs` is set to `true`, and `ApplicationName` and `SubsystemName` is empty/not set, the applicationName and subsystemName for logs will be based on the selected IntegrationTypeLogs and follow the below Dynamic values table:
 
 | Type | Dynamic applicationName | Dynamic subsystemName | Notes |
 | --- | --- | --- | --- |
