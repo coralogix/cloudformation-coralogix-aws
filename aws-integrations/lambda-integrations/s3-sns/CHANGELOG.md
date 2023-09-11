@@ -1,9 +1,9 @@
 # Changelog
 
-## s3-archivea
+## s3-sns
 
-### 0.0.1 / 21.8.2023
-* [update] Add support to US2 and add an option to use CustomCoraloigxArn and ByPassRegion
+### 1.0.29
+* [Update] Added Support for Sns Notification type object.
 <!-- To add a new entry write: -->
 <!-- ### version / full date -->
 <!-- * [Update/Bug fix] message that describes the changes that you apply -->
