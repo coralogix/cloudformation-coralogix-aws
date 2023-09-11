@@ -1,0 +1,194 @@
+Description: ECS EC2 Windows Example template. This template demonstrates setting up opentelemetry collector on ECS EC2 Windows for metrics collection.
+Parameters:
+  ClusterName:
+    Type: String
+
+  AppImage:
+    Type: String
+
+  OtelImage:
+    Type: String
+    Default: coralogixrepo/coralogix-otel-collector:0.1.0-windowsserver-1809
+
+  PrivateKey:
+    Type: String
+
+  ApplicationName:
+    Type: String
+
+  SubsystemName:
+    Type: String
+
+  CoralogixRegion:
+      Type: String
+      Description: The Coralogix location region [Europe, Europe2, India, Singapore, US]
+      AllowedValues:
+        - Europe
+        - Europe2
+        - India
+        - Singapore
+        - US
+
+
+Mappings:
+  CoralogixRegionMap:
+    Europe:
+      Endpoint: ingress.coralogix.com:443
+      Domain: coralogix.com
+    Europe2:
+      Endpoint: ingress.eu2.coralogix.com:443
+      Domain: eu2.coralogix.com
+    India:
+      Endpoint: ingress.coralogix.in:443
+      Domain: coralogix.in
+    Singapore:
+      Endpoint: ingress.coralogixsg.com:443
+      Domain: coralogixsg.com
+    US:
+      Endpoint: ingress.coralogix.us:443
+      Domain: coralogix.us
+
+
+Resources:
+  ECSTaskExecutionRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: 'ecs-tasks.amazonaws.com'
+            Action: 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy'
+      Policies:
+        - PolicyName: 'ADOTPolicy'
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: 
+                  - 'ssm:GetParameters'
+                  - "ec2:DescribeVolumes"
+                  - "ec2:DescribeTags"
+                  - "ssm:GetParameters"
+                  - "ec2:DescribeInstances"
+                  - "ecs:ListTasks"
+                  - "ecs:ListServices"
+                  - "ecs:DescribeContainerInstances"
+                  - "ecs:DescribeServices"
+                  - "ecs:DescribeTasks"
+                  - "ecs:DescribeTaskDefinition"
+                  - "logs:CreateLogGroup"
+                  - "logs:CreateLogStream"
+                  - "logs:PutLogEvents"
+                  - "logs:DescribeLogStreams"
+                  - "ecr:*"
+                  - "s3:*"
+                Resource: '*'
+
+  WinAppLogGroup:
+    Type: "AWS::Logs::LogGroup"
+    Properties:
+      LogGroupName: "/ecs/win-app"
+
+  OtelCollectorLogGroup:
+    Type: "AWS::Logs::LogGroup"
+    Properties:
+      LogGroupName: "/ecs/otel-collector"
+
+  DevAppTaskDefinition:
+    Type: "AWS::ECS::TaskDefinition"
+    Properties:
+      Family: "windows-metric-testing"
+      Cpu: "1024"
+      Memory: "2048"
+      ExecutionRoleArn: !GetAtt ECSTaskExecutionRole.Arn
+      TaskRoleArn: !GetAtt ECSTaskExecutionRole.Arn
+      NetworkMode: bridge
+
+      
+      ContainerDefinitions:
+        - Name: "otel-collector"
+          Image: !Ref OtelImage
+          Essential: true
+          LogConfiguration:
+            LogDriver: "awslogs"
+            Options:
+              awslogs-group: !Ref OtelCollectorLogGroup
+              awslogs-region: !Ref 'AWS::Region'
+              awslogs-stream-prefix: "otel-collector"
+              awslogs-create-group: "true"
+          # Command: ["--config", !Ref OTELS3Config]
+          Environment:
+            - Name: "CORALOGIX_DOMAIN"
+              Value: !FindInMap [CoralogixRegionMap, !Ref CoralogixRegion, Domain]
+            
+            - Name: "PRIVATE_KEY"
+              Value: !Ref PrivateKey
+
+            - Name: "ApplicationName"
+              Value: !Ref ApplicationName
+
+            - Name: "SubSystemName"
+              Value: !Ref SubsystemName
+            
+            - Name: "OTEL_CONFIG"
+              Value: 
+                Fn::Base64: |
+                  receivers:
+                    awsecscontainermetricsd:
+                      sidecar: true
+
+                  processors:
+                    batch:
+
+                  exporters:
+                    logging:
+                      verbosity: detailed
+                    coralogix:
+                      domain: "$CORALOGIX_DOMAIN"
+                      private_key: "$PRIVATE_KEY"
+                      application_name: "otel-collector-windows"
+                      subsystem_name: "ecs"
+                      application_name_attributes:
+                      - $ApplicationName
+                      - "container.name"
+                      subsystem_name_attributes:
+                      - $SubSystemName
+                      - "aws.ecs.task.family"
+                      timeout: 30s
+
+                  service:
+                    pipelines:
+                      metrics:
+                        receivers:
+                          - awsecscontainermetricsd
+                        processors:
+                          - batch
+                        exporters:
+                          - coralogix
+
+
+        - Name: "win-app"
+          Image: !Ref AppImage
+          Essential: true
+          LogConfiguration:
+            LogDriver: "awslogs"
+            Options:
+              awslogs-group: !Ref WinAppLogGroup
+              awslogs-region: !Ref 'AWS::Region'
+              awslogs-stream-prefix: "winapp"
+              awslogs-create-group: "true"
+
+  WinAppService:
+    Type: "AWS::ECS::Service"
+    Properties:
+      ServiceName: "winapp-service"
+      SchedulingStrategy: REPLICA
+      Cluster: !Ref ClusterName
+      LaunchType: "EC2"
+      TaskDefinition: !Ref DevAppTaskDefinition
+
+  
