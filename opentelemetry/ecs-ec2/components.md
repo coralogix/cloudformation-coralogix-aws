@@ -23,8 +23,9 @@ Example:
 
 ```yaml
 receivers:
-  awsecscontainermetrics:
+  awsecscontainermetricsd:
     collection_interval: 20s
+    sidecar: true
 ```
 
 #### collection_interval:
@@ -32,6 +33,12 @@ receivers:
 This receiver collects task metadata and container stats at a fixed interval and emits metrics to the next consumer of OpenTelemetry pipeline. `collection_interval` will determine the frequency at which metrics are collected and emitted by this receiver.
 
 default: `20s`
+
+#### sidecar:
+
+If true, the receiver will run in sidecar mode. In this mode the receiver will collect metrics from all containers within the same task definition in the same way the [awsecscontainermetrics](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/receiver/awsecscontainermetricsreceiver) receiver does. This mode is required for ECS EC2 Windows Server environments.
+
+default: `false`
 
 ## Enabling the AWS ECS Container Metrics Receiver
 
@@ -117,36 +124,36 @@ service:
 
 ## Available Metrics
 
-Following is the full list of metrics emitted by this receiver.
+Following is the full list of metrics emitted by this receiver. Note that all metrics are support on Linux, however there are some that will not work on Windows. See the **Supported in Windows** column in the table below.
 
-| Task Level Metrics                   | Container Level Metrics               | Unit         |
-|--------------------------------------|---------------------------------------|--------------|
-| ecs.task.memory.usage                | container.memory.usage                | Bytes        |
-| ecs.task.memory.usage.max            | container.memory.usage.max            | Bytes        |
-| ecs.task.memory.usage.limit          | container.memory.usage.limit          | Bytes        |
-| ecs.task.memory.reserved             | container.memory.reserved             | Megabytes    |
-| ecs.task.memory.utilized             | container.memory.utilized             | Megabytes    |
-| ecs.task.cpu.usage.total             | container.cpu.usage.total             | Nanoseconds  |
-| ecs.task.cpu.usage.kernelmode        | container.cpu.usage.kernelmode        | Nanoseconds  |
-| ecs.task.cpu.usage.usermode          | container.cpu.usage.usermode          | Nanoseconds  |
-| ecs.task.cpu.usage.system            | container.cpu.usage.system            | Nanoseconds  |
-| ecs.task.cpu.usage.vcpu              | container.cpu.usage.vcpu              | vCPU         |
-| ecs.task.cpu.cores                   | container.cpu.cores                   | Count        |
-| ecs.task.cpu.onlines                 | container.cpu.onlines                 | Count        |
-| ecs.task.cpu.reserved                | container.cpu.reserved                | vCPU         |
-| ecs.task.cpu.utilized                | container.cpu.utilized                | Percent      |
-| ecs.task.network.rate.rx             | container.network.rate.rx             | Bytes/Second |
-| ecs.task.network.rate.tx             | container.network.rate.tx             | Bytes/Second |
-| ecs.task.network.io.usage.rx_bytes   | container.network.io.usage.rx_bytes   | Bytes        |
-| ecs.task.network.io.usage.rx_packets | container.network.io.usage.rx_packets | Count        |
-| ecs.task.network.io.usage.rx_errors  | container.network.io.usage.rx_errors  | Count        |
-| ecs.task.network.io.usage.rx_dropped | container.network.io.usage.rx_dropped | Count        |
-| ecs.task.network.io.usage.tx_bytes   | container.network.io.usage.tx_bytes   | Bytes        |
-| ecs.task.network.io.usage.tx_packets | container.network.io.usage.tx_packets | Count        |
-| ecs.task.network.io.usage.tx_errors  | container.network.io.usage.tx_errors  | Count        |
-| ecs.task.network.io.usage.tx_dropped | container.network.io.usage.tx_dropped | Count        |
-| ecs.task.storage.read_bytes          | container.storage.read_bytes          | Bytes        |
-| ecs.task.storage.write_bytes         | container.storage.write_bytes         | Bytes        |
+| Task Level Metrics                   | Container Level Metrics               | Unit         | Supported in Windows |
+|--------------------------------------|---------------------------------------|--------------|----------------------|
+| ecs.task.memory.usage                | container.memory.usage                | Bytes        | :heavy_check_mark:   |
+| ecs.task.memory.usage.max            | container.memory.usage.max            | Bytes        | :heavy_check_mark:   |
+| ecs.task.memory.usage.limit          | container.memory.usage.limit          | Bytes        |                      |
+| ecs.task.memory.reserved             | container.memory.reserved             | Megabytes    |                      |
+| ecs.task.memory.utilized             | container.memory.utilized             | Megabytes    | :heavy_check_mark:   |
+| ecs.task.cpu.usage.total             | container.cpu.usage.total             | Nanoseconds  | :heavy_check_mark:   |
+| ecs.task.cpu.usage.kernelmode        | container.cpu.usage.kernelmode        | Nanoseconds  | :heavy_check_mark:   |
+| ecs.task.cpu.usage.usermode          | container.cpu.usage.usermode          | Nanoseconds  | :heavy_check_mark:   |
+| ecs.task.cpu.usage.system            | container.cpu.usage.system            | Nanoseconds  |                      |
+| ecs.task.cpu.usage.vcpu              | container.cpu.usage.vcpu              | vCPU         | :heavy_check_mark:   |
+| ecs.task.cpu.cores                   | container.cpu.cores                   | Count        |                      |
+| ecs.task.cpu.onlines                 | container.cpu.onlines                 | Count        |                      |
+| ecs.task.cpu.reserved                | container.cpu.reserved                | vCPU         | :heavy_check_mark:   |
+| ecs.task.cpu.utilized                | container.cpu.utilized                | Percent      | :heavy_check_mark:   |
+| ecs.task.network.rate.rx             | container.network.rate.rx             | Bytes/Second | :heavy_check_mark:   |
+| ecs.task.network.rate.tx             | container.network.rate.tx             | Bytes/Second | :heavy_check_mark:   |
+| ecs.task.network.io.usage.rx_bytes   | container.network.io.usage.rx_bytes   | Bytes        | :heavy_check_mark:   |
+| ecs.task.network.io.usage.rx_packets | container.network.io.usage.rx_packets | Count        | :heavy_check_mark:   |
+| ecs.task.network.io.usage.rx_errors  | container.network.io.usage.rx_errors  | Count        | :heavy_check_mark:   |
+| ecs.task.network.io.usage.rx_dropped | container.network.io.usage.rx_dropped | Count        | :heavy_check_mark:   |
+| ecs.task.network.io.usage.tx_bytes   | container.network.io.usage.tx_bytes   | Bytes        | :heavy_check_mark:   |
+| ecs.task.network.io.usage.tx_packets | container.network.io.usage.tx_packets | Count        | :heavy_check_mark:   |
+| ecs.task.network.io.usage.tx_errors  | container.network.io.usage.tx_errors  | Count        | :heavy_check_mark:   |
+| ecs.task.network.io.usage.tx_dropped | container.network.io.usage.tx_dropped | Count        | :heavy_check_mark:   |
+| ecs.task.storage.read_bytes          | container.storage.read_bytes          | Bytes        |                      |
+| ecs.task.storage.write_bytes         | container.storage.write_bytes         | Bytes        |                      |
 
 ## Resource Attributes and Metrics Labels
 
@@ -271,6 +278,7 @@ service:
 ## Reference
 1. [Setup OpenTelemetry Collector on Amazon ECS](https://aws-otel.github.io/docs/setup/ecs)
 2. [Getting Started with ECS Container Metrics Receiver in the OpenTelemetry Collector](https://aws-otel.github.io/docs/components/ecs-metrics-receiver) g
+
 
 ---
 
