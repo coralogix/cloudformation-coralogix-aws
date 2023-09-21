@@ -5,6 +5,9 @@
 <!-- ### version / full date -->
 <!-- * [Update/Bug fix] message that describes the changes that you apply -->
 
+### 0.0.2 / 2023-09-20
+* Update cdot image description to advise users that a tag must be selected, latest is not supported
+
 ### 0.0.2 / 2023-09-11
 * Added EC2 ECS Windows Example for metrics collection
 

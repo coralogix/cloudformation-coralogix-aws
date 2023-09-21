@@ -14,7 +14,7 @@ Parameters:
       This defaults to the coralogixrepo/coralogix-otel-collector image.
       https://hub.docker.com/r/coralogixrepo/coralogix-otel-collector/tags
     Type: String
-    Default: coralogixrepo/coralogix-otel-collector
+    Default: coralogixrepo/coralogix-otel-collector:v0.1.2
 
   Memory:
     Description: |
