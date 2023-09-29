@@ -88,6 +88,14 @@ Mappings:
               http:
                 endpoint: "0.0.0.0:4318"
 
+          prometheus:
+            config:
+              scrape_configs:
+              - job_name: otel-collector-metrics
+                scrape_interval: 60s
+                static_configs:
+                - targets: ['localhost:8888']
+
           filelog:
             start_at: end
             include:
@@ -168,6 +176,17 @@ Mappings:
               exporters:
                 - coralogix
 
+            metrics:
+              receivers:
+                - prometheus
+              exporters:
+                - coralogix
+
+          telemetry:
+            metrics:
+              address: 0.0.0.0:8888
+              level: detailed
+
       Metrics: |
         receivers:
           otlp:
@@ -176,6 +195,14 @@ Mappings:
                 endpoint: "0.0.0.0:4317"
               http:
                 endpoint: "0.0.0.0:4318"
+
+          prometheus:
+            config:
+              scrape_configs:
+              - job_name: otel-collector-metrics
+                scrape_interval: 60s
+                static_configs:
+                - targets: ['localhost:8888']
 
           filelog:
             start_at: end
@@ -269,6 +296,12 @@ Mappings:
               exporters:
                 - coralogix
 
+          telemetry:
+            metrics:
+              address: 0.0.0.0:8888
+              level: detailed
+
+
   CoralogixRegionMap:
     Europe:
       Endpoint: ingress.coralogix.com:443
@@ -321,6 +354,10 @@ Resources:
               ContainerPort: 4317
             
             - HostPort: 4318
+              Protocol: tcp
+              ContainerPort: 4318
+
+            - HostPort: 8888
               Protocol: tcp
               ContainerPort: 4318
 
@@ -392,6 +429,10 @@ Resources:
               ContainerPort: 4317
             
             - HostPort: 4318
+              Protocol: tcp
+              ContainerPort: 4318
+
+            - HostPort: 8888
               Protocol: tcp
               ContainerPort: 4318
 
