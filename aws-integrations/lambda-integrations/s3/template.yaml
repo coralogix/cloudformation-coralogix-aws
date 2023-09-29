@@ -6,7 +6,7 @@ Description: Send logs from S3 bucket to Coralogix.
 Metadata:
   AWS::ServerlessRepo::Application:
     Name: Coralogix-S3
-    Description: Send logs from S3 bucket to Coralogix.
+    Description: Send logs from S3 bucket to  Coralogix.
     Author: Coralogix
     SpdxLicenseId: Apache-2.0
     LicenseUrl: LICENSE
@@ -16,42 +16,46 @@ Metadata:
       - logs
       - s3
     HomePageUrl: https://coralogix.com
-    SemanticVersion: 1.0.26
+    SemanticVersion: 1.0.29
     SourceCodeUrl: https://github.com/coralogix/coralogix-aws-serverless
   AWS::CloudFormation::Interface:
     ParameterGroups:
       - Label:
-          default: Coralogix Configuration
+          default: Coralogix configuration
         Parameters:
-          - CoralogixRegion
-          - PrivateKey
           - ApplicationName
           - SubsystemName
+          - ApiKey
+          - CoralogixRegion
+          - CustomDomain
       - Label:
-          default: Logging Configuration
-        Parameters:
-          - NewlinePattern
-          - SamplingRate
-          - BufferSize
-          - Debug
-      - Label:
-          default: S3 Configuration
+          default: Integration configuration
         Parameters:
           - S3BucketName
           - S3KeyPrefix
           - S3KeySuffix
+          - NotificationEmail
+          - NewlinePattern
       - Label:
-          default: Lambda Configuration
+          default: Lambda configuration
         Parameters:
           - FunctionArchitecture
           - FunctionMemorySize
           - FunctionTimeout
-          - NotificationEmail
+          - BufferSize
+          - BlockingPattern
+          - SamplingRate
+          - Debug
+      - Label:
+          default: Security configuration
+        Parameters:
+          - LayerARN
+          - CreateSecret
     ParameterLabels:
       CoralogixRegion:
         default: Region
-      PrivateKey:
-        default: Private Key
+      ApiKey:
+        default: Api Key
       ApplicationName:
         default: Application Name
       SubsystemName:
@@ -81,25 +85,22 @@ Metadata:
 Parameters:
   LayerARN:
     Type: String
-    Description: Coralogix SSM Layer ARN
+    Description: In case you are using SSM This is the ARN of the Coralogix Security Layer. Copy from the ``SSM`` serverless application the ARN that was installed on the AWS account
     Default: ''
-  SsmEnabled:
-    Type: String
-    Description: store coralogix private_key as a secret. True/False
-    Default: 'False'
   CoralogixRegion:
     Type: String
-    Description: The Coralogix location region [Europe, Europe2, India, Singapore, US]
+    Description: The Coralogix location region [Europe, Europe2, India, Singapore, US, US2]
     AllowedValues:
       - Europe
       - Europe2
       - India
       - Singapore
       - US
+      - US2
     Default: Europe
-  PrivateKey:
+  ApiKey:
     Type: String
-    Description: The Coralogix private key which is used to validate your authenticity
+    Description: Your Coralogix secret key or incase you use your own created secret put here the name of your secret that contains the coralogix Api Key
     NoEcho: true
   ApplicationName:
     Type: String
@@ -180,6 +181,10 @@ Parameters:
     Description: Failure notification email address
     MaxLength: 320
     Default: ''
+  CreateSecret:
+    Type: String
+    Description: In case you want to use SSM without creating a secret, set the value to False and write the name of the secret instead of your ApiKey in the ApkiKey parameter.
+    Default: 'True'
 Mappings:
   CoralogixRegionMap:
     Europe:
@@ -192,6 +197,8 @@ Mappings:
       LogUrl: coralogixsg.com
     US:
       LogUrl: coralogix.us
+    US2:
+      LogUrl: cx498.coralogix.com
 Conditions:
   IsNotificationEnabled:
     Fn::Not:
@@ -199,13 +206,23 @@ Conditions:
           - Ref: NotificationEmail
           - ''
   IsSsmEnabled:
-    Fn::Equals:
-      - Ref: SsmEnabled
-      - 'True'
+    Fn::Not:
+      - Fn::Equals:
+          - Ref: LayerARN
+          - ""
   IsNotSsmEnabled:
     Fn::Equals:
-      - Ref: SsmEnabled
-      - 'False'
+      - Ref: LayerARN
+      - ''
+  CreateSecret:
+    Fn::And:
+      - Fn::Not:
+          - Fn::Equals:
+              - Ref: LayerARN
+              - ""
+      - Fn::Equals:
+          - Ref: CreateSecret
+          - 'True'
   IsRegionCustomUrlEmpty: !Not [!Equals [!Ref CustomDomain, ""]]
 Resources:
   LambdaFunction:
@@ -237,7 +254,7 @@ Resources:
           CORALOGIX_BUFFER_SIZE:
             Ref: BufferSize
           private_key:
-            Ref: PrivateKey
+            Ref: ApiKey
           app_name:
             Ref: ApplicationName
           sub_name:
@@ -301,6 +318,10 @@ Resources:
             Ref: SamplingRate
           debug:
             Ref: Debug
+          SECRET_NAME: !If
+            - CreateSecret
+            - ""
+            - Ref: ApiKey
       EventInvokeConfig:
         DestinationConfig:
           OnFailure:
@@ -395,14 +416,14 @@ Resources:
       Suffix:
         Ref: S3KeySuffix
   PrivateKeySecret:
-    Condition: IsSsmEnabled
+    Condition: CreateSecret
     Type: AWS::SecretsManager::Secret
     Properties:
       Description: Coralogix Send Your Data key Secret
       Name: !Sub
         - 'lambda/coralogix/${AWS::Region}/${function}'
         - function: !Ref LambdaFunctionSSM
-      SecretString: !Ref PrivateKey
+      SecretString: !Ref ApiKey
   LambdaFunctionNotificationSubscription:
     Type: AWS::SNS::Subscription
     Condition: IsNotificationEnabled

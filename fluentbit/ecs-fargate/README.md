@@ -1,5 +1,11 @@
 # Fluentbit ECS Fargate
 
+
+# NOTE: (Deprecated)
+This integration is deprecated, please see the ecs-fargate integration under [aws-integrations](../../aws-integrations/ecs-fargate/)
+<br>
+<br>
+
 This template provides a starting point for deploying Fluentbit as a sidecar container in an ECS Fargate task. The sidecar approach to log collection works by running a separate container in the same ecs task as the application container. The sidecar container is responsible for collecting logs from the application container and sending them to a destination. This approach is useful when you want to collect logs from an application container that does not support logging to a file or stdout.
 
 ### How to add Fluentbit as a sidecar container in an ECS Fargate task

@@ -3,15 +3,47 @@ Description: 'CloudFormation template for creating archive s3 bucket for metrics
 Parameters:
   LogsBucketName:
     Type: String
-    Description: 'The name of the S3 bucket to create for the Logs archive (Leave empty if not needed) must fllow AWS nameing rules https://docs.aws.amazon.com/AmazonS3/latest/userguide/bucketnamingrules.html'
+    Description: 'The name of the S3 bucket to create for the Logs and traces archive (Leave empty if not needed) must follow AWS naming rules https://docs.aws.amazon.com/AmazonS3/latest/userguide/bucketnamingrules.html'
     AllowedPattern: '^[a-z0-9]*[a-z0-9.-]*$|^$'
     MaxLength: 63
   MetricsBucketName:
     Type: String
-    Description: 'The name of the S3 bucket to create for the Metrics archive (Leave empty if not needed) must fllow AWS nameing rules https://docs.aws.amazon.com/AmazonS3/latest/userguide/bucketnamingrules.html'
+    Description: 'The name of the S3 bucket to create for the Metrics archive (Leave empty if not needed) must follow AWS naming rules https://docs.aws.amazon.com/AmazonS3/latest/userguide/bucketnamingrules.html'
     AllowedPattern: '^[a-z0-9]*[a-z0-9.-]*$|^$'
     MaxLength: 63
+  MetricsKmsArn:
+    Type: String
+    Description: 'The arn for the kms of the metrics bucket - leave empty if not needed'
+  LogsKmsArn:
+    Type: String
+    Description: 'The arn for the kms of the logs and traces bucket - leave empty if not needed'
+  CustomCoraloigxArn:
+    Type: String
+    Description: 'In case you want to use a custom coralogix arn enter the aws account id that you want to use'
+    Default: ""
+  ByPassRegion:
+    Type: String
+    Description: 'Use only with approval from our CS team, use to bypass region restrictions'
+    Default: "false"
 Conditions:
+  IsRegionUs2: !Equals
+        - !Ref 'AWS::Region'
+        - us-west-2
+  CustomArn: !Not
+    - !Equals
+      - !Ref CustomCoraloigxArn
+      - ""
+  ByPassRegionTrue: !Equals
+      - !Ref ByPassRegion
+      - "True"
+  IsLogsKmsNotEmpty: !Not
+    - !Equals
+      - !Ref LogsKmsArn
+      - ''
+  IsMetricsKmsNotEmpty: !Not
+    - !Equals
+      - !Ref MetricsKmsArn
+      - ''
   IsLogsBucketNameEmpty: !Not
     - !Equals
       - !Ref LogsBucketName
@@ -24,6 +56,9 @@ Conditions:
     - !Ref LogsBucketName
     - !Ref MetricsBucketName
   IsValidRegion: !Or
+    - !Equals
+        - !Ref ByPassRegion
+        - "True"
     - !Equals
         - !Ref 'AWS::Region'
         - eu-west-1
@@ -39,6 +74,9 @@ Conditions:
     - !Equals
         - !Ref 'AWS::Region'
         - us-east-2
+    - !Equals
+        - !Ref 'AWS::Region'
+        - us-west-2
   LogsValidations: !And
     - !Not
       - !Condition IsSameBucketName
@@ -61,6 +99,15 @@ Resources:
         BlockPublicPolicy: true
         IgnorePublicAcls: true
         RestrictPublicBuckets: true
+      BucketEncryption:
+        Fn::If:
+          - IsLogsKmsNotEmpty
+          - ServerSideEncryptionConfiguration:
+              - ServerSideEncryptionByDefault:
+                  SSEAlgorithm: "aws:kms"
+                  KMSMasterKeyID: !Ref LogsKmsArn
+                BucketKeyEnabled: true
+          - Ref: "AWS::NoValue"
   LogsS3BucketPolicy:
     Type: 'AWS::S3::BucketPolicy'
     Condition: LogsValidations
@@ -78,10 +125,20 @@ Resources:
               - 's3:GetObjectTagging'
             Effect: 'Allow'
             Principal: 
-              AWS: 'arn:aws:iam::625240141681:root'
+              AWS: !Sub 
+                  - 'arn:aws:iam::${aws_account_id}:root'
+                  - aws_account_id: !If
+                      - CustomArn
+                      - !Ref CustomCoraloigxArn
+                      - !If
+                        - IsRegionUs2
+                        - "739076534691"
+                        - "625240141681"
+                      
             Resource:
-              - !Sub 'arn:aws:s3:::${LogsS3Bucket}'
-              - !Sub 'arn:aws:s3:::${LogsS3Bucket}/*'
+              - !Sub 'arn:aws:s3:::${LogsBucketName}'
+              - !Sub 'arn:aws:s3:::${LogsBucketName}/*'
+
   MetricsS3Bucket:
     Type: AWS::S3::Bucket
     Description: Creating Amazon S3 bucket from CloudFormation to be used for coralogix Metrics archive
@@ -93,6 +150,16 @@ Resources:
         BlockPublicPolicy: true
         IgnorePublicAcls: true
         RestrictPublicBuckets: true
+      BucketEncryption:
+        Fn::If:
+          - IsMetricsKmsNotEmpty 
+          - ServerSideEncryptionConfiguration:
+              - ServerSideEncryptionByDefault:
+                  SSEAlgorithm: "aws:kms"
+                  KMSMasterKeyID: !Ref MetricsKmsArn
+                BucketKeyEnabled: true
+          - Ref: "AWS::NoValue"
+
   MetricsS3BucketPolicy:
     Type: 'AWS::S3::BucketPolicy'
     Condition: MetricsValidations
@@ -111,10 +178,19 @@ Resources:
               - 's3:GetObjectTagging'
             Effect: 'Allow'
             Principal: 
-              AWS: 'arn:aws:iam::625240141681:root'
+              AWS: !Sub 
+                  - 'arn:aws:iam::${aws_account_id}:root'
+                  - aws_account_id: !If
+                      - CustomArn
+                      - !Ref CustomCoraloigxArn
+                      - !If
+                        - IsRegionUs2
+                        - "739076534691"
+                        - "625240141681"
             Resource:
               - !Sub 'arn:aws:s3:::${MetricsS3Bucket}'
               - !Sub 'arn:aws:s3:::${MetricsS3Bucket}/*'
+
 Outputs:
   LogsS3Bucket:
     Description: Bucket Created using this template for coralogix Logs archive.

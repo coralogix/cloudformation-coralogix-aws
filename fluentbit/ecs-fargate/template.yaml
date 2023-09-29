@@ -111,18 +111,4 @@ Resources:
               awslogs-group: "/ecs/fluentbit-agent"
               awslogs-region: !Sub "AWS::Region"
               awslogs-stream-prefix: "ecs"
-  
-  PrometheusService:
-    Type: "AWS::ECS::Service"
-    # DependsOn: PrometheusLoadBalancerRule
-    Properties:
-      ServiceName: "app-service"
-      SchedulingStrategy: REPLICA
-      Cluster: !Ref ClusterName
-      LaunchType: "FARGATE"
-      TaskDefinition: !Ref AppTaskDefinition
-      NetworkConfiguration:
-        AwsvpcConfiguration:
-          AssignPublicIp: ENABLED
-          Subnets:
-            - !Ref Subnet
+              
