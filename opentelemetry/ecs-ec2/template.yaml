@@ -359,7 +359,7 @@ Resources:
 
             - HostPort: 8888
               Protocol: tcp
-              ContainerPort: 4318
+              ContainerPort: 8888
 
           # Privileged required to access certain host metrics
           Privileged: true
@@ -392,8 +392,7 @@ Resources:
               Value: !Ref SubsystemName
 
             - Name: OTEL_CONFIG
-              Value: 
-                Fn::Base64: !If
+              Value: !If
                 - Metrics
                 - !FindInMap [Otel, Config, Metrics]
                 - !FindInMap [Otel, Config, Default]
@@ -434,7 +433,7 @@ Resources:
 
             - HostPort: 8888
               Protocol: tcp
-              ContainerPort: 4318
+              ContainerPort: 8888
 
           # Privileged required to access certain host metrics
           Privileged: true
