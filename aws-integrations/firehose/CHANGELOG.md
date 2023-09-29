@@ -10,3 +10,6 @@
 
 ### 0.0.1 / 8 Sep 2023
 * [Update] Remove DynamicMetadata from metrics integration, changed name from DynamicMetadata to DynamicMetadataLogs
+
+### 0.0.1 / 30 Sep 2023
+* [Update] Made naming & update changes to align Firehose template with Integration team's firehose-metricss one.
