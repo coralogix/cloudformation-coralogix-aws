@@ -203,6 +203,7 @@ Resources:
     Condition: IsLogsEnabled
     Type: AWS::IAM::Role
     Properties:
+      RoleName: !Sub '${AWS::StackName}-cloudwatchlogs'
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -570,7 +571,7 @@ Resources:
     Condition: IsMetricsEnabled
     Type: AWS::IAM::Role
     Properties:
-      RoleName: !Sub '${AWS::StackName}-cw'
+      RoleName: !Sub '${AWS::StackName}-cloudwatchmetrics'
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -583,7 +584,7 @@ Resources:
     Condition: IsMetricsEnabled
     Type: AWS::IAM::Policy
     Properties:
-      PolicyName: !Sub '${AWS::StackName}-cw'
+      PolicyName: !Sub '${AWS::StackName}-cloudwatchmetrics'
       PolicyDocument:
         Version: '2012-10-17'
         Statement:
