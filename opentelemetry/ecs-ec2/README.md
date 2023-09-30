@@ -1,4 +1,4 @@
-### ECS Service and Task Definition
+cu### ECS Service and Task Definition
 
 This template can be used to deploy an ECS Service and Task Definition for running the Open Telemetry agent on an ECS Cluster. This deployment is able to collect Logs, Metrics and Traces. The template will deploy a daemonset which runs an instance open telemetry on each node in a cluster.
 
@@ -58,6 +58,8 @@ aws cloudformation deploy --template-file cfn_template.yaml --stack-name <stack_
         CoralogixRegion=<coralogix-region>
 ```
 
+Note that these are just examples of how this could be deployed. You can also deploy this template using the AWS Console or any Cloudformation management tools.
+
 ### Open Telemetry Configuration
 
 The Open Telemetry configuration is embedded in this cloudformation template by default, however, you do have the option of specifying your own configuration using the `OtelConfig` parameter. The configuration must be base64 encoded.
@@ -69,3 +71,8 @@ The default Open Telemetry configuration can be view [here](./template.yaml#L75-
 ### Image
 
 This example uses the coralogixrepo/coralogix-otel-collector image which is a custom distribution of Open Telemetry containing custom components developed by Coralogix. The image is available on [Docker Hub](https://hub.docker.com/r/coralogixrepo/coralogix-otel-collector). The ECS components are described [here](./components.md)
+
+
+### Open Telemetry Collector Metrics
+
+The default Open Telemetry configuration embedded in this cloudformation template exposes metrics about the collector on port `8888` via the path `/metrics`. The metrics are collected using a [prometheus](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/receiver/prometheusreceiver) scrape job.
