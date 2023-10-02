@@ -16,7 +16,7 @@ For a more detailed description of the settigns and architecture of this AWS Kin
 | ApiKey | Your Coralogix Private Key | |  :heavy_check_mark: |
 | ApplicationName | Your Coralogix Application name | | |
 | SubsystemName | Your Coralogix Subsystem name | | |
-| CustomUrl | The custom url domain. If set, will be the url used to send telemetry. | | |
+| CustomDomain | The custom url domain. If set, will be the url used to send telemetry. | | |
 
 ## Log Stream Parameters
 
