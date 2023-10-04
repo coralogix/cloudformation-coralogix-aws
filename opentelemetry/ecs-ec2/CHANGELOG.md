@@ -5,6 +5,9 @@
 <!-- ### version / full date -->
 <!-- * [Update/Bug fix] message that describes the changes that you apply -->
 
+### 0.0.4 / 2023-10-04
+* Removed ecsattributes filters from default configuration
+
 ### 0.0.3 / 2023-09-29
 * Add Otel Collector metrics to default configuration embedded in template.
 
