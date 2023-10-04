@@ -103,11 +103,11 @@ Mappings:
 
             include_file_path: true
 
-            # add log.file.name to resource attributes
+            # add log.file.path to resource attributes
             operators:
               - type: move
-                from: attributes["log.file.name"]
-                to: resource["log.file.name"]
+                from: attributes["log.file.path"]
+                to: resource["log.file.path"]
 
         processors:
           resourcedetection:
@@ -123,17 +123,8 @@ Mappings:
               - ^labels.*
             container_id:
               sources:
-                - "log.file.name"
+                - "log.file.path"
 
-          # only allow logs with container.name label
-          filter/ecslogs:
-            logs:
-              include:
-                match_type: regexp
-                resource_attributes:
-                  - key: aws.ecs.container.name
-                    value: .*
-        
           transform/logs:
             error_mode: ignore
             log_statements:
@@ -154,7 +145,7 @@ Mappings:
             - "aws.ecs.task.definition.family"
             subsystem_name_attributes:
             - "docker.name"
-            - "log.file.name"
+            - "log.file.path"
             timeout: 30s
 
         service:
@@ -165,7 +156,6 @@ Mappings:
               processors:
                 - resourcedetection
                 - ecsattributes
-                - filter/ecslogs
                 - transform/logs
               exporters:
                 - coralogix
@@ -211,11 +201,11 @@ Mappings:
               
             include_file_path: true
 
-            # add log.file.name to resource attributes
+            # add log.file.path to resource attributes
             operators:
               - type: move
-                from: attributes["log.file.name"]
-                to: resource["log.file.name"]
+                from: attributes["log.file.path"]
+                to: resource["log.file.path"]
 
           # add metrics
           awsecscontainermetricsd:
@@ -230,16 +220,7 @@ Mappings:
           ecsattributes:
             container_id:
               sources:
-                - "log.file.name"
-
-          # only allow logs with container.name label
-          filter/ecslogs:
-            logs:
-              include:
-                match_type: regexp
-                resource_attributes:
-                  - key: aws.ecs.container.name
-                    value: '.*'
+                - "log.file.path"
 
           transform/logs:
             error_mode: ignore
@@ -264,7 +245,7 @@ Mappings:
             - "aws.ecs.task.definition.family"
             subsystem_name_attributes:
             - "docker.name"
-            - "log.file.name"
+            - "log.file.path"
             timeout: 30s
 
         service:
@@ -275,7 +256,6 @@ Mappings:
               processors:
                 - resourcedetection
                 - ecsattributes
-                - filter/ecslogs
                 - transform/logs
               exporters:
                 - coralogix
