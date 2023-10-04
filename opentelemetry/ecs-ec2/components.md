@@ -354,6 +354,8 @@ processors:
       - "log.file.name"
 ```
 
+Note that when using custom log drivers in ECS, logs may not appear in the format `<container.id>-json.log` under the `log.file.name`. In this case, you can specify the attribute key that contains the container ID using the `container_id.sources` option.
+
 You can specify which attributes should be collected by using the `attributes` option which represents a list of regex patterns that match specific or multiple attribute keys.
 
 ```yaml
