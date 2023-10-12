@@ -163,12 +163,16 @@ Mappings:
             traces:
               receivers:
                 - otlp
+              processors:
+                - resourcedetection
               exporters:
                 - coralogix
 
             metrics:
               receivers:
                 - prometheus
+              receivers:
+                - resourcedetection
               exporters:
                 - coralogix
 
