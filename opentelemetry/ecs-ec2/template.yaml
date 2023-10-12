@@ -163,8 +163,6 @@ Mappings:
             traces:
               receivers:
                 - otlp
-              processors:
-                - resourcedetection
               exporters:
                 - coralogix
 
