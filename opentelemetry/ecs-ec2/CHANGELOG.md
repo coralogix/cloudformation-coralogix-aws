@@ -5,6 +5,9 @@
 <!-- ### version / full date -->
 <!-- * [Update/Bug fix] message that describes the changes that you apply -->
 
+### 0.0.5 / 2023-10-12
+* Added resourcedetection to metrics and traces of default configuration.
+
 ### 0.0.4 / 2023-10-04
 * Removed ecsattributes filters from default configuration
 
