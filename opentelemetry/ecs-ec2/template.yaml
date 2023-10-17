@@ -145,7 +145,6 @@ Mappings:
             - "aws.ecs.task.definition.family"
             subsystem_name_attributes:
             - "docker.name"
-            - "log.file.path"
             timeout: 30s
 
         service:
@@ -245,7 +244,6 @@ Mappings:
             - "aws.ecs.task.definition.family"
             subsystem_name_attributes:
             - "docker.name"
-            - "log.file.path"
             timeout: 30s
 
         service:
