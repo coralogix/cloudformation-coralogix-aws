@@ -23,3 +23,6 @@
 
 ### 0.0.2 / 2023-08-16
 * Updated Otel ECS-EC2 to support US2 region.
+
+### 0.0.2 / 2023-10-17
+* Removed log.file.path from coralogix exporter subsystem_name_attributes, too many permutations.
