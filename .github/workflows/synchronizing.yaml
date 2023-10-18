@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     name: upload files
     env:
-      integration_list: "s3,s3-sns,cloudtrail,cloudtrail-sns,cloudwatch-logs,vpc-flow-logs,firehose"
+      integration_list: "s3,s3-sns,cloudtrail,cloudtrail-sns,cloudwatch-logs,vpc-flow-logs,firehose,resource-metadata"
     steps:
       - uses: actions/checkout@v3
         with:
