@@ -1,4 +1,4 @@
 [
-    { "ParameterKey": "ApiKey", "ParameterValue": "<coralogix_api_key>" },
-    { "ParameterKey": "CoralogixRegion", "ParameterValue": "ireland" }
+    { "ParameterKey": "ApiKey", "ParameterValue": "<private-key>" },
+    { "ParameterKey": "CoralogixDomain", "ParameterValue": "<cx-domain>" }
 ]
