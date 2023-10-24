@@ -146,8 +146,12 @@ Mappings:
             application_name: "$APP_NAME"
             subsystem_name: "$SUB_SYS"
             application_name_attributes:
+            - "aws.ecs.cluster"
+            - "aws.ecs.cluster.name"
             - "aws.ecs.task.definition.family"
             subsystem_name_attributes:
+            - "aws.ecs.container.name"
+            - "aws.ecs.docker.name"
             - "docker.name"
             timeout: 30s
 
@@ -253,10 +257,13 @@ Mappings:
             application_name: "$APP_NAME"
             subsystem_name: "$SUB_SYS"
             application_name_attributes:
+            - "aws.ecs.cluster"
+            - "aws.ecs.cluster.name"
             - "aws.ecs.task.definition.family"
             subsystem_name_attributes:
-            - "docker.name"
+            - "aws.ecs.container.name"
             - "aws.ecs.docker.name"
+            - "docker.name"
             timeout: 30s
 
         service:
