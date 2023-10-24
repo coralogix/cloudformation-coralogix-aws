@@ -5,6 +5,14 @@
 <!-- ### version / full date -->
 <!-- * [Update/Bug fix] message that describes the changes that you apply -->
 
+### 0.0.5 / 2023-10-23
+* Updated default ecs-ec2 default templates 
+    - removed  unnecessary OTEL_RESOURCE_ATTRIBUTES from default configuration  
+    - updated default `ecsattributes` config to include `docker.name`
+    - added resourcedetection for otel-collector metrics
+    - removed unnecssary differences between default and metric configurations
+
+
 ### 0.0.4 / 2023-10-04
 * Removed ecsattributes filters from default configuration
 
