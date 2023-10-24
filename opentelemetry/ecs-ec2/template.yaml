@@ -130,7 +130,13 @@ Mappings:
                   - set(attributes["aws_ecs_task_family"], attributes["aws.ecs.task.definition.family"])
                   - set(attributes["image_id"], attributes["image.id"])
                   - delete_key(attributes, "image.id")
-            
+
+          # otel-collector resource detection for collector
+          resourcedetection/otel-collector:
+            detectors: [ecs, ec2]
+            timeout: 2s
+            override: false
+
         exporters:
           logging:
             verbosity: detailed
