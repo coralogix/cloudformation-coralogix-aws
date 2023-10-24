@@ -141,8 +141,8 @@ Mappings:
             subsystem_name: "$SUB_SYS"
             application_name_attributes:
             - "aws.ecs.task.definition.family"
-            # subsystem_name_attributes:
-            # - "docker.name"
+            subsystem_name_attributes:
+            - "docker.name"
             timeout: 30s
 
         service:
@@ -166,6 +166,8 @@ Mappings:
             metrics/otel-collector:
               receivers:
                 - prometheus
+              processors:
+                - resourcedetection/otel-collector
               exporters:
                 - coralogix
 
@@ -248,6 +250,7 @@ Mappings:
             - "aws.ecs.task.definition.family"
             subsystem_name_attributes:
             - "docker.name"
+            - "aws.ecs.docker.name"
             timeout: 30s
 
         service:
