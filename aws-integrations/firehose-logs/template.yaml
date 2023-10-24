@@ -82,8 +82,8 @@ Resources:
     Type: AWS::S3::Bucket
     Properties:
       BucketName: !Sub 
-      - 'firehose-${RandomGUID}-backup-logs'
-      - { RandomGUID: !Select [0, !Split ["-", !Select [2, !Split ["/", !Ref AWS::StackId ]]]] }
+      - 'firehose-${StackGUID}-backup-logs'
+      - { StackGUID: !Select [0, !Split ["-", !Select [2, !Split ["/", !Ref AWS::StackId ]]]] }
       AccessControl: Private
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
