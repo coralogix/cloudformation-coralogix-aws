@@ -1,4 +1,4 @@
-cu### ECS Service and Task Definition
+### ECS Service and Task Definition
 
 This template can be used to deploy an ECS Service and Task Definition for running the Open Telemetry agent on an ECS Cluster. This deployment is able to collect Logs, Metrics and Traces. The template will deploy a daemonset which runs an instance open telemetry on each node in a cluster.
 
@@ -67,6 +67,21 @@ The Open Telemetry configuration is embedded in this cloudformation template by 
 The default configuration will monitor container logs and listen for traces on port `4317/4318`. To enable metrics, set the `Metrics` parameter to `enabled`. This will add the `awsecscontainermetricsd` receiver which is based on the [awsecscontainermetrics](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/receiver/awsecscontainermetricsreceiver) receiver, however, instead of monitoring a single task, metrics will be collected from all containers.
 
 The default Open Telemetry configuration can be view [here](./template.yaml#L75-L161) and the metrics [here](./template.yaml#L164-L262).
+
+
+### Health Check
+
+The default config will expose a health check on port `13133` of the localhost via the path `/`. The health check is exposed using the [health_check](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/extension/healthcheckextension) extension.
+
+The healthy response should look like this:
+
+```json
+{
+  "status": "Server available",
+  "upSince": "2023-10-25T15:37:32.003837622Z",
+  "uptime": "2m5.2610063s"
+}
+```
 
 ### Image
 
