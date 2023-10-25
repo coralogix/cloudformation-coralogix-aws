@@ -155,7 +155,13 @@ Mappings:
             - "docker.name"
             timeout: 30s
 
+        extensions:
+          health_check:
+
         service:
+          extensions:
+            - health_check
+
           pipelines:
             logs:
               receivers: 
@@ -265,8 +271,13 @@ Mappings:
             - "aws.ecs.docker.name"
             - "docker.name"
             timeout: 30s
+          
+        extensions:
+          health_check:
 
         service:
+          extensions:
+            - health_check
           pipelines:
             logs:
               receivers: 
