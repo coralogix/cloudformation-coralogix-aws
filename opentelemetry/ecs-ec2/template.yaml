@@ -8,13 +8,20 @@ Parameters:
   ClusterName:
     Type: String
 
+  CDOTImageVersion:
+    Description: |
+      The Coralogix Open Telemetry Distribution Image
+      Version/Tag.
+      View available tags here: https://hub.docker.com/r/coralogixrepo/coralogix-otel-collector/tags
+    Type: String
+  
   Image:
     Description: |
-      The opentelemetry image used to start the container.
-      This defaults to the coralogixrepo/coralogix-otel-collector image.
-      https://hub.docker.com/r/coralogixrepo/coralogix-otel-collector/tags
+      The OpenTelemetry Collector Image to use.
+      If specified, this value will override the CDOTImageVersion parameter and
+      the coralogix otel collector image.
+    Default: none
     Type: String
-    Default: coralogixrepo/coralogix-otel-collector:v0.1.2
 
   Memory:
     Description: |
@@ -70,6 +77,7 @@ Parameters:
 Conditions:
   UseDefaultSubsystemName: !Equals [ !Ref DefaultSubsystemName, "default" ]
   Metrics: !Equals [ !Ref Metrics, "enable" ]
+  UseImage: !Not [!Equals [ !Ref Image, "none" ]]
   UseCustomConfig: 
     Fn::Not: 
     - !Equals [ !Ref OtelConfig, "none" ]
@@ -362,7 +370,11 @@ Resources:
         - Name: coralogix-otel-agent
           Cpu: 0
           Memory: !Ref Memory
-          Image: !Ref Image
+          Image: !If
+            - UseImage
+            - !Ref Image
+            - !Sub "coralogixrepo/coralogix-otel-collector:${CDOTImageVersion}"
+
           Essential: true
 
           PortMappings:
@@ -432,9 +444,12 @@ Resources:
         - Name: coralogix-otel-agent
           Cpu: 0
           Memory: !Ref Memory
-          Image: !Ref Image
+          Image: !If
+            - UseImage
+            - !Ref Image
+            - !Sub "coralogixrepo/coralogix-otel-collector:${CDOTImageVersion}"
+            
           Essential: true
-
           PortMappings:
             - HostPort: 4317
               Protocol: tcp
