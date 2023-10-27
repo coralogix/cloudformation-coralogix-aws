@@ -8,13 +8,20 @@ Parameters:
   ClusterName:
     Type: String
 
+  CDOTImageVersion:
+    Description: |
+      The Coralogix Open Telemetry Distribution Image
+      Version/Tag.
+      View available tags here: https://hub.docker.com/r/coralogixrepo/coralogix-otel-collector/tags
+    Type: String
+  
   Image:
     Description: |
-      The opentelemetry image used to start the container.
-      This defaults to the coralogixrepo/coralogix-otel-collector image.
-      https://hub.docker.com/r/coralogixrepo/coralogix-otel-collector/tags
+      The OpenTelemetry Collector Image to use.
+      If specified, this value will override the CDOTImageVersion parameter and
+      the coralogix otel collector image.
+    Default: none
     Type: String
-    Default: coralogixrepo/coralogix-otel-collector:v0.1.2
 
   Memory:
     Description: |
@@ -34,13 +41,13 @@ Parameters:
         - US
         - US2
 
-  ApplicationName:
+  DefaultApplicationName:
     Type: String
     Description: The name of your application
     MinLength: 1
     MaxLength: 64
 
-  SubsystemName:
+  DefaultSubsystemName:
     Type: String
     Description: The subsystem name of your application
     MinLength: 1
@@ -68,8 +75,9 @@ Parameters:
     Default: "none"
 
 Conditions:
-  DefaultSubsystemName: !Equals [ !Ref SubsystemName, "default" ]
+  UseDefaultSubsystemName: !Equals [ !Ref DefaultSubsystemName, "default" ]
   Metrics: !Equals [ !Ref Metrics, "enable" ]
+  UseImage: !Not [!Equals [ !Ref Image, "none" ]]
   UseCustomConfig: 
     Fn::Not: 
     - !Equals [ !Ref OtelConfig, "none" ]
@@ -117,10 +125,6 @@ Mappings:
             override: false
 
           ecsattributes:
-            attributes:
-              - ^image$
-              - ^aws.*
-              - ^labels.*
             container_id:
               sources:
                 - "log.file.path"
@@ -132,7 +136,15 @@ Mappings:
                 statements:
                   - set(attributes["cx_container_id"], attributes["docker.id"])
                   - set(attributes["aws_ecs_task_family"], attributes["aws.ecs.task.definition.family"])
-            
+                  - set(attributes["image_id"], attributes["image.id"])
+                  - delete_key(attributes, "image.id")
+
+          # otel-collector resource detection for collector
+          resourcedetection/otel-collector:
+            detectors: [ecs, ec2]
+            timeout: 2s
+            override: false
+
         exporters:
           logging:
             verbosity: detailed
@@ -142,12 +154,22 @@ Mappings:
             application_name: "$APP_NAME"
             subsystem_name: "$SUB_SYS"
             application_name_attributes:
+            - "aws.ecs.cluster"
+            - "aws.ecs.cluster.name"
             - "aws.ecs.task.definition.family"
             subsystem_name_attributes:
+            - "aws.ecs.container.name"
+            - "aws.ecs.docker.name"
             - "docker.name"
             timeout: 30s
 
+        extensions:
+          health_check:
+
         service:
+          extensions:
+            - health_check
+
           pipelines:
             logs:
               receivers: 
@@ -165,9 +187,11 @@ Mappings:
               exporters:
                 - coralogix
 
-            metrics:
+            metrics/otel-collector:
               receivers:
                 - prometheus
+              processors:
+                - resourcedetection/otel-collector
               exporters:
                 - coralogix
 
@@ -232,7 +256,13 @@ Mappings:
                   - delete_key(attributes, "image.id")
 
           batch:
-                  
+
+          # otel-collector resource detection for collector
+          resourcedetection/otel-collector:
+            detectors: [ecs, ec2]
+            timeout: 2s
+            override: false
+
         exporters:
           logging:
           coralogix:
@@ -241,12 +271,21 @@ Mappings:
             application_name: "$APP_NAME"
             subsystem_name: "$SUB_SYS"
             application_name_attributes:
+            - "aws.ecs.cluster"
+            - "aws.ecs.cluster.name"
             - "aws.ecs.task.definition.family"
             subsystem_name_attributes:
+            - "aws.ecs.container.name"
+            - "aws.ecs.docker.name"
             - "docker.name"
             timeout: 30s
+          
+        extensions:
+          health_check:
 
         service:
+          extensions:
+            - health_check
           pipelines:
             logs:
               receivers: 
@@ -271,6 +310,14 @@ Mappings:
                 - otlp
               processors:
                 - batch
+              exporters:
+                - coralogix
+
+            metrics/otel-collector:
+              receivers:
+                - prometheus
+              processors:
+                - resourcedetection/otel-collector
               exporters:
                 - coralogix
 
@@ -323,7 +370,11 @@ Resources:
         - Name: coralogix-otel-agent
           Cpu: 0
           Memory: !Ref Memory
-          Image: !Ref Image
+          Image: !If
+            - UseImage
+            - !Ref Image
+            - !Sub "coralogixrepo/coralogix-otel-collector:${CDOTImageVersion}"
+
           Essential: true
 
           PortMappings:
@@ -353,28 +404,24 @@ Resources:
           Environment:
             - Name: CORALOGIX_DOMAIN
               Value: !FindInMap [CoralogixRegionMap, !Ref CoralogixRegion, Domain]
-
-            - Name: OTEL_RESOURCE_ATTRIBUTES
-              Value: !If
-                - DefaultSubsystemName
-                - !Sub "APP_NAME=${ApplicationName},SUB_SYS=${AWS::AccountId}"
-                - !Sub "APP_NAME=${ApplicationName},SUB_SYS=${SubsystemName}"
            
             - Name: PRIVATE_KEY
               Value: !Ref PrivateKey
 
             - Name: APP_NAME
-              Value: !Ref ApplicationName
+              Value: !Ref DefaultApplicationName
 
             - Name: SUB_SYS
-              Value: !Ref SubsystemName
+              Value: !If
+                - UseDefaultSubsystemName
+                - !Sub "${AWS::AccountId}"
+                - !Ref DefaultSubsystemName
 
             - Name: OTEL_CONFIG
               Value: !If
                 - Metrics
                 - !FindInMap [Otel, Config, Metrics]
                 - !FindInMap [Otel, Config, Default]
-
 
   OtelTaskDefinitionCustom: 
     Type: AWS::ECS::TaskDefinition
@@ -397,9 +444,12 @@ Resources:
         - Name: coralogix-otel-agent
           Cpu: 0
           Memory: !Ref Memory
-          Image: !Ref Image
+          Image: !If
+            - UseImage
+            - !Ref Image
+            - !Sub "coralogixrepo/coralogix-otel-collector:${CDOTImageVersion}"
+            
           Essential: true
-
           PortMappings:
             - HostPort: 4317
               Protocol: tcp
@@ -427,21 +477,18 @@ Resources:
           Environment:
             - Name: CORALOGIX_DOMAIN
               Value: !FindInMap [CoralogixRegionMap, !Ref CoralogixRegion, Domain]
-
-            - Name: OTEL_RESOURCE_ATTRIBUTES
-              Value: !If
-                - DefaultSubsystemName
-                - !Sub "APP_NAME=${ApplicationName},SUB_SYS=${AWS::AccountId}"
-                - !Sub "APP_NAME=${ApplicationName},SUB_SYS=${SubsystemName}"
            
             - Name: PRIVATE_KEY
               Value: !Ref PrivateKey
 
             - Name: APP_NAME
-              Value: !Ref ApplicationName
+              Value: !Ref DefaultApplicationName
 
             - Name: SUB_SYS
-              Value: !Ref SubsystemName
+              Value: !If
+                - UseDefaultSubsystemName
+                - !Sub "${AWS::AccountId}"
+                - !Ref DefaultSubsystemName
 
             - Name: OTEL_CONFIG
               Value: !Ref OtelConfig
