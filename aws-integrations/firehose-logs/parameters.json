@@ -1,4 +1,0 @@
-[
-    { "ParameterKey": "ApiKey", "ParameterValue": "<private-key>" },
-    { "ParameterKey": "CoralogixDomain", "ParameterValue": "<cx-domain>" }
-]
