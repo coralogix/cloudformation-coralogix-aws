@@ -422,6 +422,8 @@ Resources:
       FunctionName: !Sub '${AWS::StackName}-metrics-transform'
       Handler: bootstrap
       Runtime: provided.al2
+      Architectures: 
+      - arm64
       Role: !GetAtt LambdaProcessorRole.Arn
       Timeout: 60
       MemorySize: 512
