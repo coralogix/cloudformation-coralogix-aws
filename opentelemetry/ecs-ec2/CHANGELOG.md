@@ -30,9 +30,12 @@
 ### 0.0.2 / 2023-09-11
 * Added EC2 ECS Windows Example for metrics collection
 
-### 0.0.2 / 2023-08-16
-* Updated Otel ECS-EC2 to support US2 region.
-
 ### 0.0.1 / 2023--08-02
 * Updated Otel ECS-EC2 cloudformation template. Added embedded support for logs, metrics and traces
 * Updated the default Otel container image used to coralogixrepo/coralogix-otel-collector
+
+### 0.0.2 / 2023-08-16
+* Updated Otel ECS-EC2 to support US2 region.
+
+### 0.0.2 / 2023-10-17
+* Removed log.file.path from coralogix exporter subsystem_name_attributes, too many permutations.
