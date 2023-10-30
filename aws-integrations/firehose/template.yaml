@@ -3,20 +3,9 @@ Transform: AWS::Serverless-2016-10-31
 Description: Send Kinesis Firehose stream data to Coralogix.
 
 Parameters:
-  CoralogixRegion:
+  CoralogixDomain:
     Type: String
-    Description: The Coralogix location region [ireland, stockholm, india, singapore, us, us2]
-    AllowedValues:
-      - ireland
-      - stockholm
-      - india
-      - singapore
-      - us
-      - us2
-    Default: ireland
-  CustomDomain:
-    Type: String
-    Description: The Custom url domain. If set, will be the url used to send telemetry.
+    Description: The Coralogix Url domain (see https://coralogix.com/docs/coralogix-domain). If set, will be the url used to send telemetry (e.g. coralogix.com, eu2.coralogix.com).
     Default: ""
   ApiKey:
     Type: String
@@ -121,14 +110,13 @@ Metadata:
       - Label: 
           default: "Required"
         Parameters: 
-          - CoralogixRegion
+          - CoralogixDomain
           - ApiKey
           - ApplicationName
           - SubsystemName
       - Label: 
           default: "Others"
         Parameters: 
-          - CustomDomain
           - CloudwatchRetentionDays
           - DynamicMetadataLogs
       - Label: 
@@ -148,27 +136,11 @@ Metadata:
           - EnableAddtionalStatistics
           - AddtionalStatisticsConfigurations
           
-Mappings:
-  CoralogixRegionMap:
-    ireland:
-      LogUrl: https://firehose-ingress.coralogix.com/firehose
-    stockholm:
-      LogUrl: https://firehose-ingress.eu2.coralogix.com/firehose
-    india:
-      LogUrl: https://firehose-ingress.coralogix.in/firehose
-    singapore:
-      LogUrl: https://firehose-ingress.coralogixsg.com/firehose
-    us:
-      LogUrl: https://firehose-ingress.coralogix.us/firehose
-    us2:
-      LogUrl: https://firehose-ingress.cx498.coralogix.com/firehose
-
 Conditions:
   IsApplicationName: !Not [!Equals [!Ref ApplicationName, ""]]
   IsSubsystemName: !Not [!Equals [!Ref SubsystemName, ""]]
   IsIntegrationTypeLogs: !Not [!Equals [!Ref IntegrationTypeLogs, ""]]
   IsDynamicMetadataLogs: !Not [!Equals [ !Ref DynamicMetadataLogs, ""]]
-  IsCustomDomain: !Not [!Equals [ !Ref CustomDomain, ""]]
   IsKinesisStreamAsSource: !Not [!Equals [ !Ref KinesisStreamAsSourceARN, "" ]]
   IsLogsEnabled: !Not [!Equals [ !Ref EnableLogsStream, "false" ]]
   IsMetricsEnabled: !Not [!Equals [ !Ref EnableMetricsStream, "false" ]]
@@ -178,7 +150,9 @@ Resources:
   BackupDataBucket:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: !Sub '${AWS::StackId}-backup'
+      BucketName: !Sub 
+      - 'firehose-${StackGUID}-backup-logs'
+      - { StackGUID: !Select [0, !Split ["-", !Select [2, !Split ["/", !Ref AWS::StackId ]]]] }
       AccessControl: Private
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
@@ -309,11 +283,7 @@ Resources:
         RoleARN:
           !GetAtt FirehoseLogsRole.Arn
         EndpointConfiguration:
-          Url: 
-            !If 
-              - IsCustomDomain
-              - !Ref CustomDomain
-              - Fn::FindInMap: [ CoralogixRegionMap, !Ref CoralogixRegion, LogUrl ]
+          Url: !Sub 'https://firehose-ingress.${CoralogixDomain}/firehose'
           AccessKey:
             Ref: ApiKey
           Name: 
@@ -511,11 +481,7 @@ Resources:
         RoleARN:
           !GetAtt FirehoseMetricsRole.Arn
         EndpointConfiguration:
-          Url: 
-            !If 
-              - IsCustomDomain
-              - !Ref CustomDomain
-              - Fn::FindInMap: [ CoralogixRegionMap, !Ref CoralogixRegion, LogUrl ]
+          Url: !Sub 'https://firehose-ingress.${CoralogixDomain}/firehose'
           AccessKey:
             Ref: ApiKey
           Name: 
@@ -707,7 +673,9 @@ Resources:
 Outputs:
   BackupDataBucketName:
     Description: S3 Bucket where failed deliveries will be backed-up
-    Value: !Sub '${AWS::StackId}-backup'
+    Value: !Sub 
+      - 'firehose-${StackGUID}-backup-logs'
+      - { StackGUID: !Select [0, !Split ["-", !Select [2, !Split ["/", !Ref AWS::StackId ]]]] }
   CoralogixDeliveryLogsStreamARN:
     Condition: IsLogsEnabled
     Description: The ARN for your Kinesis Firehose Delivery Stream, use this as the
