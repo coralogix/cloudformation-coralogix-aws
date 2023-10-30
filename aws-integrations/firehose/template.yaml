@@ -151,7 +151,7 @@ Resources:
     Type: AWS::S3::Bucket
     Properties:
       BucketName: !Sub 
-      - 'firehose-${StackGUID}-backup-logs'
+      - 'firehose-${StackGUID}-backup'
       - { StackGUID: !Select [0, !Split ["-", !Select [2, !Split ["/", !Ref AWS::StackId ]]]] }
       AccessControl: Private
       PublicAccessBlockConfiguration:
@@ -674,7 +674,7 @@ Outputs:
   BackupDataBucketName:
     Description: S3 Bucket where failed deliveries will be backed-up
     Value: !Sub 
-      - 'firehose-${StackGUID}-backup-logs'
+      - 'firehose-${StackGUID}-backup'
       - { StackGUID: !Select [0, !Split ["-", !Select [2, !Split ["/", !Ref AWS::StackId ]]]] }
   CoralogixDeliveryLogsStreamARN:
     Condition: IsLogsEnabled
