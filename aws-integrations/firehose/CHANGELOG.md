@@ -13,3 +13,6 @@
 
 ### 0.0.1 / 30 Sep 2023
 * [Update] Made naming & update changes to align Firehose template with Integration team's firehose-metricss one.
+
+### 0.0.1 / 30 Oct 2023
+* [Update] Fix for bucketname to be short and globally unique by stack ID, domain fix to allow other envs
