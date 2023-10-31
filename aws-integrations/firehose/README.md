@@ -12,10 +12,11 @@ For a more detailed description of the settigns and architecture of this AWS Kin
 
 | Parameter | Description | Default Value | Required |
 |---|---|---|---|
-| CoralogixDomain | The Coralogix Url domain. If set, will be the url used to send telemetry (e.g. coralogix.com, eu2.coralogix.com) | | |
+| CoralogixRegion | The region of your Coralogix Account | _Allowed Values:_<br>- ireland<br>- stockholm<br>- india<br>- singapore<br>- us<br>- us2<br>_Default: ireland_ | :heavy_check_mark: |
 | ApiKey | Your Coralogix Private Key | |  :heavy_check_mark: |
 | ApplicationName | Your Coralogix Application name | | |
 | SubsystemName | Your Coralogix Subsystem name | | |
+| CustomDomain | The custom url domain. If set, will be the url used to send telemetry. | | |
 
 ## Log Stream Parameters
 
@@ -62,7 +63,7 @@ For a more detailed description of the settigns and architecture of this AWS Kin
 With the aws cli installed and configured, run the following command:
 
 ```sh
-aws cloudformation create-stack --stack-name <stack_name> --template-body template.yaml --capabilities CAPABILITY_AUTO_EXPAND CAPABILITY_IAM CAPABILITY_NAMED_IAM --parameter-overrides ApiKey=<coralogix_api_key> CoralogixDomain=<domain> ApplicationName=<application_name> SubsystemName=<subsystem_name> EnableLogsStream=<true/false> EnableMetricsStream=<true/false> 
+aws cloudformation create-stack --stack-name <stack_name> --template-body template.yaml --capabilities CAPABILITY_AUTO_EXPAND CAPABILITY_IAM CAPABILITY_NAMED_IAM --parameter-overrides ApiKey=<coralogix_api_key> CoralogixRegion=<region> ApplicationName=<application_name> SubsystemName=<subsystem_name> EnableLogsStream=<true/false> EnableMetricsStream=<true/false> 
 ```
 
 or with a parameters json file example:
