@@ -124,6 +124,8 @@ jobs:
 
           done < changed-integration.txt
 
+          echo "Branch name set: #$branch_name"
+
           rm replace_template.sh
           rm -rf template-directory
           rm changed-integration.txt
