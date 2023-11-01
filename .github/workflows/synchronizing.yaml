@@ -139,7 +139,7 @@ jobs:
             branch_name=$(echo "${{ github.event.head_commit.message }}" | cut -d '%' -f 2)
             Pr_name=$(echo "${{ github.event.head_commit.message }}" | cut -d '%' -f 1)
           else
-            branch_name=update_integration-branch
+            branch_name=update_integration_branch
             Pr_name="${{ github.event.head_commit.message }}"
           fi
           pr_exists=$(gh pr list --base master --head "${branch_name}" --json number -q '.[].number')
