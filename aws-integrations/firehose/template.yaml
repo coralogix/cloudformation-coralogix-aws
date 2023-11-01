@@ -178,7 +178,9 @@ Resources:
   BackupDataBucket:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: !Sub '${AWS::StackId}-backup'
+      BucketName: !Sub 
+      - 'firehose-${StackGUID}-backup'
+      - { StackGUID: !Select [0, !Split ["-", !Select [2, !Split ["/", !Ref AWS::StackId ]]]] }
       AccessControl: Private
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
@@ -709,7 +711,9 @@ Resources:
 Outputs:
   BackupDataBucketName:
     Description: S3 Bucket where failed deliveries will be backed-up
-    Value: !Sub '${AWS::StackId}-backup'
+    Value: !Sub 
+      - 'firehose-${StackGUID}-backup'
+      - { StackGUID: !Select [0, !Split ["-", !Select [2, !Split ["/", !Ref AWS::StackId ]]]] }
   CoralogixDeliveryLogsStreamARN:
     Condition: IsLogsEnabled
     Description: The ARN for your Kinesis Firehose Delivery Stream, use this as the
