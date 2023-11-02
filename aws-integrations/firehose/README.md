@@ -12,11 +12,12 @@ For a more detailed description of the settigns and architecture of this AWS Kin
 
 | Parameter | Description | Default Value | Required |
 |---|---|---|---|
-| CoralogixRegion | The region of your Coralogix Account | _Allowed Values:_<br>- Europe<br>- Europe2<br>- India<br>- Singapore<br>- US<br>- US2<br>_Default_: Europe | :heavy_check_mark: |
+| CoralogixRegion | The region of your Coralogix Account | _Allowed Values:_<br>- Custom<br>- Europe<br>- Europe2<br>- India<br>- Singapore<br>- US<br>- US2<br>_Default_: Europe | :heavy_check_mark: |
+| CustomDomain | The Custom Coralogix domain. If set, will be the domain to send telemetry. | | |
 | ApiKey | Your Coralogix Private Key | |  :heavy_check_mark: |
 | ApplicationName | Your Coralogix Application name | | |
 | SubsystemName | Your Coralogix Subsystem name | | |
-| CustomDomain | The Custom Coralogix domain. If set, will be the domain to send telemetry. | | |
+
 
 ## Log Stream Parameters
 

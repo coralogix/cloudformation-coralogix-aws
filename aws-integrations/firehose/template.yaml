@@ -5,18 +5,19 @@ Description: Send Kinesis Firehose stream data to Coralogix.
 Parameters:
   CoralogixRegion:
     Type: String
-    Description: The Coralogix location region [Europe, Europe2, India, Singapore, US, US2]
+    Description: The region of your Coralogix Account [Europe, Europe2, India, Singapore, US, US2]. If set to Custom, you must provide a CustomDomain.
     AllowedValues:
+      - Custom
       - Europe
       - Europe2
       - India
       - Singapore
       - US
       - US2
-    Default: Europe
+    Default: Custom
   CustomDomain:
     Type: String
-    Description: The Custom Domain. If set, will be the url used to send telemetry (e.g. coralogix.com, eu2.coralogix.com)
+    Description: The Custom Domain. If set, will be the url used to send telemetry (e.g. coralogix.com, eu2.coralogix.com, coralogixsg.com)
     Default: ""
   ApiKey:
     Type: String
@@ -123,13 +124,13 @@ Metadata:
           default: "Required"
         Parameters: 
           - CoralogixRegion
+          - CustomDomain
           - ApiKey
           - ApplicationName
           - SubsystemName
       - Label: 
           default: "Others"
         Parameters: 
-          - CustomDomain
           - CloudwatchRetentionDays
           - DynamicMetadataLogs
       - Label: 
@@ -163,13 +164,15 @@ Mappings:
       LogUrl: coralogix.us
     US2:
       LogUrl: cx498.coralogix.com
+    Custom:
+      LogUrl: ""
 
 Conditions:
   IsApplicationName: !Not [!Equals [!Ref ApplicationName, ""]]
   IsSubsystemName: !Not [!Equals [!Ref SubsystemName, ""]]
   IsIntegrationTypeLogs: !Not [!Equals [!Ref IntegrationTypeLogs, ""]]
   IsDynamicMetadataLogs: !Not [!Equals [ !Ref DynamicMetadataLogs, ""]]
-  IsCustomDomain: !Not [!Equals [ !Ref CustomDomain, ""]]
+  IsCustomDomain: !Equals [ !Ref CoralogixRegion, "Custom"]
   IsKinesisStreamAsSource: !Not [!Equals [ !Ref KinesisStreamAsSourceARN, "" ]]
   IsLogsEnabled: !Not [!Equals [ !Ref EnableLogsStream, "false" ]]
   IsMetricsEnabled: !Not [!Equals [ !Ref EnableMetricsStream, "false" ]]
