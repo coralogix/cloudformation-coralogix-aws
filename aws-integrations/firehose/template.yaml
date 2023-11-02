@@ -2,7 +2,6 @@ AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 Description: Send Kinesis Firehose stream data to Coralogix.
 
-
 Parameters:
   CoralogixRegion:
     Type: String
@@ -18,7 +17,7 @@ Parameters:
     Default: Custom
   CustomDomain:
     Type: String
-    Description: The Custom Domain. If set, will be the url used to send telemetry (e.g. coralogix.com, eu2.coralogix.com, coralogixsg.com)
+    Description: The Custom Domain. If set, will be the domain used to send telemetry (e.g. coralogix.com, eu2.coralogix.com, coralogixsg.com)
     Default: ""
   ApiKey:
     Type: String
