@@ -44,6 +44,7 @@ jobs:
   upload_files:
     runs-on: ubuntu-latest
     name: upload files
+    needs: check-changelog-updates
     env:
       integration_list: "s3,s3-sns,cloudtrail,cloudtrail-sns,cloudwatch-logs,vpc-flow-logs,firehose,resource-metadata"
     steps:
