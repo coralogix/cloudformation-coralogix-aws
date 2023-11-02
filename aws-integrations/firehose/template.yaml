@@ -5,18 +5,18 @@ Description: Send Kinesis Firehose stream data to Coralogix.
 Parameters:
   CoralogixRegion:
     Type: String
-    Description: The Coralogix location region [ireland, stockholm, india, singapore, us, us2]
+    Description: The Coralogix location region [Europe, Europe2, India, Singapore, US, US2]
     AllowedValues:
-      - ireland
-      - stockholm
-      - india
-      - singapore
-      - us
-      - us2
-    Default: ireland
+      - Europe
+      - Europe2
+      - India
+      - Singapore
+      - US
+      - US2
+    Default: Europe
   CustomDomain:
     Type: String
-    Description: The Custom url domain. If set, will be the url used to send telemetry.
+    Description: The Custom Domain. If set, will be the url used to send telemetry (e.g. coralogix.com, eu2.coralogix.com)
     Default: ""
   ApiKey:
     Type: String
@@ -74,9 +74,10 @@ Parameters:
     Default: 'true'
   IntegrationTypeMetrics:
     Type: String
-    Description: "The integration type of the firehose delivery stream [CloudWatch_Metrics_OpenTelemetry070, CloudWatch_Metrics_JSON] - default: CloudWatch_Metrics_OpenTelemetry070"
+    Description: "The integration type of the firehose delivery stream [CloudWatch_Metrics_OpenTelemetry070, CloudWatch_Metrics_OpenTelemetry070_WithAggregations, CloudWatch_Metrics_JSON] - default: CloudWatch_Metrics_OpenTelemetry070"
     AllowedValues:
       - CloudWatch_Metrics_OpenTelemetry070
+      - CloudWatch_Metrics_OpenTelemetry070_WithAggregations
       - CloudWatch_Metrics_JSON
     Default: CloudWatch_Metrics_OpenTelemetry070
   OutputFormat:
@@ -150,18 +151,18 @@ Metadata:
           
 Mappings:
   CoralogixRegionMap:
-    ireland:
-      LogUrl: https://firehose-ingress.coralogix.com/firehose
-    stockholm:
-      LogUrl: https://firehose-ingress.eu2.coralogix.com/firehose
-    india:
-      LogUrl: https://firehose-ingress.coralogix.in/firehose
-    singapore:
-      LogUrl: https://firehose-ingress.coralogixsg.com/firehose
-    us:
-      LogUrl: https://firehose-ingress.coralogix.us/firehose
-    us2:
-      LogUrl: https://firehose-ingress.cx498.coralogix.com/firehose
+    Europe:
+      LogUrl: coralogix.com
+    Europe2:
+      LogUrl: eu2.coralogix.com
+    India:
+      LogUrl: coralogix.in
+    Singapore:
+      LogUrl: coralogixsg.com
+    US:
+      LogUrl: coralogix.us
+    US2:
+      LogUrl: cx498.coralogix.com
 
 Conditions:
   IsApplicationName: !Not [!Equals [!Ref ApplicationName, ""]]
@@ -314,8 +315,10 @@ Resources:
           Url: 
             !If 
               - IsCustomDomain
-              - !Ref CustomDomain
-              - Fn::FindInMap: [ CoralogixRegionMap, !Ref CoralogixRegion, LogUrl ]
+              - !Sub 'https://firehose-ingress.${CustomDomain}/firehose'
+              - !Sub 
+                - 'https://firehose-ingress.${Domain}/firehose'
+                - Domain: !FindInMap [CoralogixRegionMap, !Ref CoralogixRegion, LogUrl]
           AccessKey:
             Ref: ApiKey
           Name: 
@@ -518,8 +521,10 @@ Resources:
           Url: 
             !If 
               - IsCustomDomain
-              - !Ref CustomDomain
-              - Fn::FindInMap: [ CoralogixRegionMap, !Ref CoralogixRegion, LogUrl ]
+              - !Sub 'https://firehose-ingress.${CustomDomain}/firehose'
+              - !Sub 
+                - 'https://firehose-ingress.${Domain}/firehose'
+                - Domain: !FindInMap [CoralogixRegionMap, !Ref CoralogixRegion, LogUrl]
           AccessKey:
             Ref: ApiKey
           Name: 
