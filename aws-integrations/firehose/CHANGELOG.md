@@ -22,3 +22,6 @@
 
 ### 0.0.2 / 02 Nov 2023
 * [Update] Changed CustomDomain to be proper domain instead of url. Added CloudWatch_Metrics_OpenTelemetry070_WithAggregations option.
+
+### 0.0.2 / 02 Nov 2023
+* [Update] Text change correction, test pr trigger script
