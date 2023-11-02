@@ -19,3 +19,6 @@
 
 ### 0.0.1 / 30 Oct 2023
 * [Update] Fix for bucketname to be short and globally unique by stack ID
+
+### 0.0.1 / 02 Nov 2023
+* [Update] Changed CustomDomain to be proper domain instead of url. Added CloudWatch_Metrics_OpenTelemetry070_WithAggregations option.
