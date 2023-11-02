@@ -6,18 +6,19 @@ Description: Send Kinesis Firehose stream data to Coralogix.
 Parameters:
   CoralogixRegion:
     Type: String
-    Description: The Coralogix location region [ireland, stockholm, india, singapore, us, us2]
+    Description: The region of your Coralogix Account [Europe, Europe2, India, Singapore, US, US2]. If set to Custom, you must provide a CustomDomain.
     AllowedValues:
-      - ireland
-      - stockholm
-      - india
-      - singapore
-      - us
-      - us2
-    Default: ireland
+      - Custom
+      - Europe
+      - Europe2
+      - India
+      - Singapore
+      - US
+      - US2
+    Default: Custom
   CustomDomain:
     Type: String
-    Description: The Custom url domain. If set, will be the url used to send telemetry.
+    Description: The Custom Domain. If set, will be the url used to send telemetry (e.g. coralogix.com, eu2.coralogix.com, coralogixsg.com)
     Default: ""
   ApiKey:
     Type: String
@@ -75,9 +76,10 @@ Parameters:
     Default: 'true'
   IntegrationTypeMetrics:
     Type: String
-    Description: "The integration type of the firehose delivery stream [CloudWatch_Metrics_OpenTelemetry070, CloudWatch_Metrics_JSON] - default: CloudWatch_Metrics_OpenTelemetry070"
+    Description: "The integration type of the firehose delivery stream [CloudWatch_Metrics_OpenTelemetry070, CloudWatch_Metrics_OpenTelemetry070_WithAggregations, CloudWatch_Metrics_JSON] - default: CloudWatch_Metrics_OpenTelemetry070"
     AllowedValues:
       - CloudWatch_Metrics_OpenTelemetry070
+      - CloudWatch_Metrics_OpenTelemetry070_WithAggregations
       - CloudWatch_Metrics_JSON
     Default: CloudWatch_Metrics_OpenTelemetry070
   OutputFormat:
@@ -116,20 +118,20 @@ Parameters:
     Default: "[{\"AdditionalStatistics\":[\"p50\",\"p75\",\"p95\",\"p99\"],\"IncludeMetrics\":[{\"Namespace\":\"AWS/EBS\",\"MetricName\":\"VolumeTotalReadTime\"},{\"Namespace\":\"AWS/EBS\",\"MetricName\":\"VolumeTotalWriteTime\"},{\"Namespace\":\"AWS/ELB\",\"MetricName\":\"Latency\"},{\"Namespace\":\"AWS/ELB\",\"MetricName\":\"Duration\"},{\"Namespace\":\"AWS/Lambda\",\"MetricName\":\"PostRuntimeExtensionsDuration\"},{\"Namespace\":\"AWS/S3\",\"MetricName\":\"FirstByteLatency\"},{\"Namespace\":\"AWS/S3\",\"MetricName\":\"TotalRequestLatency\"}]}]"
 
 Metadata:
-  SemanticVersion: 0.0.1
+  SemanticVersion: 0.0.2
   AWS::CloudFormation::Interface: 
     ParameterGroups: 
       - Label: 
           default: "Required"
         Parameters: 
           - CoralogixRegion
+          - CustomDomain
           - ApiKey
           - ApplicationName
           - SubsystemName
       - Label: 
           default: "Others"
         Parameters: 
-          - CustomDomain
           - CloudwatchRetentionDays
           - DynamicMetadataLogs
       - Label: 
@@ -151,25 +153,27 @@ Metadata:
           
 Mappings:
   CoralogixRegionMap:
-    ireland:
-      LogUrl: https://firehose-ingress.coralogix.com/firehose
-    stockholm:
-      LogUrl: https://firehose-ingress.eu2.coralogix.com/firehose
-    india:
-      LogUrl: https://firehose-ingress.coralogix.in/firehose
-    singapore:
-      LogUrl: https://firehose-ingress.coralogixsg.com/firehose
-    us:
-      LogUrl: https://firehose-ingress.coralogix.us/firehose
-    us2:
-      LogUrl: https://firehose-ingress.cx498.coralogix.com/firehose
+    Europe:
+      LogUrl: coralogix.com
+    Europe2:
+      LogUrl: eu2.coralogix.com
+    India:
+      LogUrl: coralogix.in
+    Singapore:
+      LogUrl: coralogixsg.com
+    US:
+      LogUrl: coralogix.us
+    US2:
+      LogUrl: cx498.coralogix.com
+    Custom:
+      LogUrl: ""
 
 Conditions:
   IsApplicationName: !Not [!Equals [!Ref ApplicationName, ""]]
   IsSubsystemName: !Not [!Equals [!Ref SubsystemName, ""]]
   IsIntegrationTypeLogs: !Not [!Equals [!Ref IntegrationTypeLogs, ""]]
   IsDynamicMetadataLogs: !Not [!Equals [ !Ref DynamicMetadataLogs, ""]]
-  IsCustomDomain: !Not [!Equals [ !Ref CustomDomain, ""]]
+  IsCustomDomain: !Equals [ !Ref CoralogixRegion, "Custom"]
   IsKinesisStreamAsSource: !Not [!Equals [ !Ref KinesisStreamAsSourceARN, "" ]]
   IsLogsEnabled: !Not [!Equals [ !Ref EnableLogsStream, "false" ]]
   IsMetricsEnabled: !Not [!Equals [ !Ref EnableMetricsStream, "false" ]]
@@ -315,8 +319,10 @@ Resources:
           Url: 
             !If 
               - IsCustomDomain
-              - !Ref CustomDomain
-              - Fn::FindInMap: [ CoralogixRegionMap, !Ref CoralogixRegion, LogUrl ]
+              - !Sub 'https://firehose-ingress.${CustomDomain}/firehose'
+              - !Sub 
+                - 'https://firehose-ingress.${Domain}/firehose'
+                - Domain: !FindInMap [CoralogixRegionMap, !Ref CoralogixRegion, LogUrl]
           AccessKey:
             Ref: ApiKey
           Name: 
@@ -519,8 +525,10 @@ Resources:
           Url: 
             !If 
               - IsCustomDomain
-              - !Ref CustomDomain
-              - Fn::FindInMap: [ CoralogixRegionMap, !Ref CoralogixRegion, LogUrl ]
+              - !Sub 'https://firehose-ingress.${CustomDomain}/firehose'
+              - !Sub 
+                - 'https://firehose-ingress.${Domain}/firehose'
+                - Domain: !FindInMap [CoralogixRegionMap, !Ref CoralogixRegion, LogUrl]
           AccessKey:
             Ref: ApiKey
           Name: 

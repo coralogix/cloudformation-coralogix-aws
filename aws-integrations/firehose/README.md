@@ -12,11 +12,12 @@ For a more detailed description of the settigns and architecture of this AWS Kin
 
 | Parameter | Description | Default Value | Required |
 |---|---|---|---|
-| CoralogixRegion | The region of your Coralogix Account | _Allowed Values:_<br>- ireland<br>- stockholm<br>- india<br>- singapore<br>- us<br>- us2<br>_Default: ireland_ | :heavy_check_mark: |
+| CoralogixRegion | The region of your Coralogix Account | _Allowed Values:_<br>- Custom<br>- Europe<br>- Europe2<br>- India<br>- Singapore<br>- US<br>- US2<br>_Default_: Custom | :heavy_check_mark: |
+| CustomDomain | The Custom Coralogix domain. If set, will be the domain to send telemetry. | | |
 | ApiKey | Your Coralogix Private Key | |  :heavy_check_mark: |
 | ApplicationName | Your Coralogix Application name | | |
 | SubsystemName | Your Coralogix Subsystem name | | |
-| CustomDomain | The custom url domain. If set, will be the url used to send telemetry. | | |
+
 
 ## Log Stream Parameters
 
@@ -32,7 +33,7 @@ For a more detailed description of the settigns and architecture of this AWS Kin
 | Parameter | Description | Default Value | Required |
 |---|---|---|---|
 | EnableMetricsStream | Enable metrics streaming to Coralogix | true | |
-| IntegrationTypeMetrics | The data structure of the Firehose delivery stream for metrics | _Allowed Values:_<br>- opentelemetry0.7<br>- CloudWatch_Metrics_JSON<br> _Default_: CloudWatch_Metrics_OpenTelemetry070 | |
+| IntegrationTypeMetrics | The data structure of the Firehose delivery stream for metrics | _Allowed Values:_<br>- CloudWatch_Metrics_JSON<br>- CloudWatch_Metrics_OpenTelemetry070<br>- CloudWatch_Metrics_OpenTelemetry070_WithAggregations<br> _Default_: CloudWatch_Metrics_OpenTelemetry070 | |
 | OutputFormat | The output format of the cloudwatch metric stream | _Allowed Values:_<br>- opentelemetry0.7<br>- json<br> _Default_: opentelemetry0.7 | |
 | IncludeNamespaces | A string comma-delimited list of namespaces to include to the metric stream <br>e.g. `AWS/EC2,AWS/EKS,AWS/ELB,AWS/Logs,AWS/S3` | | |
 | IncludeNamespacesMetricNames | A string json list of namespaces and metric_names to include to the metric stream. JSON stringify the input to avoid format errors. <br>e.g. {"AWS/EC2":["CPUUtilization","NetworkOut"],"AWS/S3":["BucketSizeBytes"]} | | |
