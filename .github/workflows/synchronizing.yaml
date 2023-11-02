@@ -96,11 +96,12 @@ jobs:
 
       - name: apply changes to the files
         run: |
-          if echo "${{ github.event.head_commit.message }}" | grep -q "%"; then
-            branch_name=$(echo "${{ github.event.head_commit.message }}" | cut -d '%' -f 2)
+          if echo "${{ github.event.head_commit.message }}" | grep -q "#"; then
+            branch_name=$(echo "${{ github.event.head_commit.message }}" | cut -d '#' -f2 | tr -d ')')
           else
             branch_name=update_integration_branch
           fi
+          echo "branch_name: ${branch_name}"
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
           git pull origin master
@@ -123,8 +124,6 @@ jobs:
             fi
 
           done < changed-integration.txt
-
-          echo "Branch name set: #$branch_name"
 
           rm replace_template.sh
           rm -rf template-directory
