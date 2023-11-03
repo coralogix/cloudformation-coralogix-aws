@@ -61,6 +61,7 @@ Parameters:
       - ""
       - 'true'
       - 'false'
+      - 'fake'
     Default: ""
   KinesisStreamAsSourceARN:
     Type: String
