@@ -59,6 +59,9 @@ Parameters:
     Description: When set to true, it fetches set the applicationName / subsystemName dynamically
     AllowedValues:
       - ""
+      - 'true'
+      - 'false'
+      - 'fake'
     Default: ""
   KinesisStreamAsSourceARN:
     Type: String
