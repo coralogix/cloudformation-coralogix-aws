@@ -104,8 +104,11 @@ jobs:
           echo "branch_name: ${branch_name}"
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
+          git remote update
+          git fetch
           git pull origin master
-          git checkout -b ${branch_name}
+          git branch ${branch_name}
+          git checkout ${branch_name}
           sync_branch_exists=$(git ls-remote --heads origin "${branch_name}" | wc -l)
           if [[ $sync_branch_exists -ne 0 ]]; then
             git pull origin ${branch_name} --rebase
