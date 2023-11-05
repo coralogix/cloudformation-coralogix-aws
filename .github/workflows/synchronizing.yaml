@@ -97,14 +97,18 @@ jobs:
       - name: apply changes to the files
         run: |
           if echo "${{ github.event.head_commit.message }}" | grep -q "#"; then
-            branch_name=$(echo "${{ github.event.head_commit.message }}" | cut -d '#' -f 2)
+            branch_name=$(echo "${{ github.event.head_commit.message }}" | cut -d '#' -f2 | tr -d ')')
           else
             branch_name=update_integration_branch
           fi
+          echo "branch_name: ${branch_name}"
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
+          git remote update
+          git fetch
           git pull origin master
-          git checkout -b ${branch_name}
+          git branch ${branch_name}
+          git checkout ${branch_name}
           sync_branch_exists=$(git ls-remote --heads origin "${branch_name}" | wc -l)
           if [[ $sync_branch_exists -ne 0 ]]; then
             git pull origin ${branch_name} --rebase
@@ -133,11 +137,11 @@ jobs:
 
       - name: Create pull request
         run: |
-          if echo "${{ github.event.head_commit.message }}" | grep -q "#"; then
-            branch_name=$(echo "${{ github.event.head_commit.message }}" | cut -d '#' -f 2)
-            Pr_name=$(echo "${{ github.event.head_commit.message }}" | cut -d '#' -f 1)
+          if echo "${{ github.event.head_commit.message }}" | grep -q "%"; then
+            branch_name=$(echo "${{ github.event.head_commit.message }}" | cut -d '%' -f 2)
+            Pr_name=$(echo "${{ github.event.head_commit.message }}" | cut -d '%' -f 1)
           else
-            branch_name=update_integration-branch
+            branch_name=update_integration_branch
             Pr_name="${{ github.event.head_commit.message }}"
           fi
           pr_exists=$(gh pr list --base master --head "${branch_name}" --json number -q '.[].number')
