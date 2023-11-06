@@ -117,7 +117,7 @@ Parameters:
     Default: "[{\"AdditionalStatistics\":[\"p50\",\"p75\",\"p95\",\"p99\"],\"IncludeMetrics\":[{\"Namespace\":\"AWS/EBS\",\"MetricName\":\"VolumeTotalReadTime\"},{\"Namespace\":\"AWS/EBS\",\"MetricName\":\"VolumeTotalWriteTime\"},{\"Namespace\":\"AWS/ELB\",\"MetricName\":\"Latency\"},{\"Namespace\":\"AWS/ELB\",\"MetricName\":\"Duration\"},{\"Namespace\":\"AWS/Lambda\",\"MetricName\":\"PostRuntimeExtensionsDuration\"},{\"Namespace\":\"AWS/S3\",\"MetricName\":\"FirstByteLatency\"},{\"Namespace\":\"AWS/S3\",\"MetricName\":\"TotalRequestLatency\"}]}]"
 
 Metadata:
-  SemanticVersion: 0.0.3
+  SemanticVersion: 0.0.2
   AWS::CloudFormation::Interface: 
     ParameterGroups: 
       - Label: 
