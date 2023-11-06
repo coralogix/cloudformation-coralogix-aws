@@ -25,3 +25,6 @@
 
 ### 0.0.2 / 02 Nov 2023
 * [Update] Text change correction, test pr trigger script
+
+### 0.0.2 / 06 Nov 2023
+* [Update] Another text change correction
