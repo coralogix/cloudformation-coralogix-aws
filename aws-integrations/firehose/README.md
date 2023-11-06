@@ -5,6 +5,7 @@ This template can be used to deploy an AWS Kinesis Firehose Integration to send 
 For a more detailed description of the settigns and architecture of this AWS Kinesis Data Firehose setup, please refer to the Coralogix documentation on [AWS Kinesis Data Firehose – Logs](https://coralogix.com/docs/aws-firehose/) and [AWS Kinesis Data Firehose – Metrics](https://coralogix.com/docs/amazon-kinesis-data-firehose-metrics/).
 
 ## Prerequisites
+
 * AWS account.
 * Coralogix account.
 
