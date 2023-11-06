@@ -2,7 +2,7 @@ name: Sync integration-definitions
 
 on: 
   push:
-    branches: [master, main]
+    branches: [master, main, test-pr-sync]
     paths:
       - "**/template.yaml"
 jobs:
