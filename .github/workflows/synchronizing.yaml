@@ -107,8 +107,7 @@ jobs:
           git remote update
           git fetch
           git pull origin master
-          git branch ${branch_name}
-          git checkout ${branch_name}
+          git checkout -b ${branch_name}
           sync_branch_exists=$(git ls-remote --heads origin "${branch_name}" | wc -l)
           if [[ $sync_branch_exists -ne 0 ]]; then
             git pull origin ${branch_name} --rebase
