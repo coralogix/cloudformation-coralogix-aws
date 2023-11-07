@@ -97,7 +97,7 @@ jobs:
       - name: apply changes to the files
         run: |
           if echo "${{ github.event.head_commit.message }}" | grep -q "#"; then
-            branch_name=$(echo "${{ github.event.head_commit.message }}" | cut -d '#' -f2 | tr -d ')')
+            branch_name=$(echo "${{ github.event.head_commit.message }}" | grep -o '[0-9]\+')
           else
             branch_name=update_integration_branch
           fi
@@ -107,7 +107,8 @@ jobs:
           git remote update
           git fetch
           git pull origin master
-          git checkout -b ${branch_name}
+          git branch ${branch_name}
+          git checkout ${branch_name}
           sync_branch_exists=$(git ls-remote --heads origin "${branch_name}" | wc -l)
           if [[ $sync_branch_exists -ne 0 ]]; then
             git pull origin ${branch_name} --rebase
@@ -137,8 +138,8 @@ jobs:
       - name: Create pull request
         run: |
           if echo "${{ github.event.head_commit.message }}" | grep -q "#"; then
-            branch_name=$(echo "${{ github.event.head_commit.message }}" | cut -d '#' -f2 | tr -d ')')
-            Pr_name=$(echo "${{ github.event.head_commit.message }}" | sed 's/(\#.*$//')
+            branch_name=$(echo "${{ github.event.head_commit.message }}" | grep -o '[0-9]\+')
+            Pr_name=$(echo "${{ github.event.head_commit.message }}" | sed 's/(\{0,1\}\#[0-9]*)\{0,1\}//'
           else
             branch_name=update_integration_branch
             Pr_name="${{ github.event.head_commit.message }}"
