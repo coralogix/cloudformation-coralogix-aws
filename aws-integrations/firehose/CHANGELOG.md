@@ -28,3 +28,6 @@
 
 ### 0.0.2 / 06 Nov 2023
 * [Update] Another text change correction
+
+### 0.0.2 / 08 Nov 2023
+* [Update] fake testing of changelog
