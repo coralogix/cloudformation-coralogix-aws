@@ -3,9 +3,21 @@ Transform: AWS::Serverless-2016-10-31
 Description: Send Kinesis Firehose stream data to Coralogix.
 
 Parameters:
-  CoralogixDomain:
+  CoralogixRegion:
     Type: String
-    Description: The Coralogix Url domain. If set, will be the url used to send telemetry (e.g. coralogix.com, eu2.coralogix.com).
+    Description: The region of your Coralogix Account [Europe, Europe2, India, Singapore, US, US2]. If set to Custom, you must provide a CustomDomain otherwise url will be invalid
+    AllowedValues:
+      - Custom
+      - Europe
+      - Europe2
+      - India
+      - Singapore
+      - US
+      - US2
+    Default: Custom
+  CustomDomain:
+    Type: String
+    Description: The Custom Domain. If set, will be the domain used to send telemetry (e.g. coralogix.com, eu2.coralogix.com, coralogixsg.com)
     Default: ""
   ApiKey:
     Type: String
@@ -49,13 +61,14 @@ Parameters:
     Default: ""
   
 Metadata:
-  SemanticVersion: 0.0.1
+  SemanticVersion: 0.0.2
   AWS::CloudFormation::Interface: 
     ParameterGroups: 
       - Label: 
           default: "Required"
         Parameters: 
-          - CoralogixDomain
+          - CoralogixRegion
+          - CustomDomain
           - ApiKey
           - ApplicationName
           - SubsystemName
@@ -69,12 +82,30 @@ Metadata:
         Parameters: 
           - IntegrationTypeLogs
           - KinesisStreamAsSourceARN
+ 
+Mappings:
+  CoralogixRegionMap:
+    Europe:
+      LogUrl: coralogix.com
+    Europe2:
+      LogUrl: eu2.coralogix.com
+    India:
+      LogUrl: coralogix.in
+    Singapore:
+      LogUrl: coralogixsg.com
+    US:
+      LogUrl: coralogix.us
+    US2:
+      LogUrl: cx498.coralogix.com
+    Custom:
+      LogUrl: ""
 
 Conditions:
   IsApplicationName: !Not [!Equals [!Ref ApplicationName, ""]]
   IsSubsystemName: !Not [!Equals [!Ref SubsystemName, ""]]
   IsIntegrationTypeLogs: !Not [!Equals [!Ref IntegrationTypeLogs, ""]]
   IsDynamicMetadataLogs: !Not [!Equals [ !Ref DynamicMetadataLogs, ""]]
+  IsCustomDomain: !Equals [ !Ref CoralogixRegion, "Custom"]
   IsKinesisStreamAsSource: !Not [!Equals [ !Ref KinesisStreamAsSourceARN, "" ]]
   
 Resources:
@@ -209,7 +240,13 @@ Resources:
         RoleARN:
           !GetAtt FirehoseLogsRole.Arn
         EndpointConfiguration:
-          Url: !Sub 'https://firehose-ingress.${CoralogixDomain}/firehose'
+          Url: 
+            !If 
+              - IsCustomDomain
+              - !Sub 'https://firehose-ingress.${CustomDomain}/firehose'
+              - !Sub 
+                - 'https://firehose-ingress.${Domain}/firehose'
+                - Domain: !FindInMap [CoralogixRegionMap, !Ref CoralogixRegion, LogUrl]
           AccessKey:
             Ref: ApiKey
           Name: 
@@ -261,7 +298,9 @@ Resources:
 Outputs:
   BackupDataBucketName:
     Description: S3 Bucket where failed deliveries will be backed-up
-    Value: !Sub 'firehose-${AWS::StackName}-backup'
+    Value: !Sub 
+      - 'firehose-${StackGUID}-backup'
+      - { StackGUID: !Select [0, !Split ["-", !Select [2, !Split ["/", !Ref AWS::StackId ]]]] }
   CoralogixDeliveryLogsStreamARN:
     Description: The ARN for your Kinesis Firehose Delivery Stream, use this as the
       destination when adding CloudWatch Logs subscription filters
