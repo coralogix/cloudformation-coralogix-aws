@@ -5,6 +5,7 @@ This template can be used to deploy an AWS Kinesis Firehose Integration to send 
 For a more detailed description of the settigns and architecture of this AWS Kinesis Data Firehose setup, please refer to the Coralogix documentation on [AWS Kinesis Data Firehose – Logs](https://coralogix.com/docs/aws-firehose/) and [AWS Kinesis Data Firehose – Metrics](https://coralogix.com/docs/amazon-kinesis-data-firehose-metrics/).
 
 ## Prerequisites
+
 * AWS account.
 * Coralogix account.
 
@@ -12,7 +13,7 @@ For a more detailed description of the settigns and architecture of this AWS Kin
 
 | Parameter | Description | Default Value | Required |
 |---|---|---|---|
-| CoralogixRegion | The region of your Coralogix Account | _Allowed Values:_<br>- Custom<br>- Europe<br>- Europe2<br>- India<br>- Singapore<br>- US<br>- US2<br>_Default_: Custom | :heavy_check_mark: |
+| CoralogixRegion | The region of your Coralogix Account. If set to Custom, you must provide a CustomDomain otherwise url will be invalid. | _Allowed Values:_<br>- Custom<br>- Europe<br>- Europe2<br>- India<br>- Singapore<br>- US<br>- US2<br>_Default_: Custom | :heavy_check_mark: |
 | CustomDomain | The Custom Coralogix domain. If set, will be the domain to send telemetry. | | |
 | ApiKey | Your Coralogix Private Key | |  :heavy_check_mark: |
 | ApplicationName | Your Coralogix Application name | | |
