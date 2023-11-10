@@ -1,0 +1,4 @@
+[
+    { "ParameterKey": "ApiKey", "ParameterValue": "<private-key>" },
+    { "ParameterKey": "CoralogixRegion", "ParameterValue": "<cx-domain>" }
+]
