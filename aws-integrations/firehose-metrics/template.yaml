@@ -135,7 +135,7 @@ Conditions:
   IsSubsystemName: !Not [!Equals [!Ref SubsystemName, ""]]
   IsCustomDomain: !Equals [ !Ref CoralogixRegion, "Custom"]
   IsAdditionalStatisticsEnabled: !Not [!Equals [ !Ref EnableAddtionalStatistics, "false" ]]
-  IsMetricsTagLambdaProcessorEnabled: !Not [!Equals [ !Ref EnableMetricsTagsProcessors, "false" ]]
+  IsMetricsTagLambdaProcessorEnabled: !Equals [ !Ref EnableMetricsTagsProcessors, "true" ]
 
 Resources:
   BackupDataBucket:
