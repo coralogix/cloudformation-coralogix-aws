@@ -33,7 +33,7 @@ For a more detailed description of the settigns and architecture of this AWS Kin
 ## Optional Parameters
 | Parameter | Description | Default Value | Required |
 |---|---|---|---|
-| CloudwatchRetentionDays | Enable logs streaming to Coralogix | 1 | |
+| CloudwatchRetentionDays | Days of retention in Cloudwatch retention days | 1 | |
 
 ## Notes:
 
