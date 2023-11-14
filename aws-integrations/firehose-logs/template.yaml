@@ -61,7 +61,7 @@ Parameters:
     Default: ""
   
 Metadata:
-  SemanticVersion: 0.0.2
+  SemanticVersion: 0.0.3
   AWS::CloudFormation::Interface: 
     ParameterGroups: 
       - Label: 
@@ -76,7 +76,6 @@ Metadata:
           default: "Others"
         Parameters: 
           - CloudwatchRetentionDays
-          - DynamicMetadataLogs
       - Label: 
           default: "Logs Streaming"
         Parameters: 
@@ -299,7 +298,7 @@ Outputs:
   BackupDataBucketName:
     Description: S3 Bucket where failed deliveries will be backed-up
     Value: !Sub 
-      - 'firehose-${StackGUID}-backup'
+      - 'firehose-${StackGUID}-backup-logs'
       - { StackGUID: !Select [0, !Split ["-", !Select [2, !Split ["/", !Ref AWS::StackId ]]]] }
   CoralogixDeliveryLogsStreamARN:
     Description: The ARN for your Kinesis Firehose Delivery Stream, use this as the

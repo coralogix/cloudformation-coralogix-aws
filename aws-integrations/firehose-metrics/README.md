@@ -19,21 +19,10 @@ For a more detailed description of the settigns and architecture of this AWS Kin
 | ApplicationName | Your Coralogix Application name | | |
 | SubsystemName | Your Coralogix Subsystem name | | |
 
-
-## Log Stream Parameters
-
-| Parameter | Description | Default Value | Required |
-|---|---|---|---|
-| EnableLogsStream | Enable logs streaming to Coralogix | false | |
-| IntegrationTypeLogs | The data structure of the Firehose delivery stream for logs | _Allowed Values:_<br>- CloudWatch_JSON<br>- WAF<br>- CloudWatch_CloudTrail<br>- EksFargate<br>- Default<br>- RawText | |
-| DynamicMetadataLogs | When set to true, it fetches the applicationName / subsystemName dynamically for logs | false | |
-| KinesisStreamAsSourceARN | If KinesisStreamAsSource for logs is desired, input the ARN of the Kinesis stream |  | |
-
 ## Metrics Stream Parameters
 
 | Parameter | Description | Default Value | Required |
 |---|---|---|---|
-| EnableMetricsStream | Enable metrics streaming to Coralogix | true | |
 | IntegrationTypeMetrics | The data structure of the Firehose delivery stream for metrics | _Allowed Values:_<br>- CloudWatch_Metrics_JSON<br>- CloudWatch_Metrics_OpenTelemetry070<br>- CloudWatch_Metrics_OpenTelemetry070_WithAggregations<br> _Default_: CloudWatch_Metrics_OpenTelemetry070 | |
 | OutputFormat | The output format of the cloudwatch metric stream | _Allowed Values:_<br>- opentelemetry0.7<br>- json<br> _Default_: opentelemetry0.7 | |
 | IncludeNamespaces | A string comma-delimited list of namespaces to include to the metric stream <br>e.g. `AWS/EC2,AWS/EKS,AWS/ELB,AWS/Logs,AWS/S3` | | |
@@ -46,17 +35,6 @@ For a more detailed description of the settigns and architecture of this AWS Kin
 | CloudwatchRetentionDays | Enable logs streaming to Coralogix | 1 | |
 
 ## Notes:
-
-* If you want to use the Kinesis Stream as a source for logs, you must create the Kinesis Stream before deploying the Cloudformation template and set the KinesisStreamAsSourceARN parameter to the ARN of the Kinesis Stream.
-* If `DynamicMetadataLogs` is set to `true`, and `ApplicationName` and `SubsystemName` is empty/not set, the applicationName and subsystemName for logs will be based on the selected IntegrationTypeLogs and follow the below Dynamic values table:
-
-| Type | Dynamic applicationName | Dynamic subsystemName | Notes |
-| --- | --- | --- | --- |
-| CloudWatch_JSON | the cloudwatch log group | none | supplied by aws |
-| CloudWatch_CloudTrail | the cloudwatch log group | none | supplied by aws |
-| Default | ‘applicationName’ field	| ‘subsystemName’ field	| need to be supplied in the log to be used |
-| EksFargate | ‘kubernetes.namespace_name’ field | ‘kubernetes.container_name’ field | supplied by the default configuration |
-| WAF | The web acl name | none | supplied by aws |
 
 * `LambdaMetricsTagsProcessors` lambda function code is deployed to the following s3 regions: [ _us-east-1 us-east-2 us-west-1 us-west-2 ap-south-1 ap-northeast-2 ap-southeast-1 ap-southeast-2 ap-northeast-1 ca-central-1 eu-central-1 eu-west-1 eu-west-2 eu-west-3 eu-north-1 eu-south-1 sa-east-1_ ]. If you are using a different region, please contact Coralogix support.
 

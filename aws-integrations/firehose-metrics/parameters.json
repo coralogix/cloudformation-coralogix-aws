@@ -1,8 +1,6 @@
 [
-    { "ParameterKey": "ApiKey", "ParameterValue": "<coralogix_api_key>" },
-    { "ParameterKey": "CoralogixRegion", "ParameterValue": "Europe" },
-    { "ParameterKey": "EnableLogsStream", "ParameterValue": "true" },
-    { "ParameterKey": "EnableMetricsStream", "ParameterValue": "true" },
+    { "ParameterKey": "ApiKey", "ParameterValue": "<private-key>" },
+    { "ParameterKey": "CoralogixRegion", "ParameterValue": "<cx-domain>" },
     { "ParameterKey": "IncludeNamespaces", "ParameterValue": "AWS/EC2,AWS/EKS,AWS/ELB,AWS/Logs,AWS/S3" },
     { "ParameterKey": "IncludeNamespacesMetricNames", "ParameterValue": "{\"AWS/EC2\":[\"CPUUtilization\",\"NetworkOut\"],\"AWS/S3\":[\"BucketSizeBytes\"]}" },
     { "ParameterKey": "EnableAddtionalStatistics", "ParameterValue": "true" }

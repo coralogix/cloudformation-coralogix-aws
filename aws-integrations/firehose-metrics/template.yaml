@@ -35,44 +35,6 @@ Parameters:
     Type: Number
     Description: Days of retention in Cloudwatch Log Groups.
     Default: 1
-  EnableLogsStream:
-    Type: String
-    Description: Enable logs streaming to Coralogix
-    AllowedValues:
-      - 'true'
-      - 'false'
-    Default: 'false'
-  IntegrationTypeLogs:
-    Type: String
-    Description: The data structure of the Firehose delivery stream for logs [CloudWatch_JSON, WAF, CloudWatch_CloudTrail, EksFargate, Default, RawText]
-    AllowedValues:
-      - ""
-      - CloudWatch_JSON
-      - WAF
-      - CloudWatch_CloudTrail
-      - EksFargate
-      - Default
-      - RawText
-    Default: ""
-  DynamicMetadataLogs:
-    Type: String
-    Description: When set to true, it fetches set the applicationName / subsystemName dynamically
-    AllowedValues:
-      - ""
-      - 'true'
-      - 'false'
-    Default: ""
-  KinesisStreamAsSourceARN:
-    Type: String
-    Description: Optional - If using Kinesis Stream As Source of logs, enter the ARN of the Kinesis stream, else leave blank.
-    Default: ""
-  EnableMetricsStream:
-    Type: String
-    Description: Enable metrics streaming to Coralogix
-    AllowedValues:
-      - 'true'
-      - 'false'
-    Default: 'true'
   IntegrationTypeMetrics:
     Type: String
     Description: "The integration type of the firehose delivery stream [CloudWatch_Metrics_OpenTelemetry070, CloudWatch_Metrics_OpenTelemetry070_WithAggregations, CloudWatch_Metrics_JSON] - default: CloudWatch_Metrics_OpenTelemetry070"
@@ -117,7 +79,7 @@ Parameters:
     Default: "[{\"AdditionalStatistics\":[\"p50\",\"p75\",\"p95\",\"p99\"],\"IncludeMetrics\":[{\"Namespace\":\"AWS/EBS\",\"MetricName\":\"VolumeTotalReadTime\"},{\"Namespace\":\"AWS/EBS\",\"MetricName\":\"VolumeTotalWriteTime\"},{\"Namespace\":\"AWS/ELB\",\"MetricName\":\"Latency\"},{\"Namespace\":\"AWS/ELB\",\"MetricName\":\"Duration\"},{\"Namespace\":\"AWS/Lambda\",\"MetricName\":\"PostRuntimeExtensionsDuration\"},{\"Namespace\":\"AWS/S3\",\"MetricName\":\"FirstByteLatency\"},{\"Namespace\":\"AWS/S3\",\"MetricName\":\"TotalRequestLatency\"}]}]"
 
 Metadata:
-  SemanticVersion: 0.0.2
+  SemanticVersion: 0.0.3
   AWS::CloudFormation::Interface: 
     ParameterGroups: 
       - Label: 
@@ -132,17 +94,9 @@ Metadata:
           default: "Others"
         Parameters: 
           - CloudwatchRetentionDays
-          - DynamicMetadataLogs
-      - Label: 
-          default: "Logs Streaming"
-        Parameters: 
-          - EnableLogsStream
-          - IntegrationTypeLogs
-          - KinesisStreamAsSourceARN
       - Label:
           default: "Metrics Streaming"
         Parameters:
-          - EnableMetricsStream
           - IntegrationTypeMetrics
           - OutputFormat
           - IncludeNamespaces
@@ -170,12 +124,7 @@ Mappings:
 Conditions:
   IsApplicationName: !Not [!Equals [!Ref ApplicationName, ""]]
   IsSubsystemName: !Not [!Equals [!Ref SubsystemName, ""]]
-  IsIntegrationTypeLogs: !Not [!Equals [!Ref IntegrationTypeLogs, ""]]
-  IsDynamicMetadataLogs: !Not [!Equals [ !Ref DynamicMetadataLogs, ""]]
   IsCustomDomain: !Equals [ !Ref CoralogixRegion, "Custom"]
-  IsKinesisStreamAsSource: !Not [!Equals [ !Ref KinesisStreamAsSourceARN, "" ]]
-  IsLogsEnabled: !Not [!Equals [ !Ref EnableLogsStream, "false" ]]
-  IsMetricsEnabled: !Not [!Equals [ !Ref EnableMetricsStream, "false" ]]
   IsAdditionalStatisticsEnabled: !Not [!Equals [ !Ref EnableAddtionalStatistics, "false" ]]
 
 Resources:
@@ -183,7 +132,7 @@ Resources:
     Type: AWS::S3::Bucket
     Properties:
       BucketName: !Sub 
-      - 'firehose-${StackGUID}-backup'
+      - 'firehose-${StackGUID}-backup-metrics'
       - { StackGUID: !Select [0, !Split ["-", !Select [2, !Split ["/", !Ref AWS::StackId ]]]] }
       AccessControl: Private
       PublicAccessBlockConfiguration:
@@ -203,178 +152,9 @@ Resources:
       LogStreamName: !Ref AWS::StackName
 
 ###################################
-# Firehose Logs Stream
-###################################
-  CloudWatchLogsRole:
-    Condition: IsLogsEnabled
-    Type: AWS::IAM::Role
-    Properties:
-      RoleName: !Sub '${AWS::StackName}-cloudwatchlogs'
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-        - Sid: ''
-          Effect: Allow
-          Principal:
-            Service: !Sub 'logs.${AWS::Region}.amazonaws.com'
-          Action: sts:AssumeRole
-  CloudWatchLogsPolicy:
-    Condition: IsLogsEnabled
-    Type: AWS::IAM::Policy
-    Properties:
-      PolicyName: !Sub '${AWS::StackName}-logs-policy'
-      PolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-        - Effect: Allow
-          Action:
-          - firehose:PutRecord
-          - firehose:PutRecordBatch
-          - kinesis:PutRecord
-          - kinesis:PutRecordBatch
-          Resource:
-          - !Sub 'arn:aws:firehose:${AWS::Region}:${AWS::AccountId}:*'
-        - Effect: Allow
-          Action:
-          - iam:PassRole
-          Resource:
-          - !Sub 'arn:aws:iam::${AWS::AccountId}:role/${CloudWatchLogsRole}'
-      Roles:
-      - Ref: CloudWatchLogsRole
-  FirehoseLogsRole:
-    Condition: IsLogsEnabled
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-        - Sid: ''
-          Effect: Allow
-          Principal:
-            Service: 'firehose.amazonaws.com'
-          Action: sts:AssumeRole
-          Condition:
-            StringEquals:
-              sts:ExternalId:
-                Ref: AWS::AccountId
-  FirehoseLogsPolicy:
-    Condition: IsLogsEnabled
-    Type: AWS::IAM::Policy
-    Properties:
-      PolicyName: !Sub '${AWS::StackName}-firehose-policy'
-      PolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-        - Effect: Allow
-          Action:
-          - s3:AbortMultipartUpload
-          - s3:GetBucketLocation
-          - s3:GetObject
-          - s3:ListBucket
-          - s3:ListBucketMultipartUploads
-          - s3:PutObject
-          Resource:
-          - !Sub 'arn:aws:s3:::${BackupDataBucket}'
-          - !Sub 'arn:aws:s3:::${BackupDataBucket}/*'
-        - Effect: Allow
-          Action:
-          - logs:PutLogEvents
-          Resource: !GetAtt DeliveryStreamLogGroup.Arn
-        - Effect: Allow
-          Action:
-            - kinesis:DescribeStream
-            - kinesis:GetShardIterator
-            - kinesis:GetRecords
-            - kinesis:ListShards
-          Resource: 
-          - !Sub 'arn:aws:firehose:${AWS::Region}:${AWS::AccountId}:deliverystream/*'
-          - !Sub 'arn:aws:kinesis:${AWS::Region}:${AWS::AccountId}:stream/*'
-      Roles:
-      - Ref: FirehoseLogsRole
-  CoralogixDeliveryLogsStream:
-    Condition: IsLogsEnabled
-    DependsOn:
-    - FirehoseLogsPolicy
-    - CloudWatchLogsPolicy
-    - BackupDataBucket
-    Type: AWS::KinesisFirehose::DeliveryStream
-    Properties:
-      DeliveryStreamName: !Sub '${AWS::StackName}-logs'
-      DeliveryStreamType:
-        !If
-          - IsKinesisStreamAsSource
-          - KinesisStreamAsSource
-          - DirectPut
-      KinesisStreamSourceConfiguration:
-        !If
-          - IsKinesisStreamAsSource
-          - KinesisStreamARN: !Ref KinesisStreamAsSourceARN
-            RoleARN: !GetAtt FirehoseLogsRole.Arn
-          - !Ref 'AWS::NoValue'
-      HttpEndpointDestinationConfiguration:
-        RoleARN:
-          !GetAtt FirehoseLogsRole.Arn
-        EndpointConfiguration:
-          Url: 
-            !If 
-              - IsCustomDomain
-              - !Sub 'https://firehose-ingress.${CustomDomain}/firehose'
-              - !Sub 
-                - 'https://firehose-ingress.${Domain}/firehose'
-                - Domain: !FindInMap [CoralogixRegionMap, !Ref CoralogixRegion, LogUrl]
-          AccessKey:
-            Ref: ApiKey
-          Name: 
-            'Coralogix'
-        RequestConfiguration:
-          ContentEncoding: GZIP
-          CommonAttributes:
-            - !If 
-              - IsApplicationName
-              - AttributeName: 'applicationNameDefault'
-                AttributeValue: !Ref ApplicationName
-              - !Ref 'AWS::NoValue'
-            - !If
-              - IsSubsystemName
-              - AttributeName: 'subsystemNameDefault'
-                AttributeValue: !Ref SubsystemName
-              - !Ref 'AWS::NoValue'
-            - !If
-              - IsIntegrationTypeLogs
-              - AttributeName: 'integrationType'
-                AttributeValue: !Ref IntegrationTypeLogs
-              - !Ref 'AWS::NoValue'
-            - !If
-              - IsDynamicMetadataLogs
-              - AttributeName: 'dynamicMetadata'
-                AttributeValue: !Ref DynamicMetadataLogs
-              - !Ref 'AWS::NoValue'
-        CloudWatchLoggingOptions:
-          Enabled: true
-          LogGroupName:
-            Ref: DeliveryStreamLogGroup
-          LogStreamName:
-            Ref: DeliveryStreamLogStream
-        BufferingHints:
-          IntervalInSeconds: 60
-          SizeInMBs: 6
-        RetryOptions:
-          DurationInSeconds: 300
-        S3BackupMode: FailedDataOnly
-        S3Configuration:
-          BufferingHints:
-            IntervalInSeconds: 300
-            SizeInMBs: 5
-          BucketARN: !GetAtt BackupDataBucket.Arn
-          CompressionFormat: GZIP
-          RoleARN:
-            !GetAtt FirehoseLogsRole.Arn
-
-###################################
 # Firehose Metrics Stream
 ###################################
   LambdaProcessorRole:
-    Condition: IsMetricsEnabled
     Type: AWS::IAM::Role
     Properties:
       RoleName: !Sub '${AWS::StackName}-lambda'
@@ -387,7 +167,6 @@ Resources:
             Service: !Sub 'lambda.amazonaws.com'
           Action: sts:AssumeRole
   LambdaProcessorPolicy:
-    Condition: IsMetricsEnabled
     Type: AWS::IAM::Policy
     Properties:
       PolicyName: !Sub '${AWS::StackName}-lambda'
@@ -421,7 +200,6 @@ Resources:
       Roles:
       - Ref: LambdaProcessorRole
   LambdaMetricsTagsProcessors:
-    Condition: IsMetricsEnabled
     Type: 'AWS::Lambda::Function'
     Properties:
       Code:
@@ -439,7 +217,6 @@ Resources:
         Variables:
           FILE_CACHE_PATH: "/tmp"
   FirehoseMetricsRole:
-    Condition: IsMetricsEnabled
     Type: AWS::IAM::Role
     Properties:
       RoleName: !Sub '${AWS::StackName}-firehose'
@@ -456,7 +233,6 @@ Resources:
               sts:ExternalId:
                 Ref: AWS::AccountId
   FirehoseMetricsPolicy:
-    Condition: IsMetricsEnabled
     Type: AWS::IAM::Policy
     Properties:
       PolicyName: !Sub '${AWS::StackName}-firehose'
@@ -507,7 +283,6 @@ Resources:
       Roles:
       - Ref: FirehoseMetricsRole
   CoralogixDeliveryMetricsStream:
-    Condition: IsMetricsEnabled
     Type: AWS::KinesisFirehose::DeliveryStream
     DependsOn:
     - FirehoseMetricsPolicy
@@ -580,7 +355,6 @@ Resources:
               - ParameterName: BufferIntervalInSeconds
                 ParameterValue: '61'
   CloudWatchMetricsRole:
-    Condition: IsMetricsEnabled
     Type: AWS::IAM::Role
     Properties:
       RoleName: !Sub '${AWS::StackName}-cloudwatchmetrics'
@@ -593,7 +367,6 @@ Resources:
             Service: !Sub 'streams.metrics.cloudwatch.amazonaws.com'
           Action: sts:AssumeRole
   CloudWatchMetricsPolicy:
-    Condition: IsMetricsEnabled
     Type: AWS::IAM::Policy
     Properties:
       PolicyName: !Sub '${AWS::StackName}-cloudwatchmetrics'
@@ -611,7 +384,6 @@ Resources:
       - Ref: CloudWatchMetricsRole
 
   LambdaCustomResourceCloudWatchMetricStreamRole:
-    Condition: IsMetricsEnabled
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
@@ -639,7 +411,6 @@ Resources:
         - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
 
   LambdaCustomResourceCloudWatchMetricStreamFunction:
-    Condition: IsMetricsEnabled
     Type: AWS::Lambda::Function
     Properties:
       Description: "The lambda function is used to create CloudWatch Metric Stream."
@@ -704,7 +475,6 @@ Resources:
       Role: !GetAtt LambdaCustomResourceCloudWatchMetricStreamRole.Arn
 
   LambdaCustomResourceCloudWatchMetricsStream:
-    Condition: IsMetricsEnabled
     Type: AWS::CloudFormation::CustomResource
     Properties:
       ServiceToken: !GetAtt LambdaCustomResourceCloudWatchMetricStreamFunction.Arn
@@ -720,22 +490,9 @@ Outputs:
   BackupDataBucketName:
     Description: S3 Bucket where failed deliveries will be backed-up
     Value: !Sub 
-      - 'firehose-${StackGUID}-backup'
+      - 'firehose-${StackGUID}-backup-metrics'
       - { StackGUID: !Select [0, !Split ["-", !Select [2, !Split ["/", !Ref AWS::StackId ]]]] }
-  CoralogixDeliveryLogsStreamARN:
-    Condition: IsLogsEnabled
-    Description: The ARN for your Kinesis Firehose Delivery Stream, use this as the
-      destination when adding CloudWatch Logs subscription filters
-    Value:
-      !GetAtt CoralogixDeliveryLogsStream.Arn
-  CloudWatchLogsRoleARN:
-    Condition: IsLogsEnabled
-    Description: The ARN for your CloudWatch Logs role to write to your delivery stream,
-      use this as the role-arn when adding CloudWatch Logs subscription filters
-    Value:
-      !GetAtt CloudWatchLogsRole.Arn
   CoralogixDeliveryMetricsStreamARN:
-    Condition: IsMetricsEnabled
     Description: The ARN for your Kinesis Firehose Delivery Stream, use this as the
       destination when adding CloudWatch Metrics subscription filters
     Value:
