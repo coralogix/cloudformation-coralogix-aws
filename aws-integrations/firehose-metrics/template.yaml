@@ -84,7 +84,7 @@ Parameters:
     AllowedValues:
       - 'true'
       - 'false'
-    Default: 'false'
+    Default: 'true'
 
 Metadata:
   SemanticVersion: 0.0.3
@@ -354,19 +354,20 @@ Resources:
           RoleARN:
             !GetAtt FirehoseMetricsRole.Arn
         ProcessingConfiguration:
-          Enabled: !If 
-            - IsMetricsTagLambdaProcessorEnabled
-            - true
-            - false
-          Processors:
-          - Type: Lambda
-            Parameters:
-              - ParameterName: LambdaArn
-                ParameterValue: !Sub '${LambdaMetricsTagsProcessors.Arn}:$LATEST'
-              - ParameterName: BufferSizeInMBs
-                ParameterValue: '0.2'
-              - ParameterName: BufferIntervalInSeconds
-                ParameterValue: '61'
+          !If
+          - IsMetricsTagLambdaProcessorEnabled
+          - Enabled: true
+            Processors:
+            - Type: Lambda
+              Parameters:
+                - ParameterName: LambdaArn
+                  ParameterValue: !Sub '${LambdaMetricsTagsProcessors.Arn}:$LATEST'
+                - ParameterName: BufferSizeInMBs
+                  ParameterValue: '0.2'
+                - ParameterName: BufferIntervalInSeconds
+                  ParameterValue: '61'
+          - !Ref 'AWS::NoValue'
+        
   CloudWatchMetricsRole:
     Type: AWS::IAM::Role
     Properties:
