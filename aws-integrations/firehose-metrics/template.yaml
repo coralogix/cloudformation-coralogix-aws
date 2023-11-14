@@ -80,7 +80,7 @@ Parameters:
   EnableMetricsTagsProcessors:
     Type: String
     Description: >-
-      Enable the lambda metrics tags processor function. Set to false to remove the processor from the cloudwatch metrics stream.
+      Enable the lambda metrics tags processor function. Set to false to remove the processor.
     AllowedValues:
       - 'true'
       - 'false'

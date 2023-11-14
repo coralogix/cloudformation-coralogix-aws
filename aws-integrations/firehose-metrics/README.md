@@ -28,6 +28,7 @@ For a more detailed description of the settigns and architecture of this AWS Kin
 | IncludeNamespaces | A string comma-delimited list of namespaces to include to the metric stream <br>e.g. `AWS/EC2,AWS/EKS,AWS/ELB,AWS/Logs,AWS/S3` | | |
 | IncludeNamespacesMetricNames | A string json list of namespaces and metric_names to include to the metric stream. JSON stringify the input to avoid format errors. <br>e.g. {"AWS/EC2":["CPUUtilization","NetworkOut"],"AWS/S3":["BucketSizeBytes"]} | | |
 | AddtionalStatisticsConfigurations | A json list of additional statistics to include to the metric stream following [MetricStream StatisticsConfiguration](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-cloudwatch-metricstream-metricstreamstatisticsconfiguration.html). <br>JSON stringify the input to avoid format errors. | "p50","p75","p95","p99" of the following <br>- AWS/EBS:[VolumeTotalReadTime,VolumeTotalWriteTime]<br>- AWS/ELB:[Latency,Duration], <br>- AWS/Lambda:[PostRuntimeExtensionsDuration]<br>- AWS/S3:[FirstByteLatency,TotalRequestLatency] | |
+| EnableMetricsTagsProcessors | Enable the lambda metrics tags processor function. Set to false to remove the processor | true | |
 
 ## Optional Parameters
 | Parameter | Description | Default Value | Required |
