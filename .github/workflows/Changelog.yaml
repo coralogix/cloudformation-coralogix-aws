@@ -2,7 +2,7 @@ name: Changelog
 on:
   pull_request:
     types: [opened, synchronize]
-    branches: [master]
+    branches: [master, test-master]
     paths:
       - "**/template.*"
 

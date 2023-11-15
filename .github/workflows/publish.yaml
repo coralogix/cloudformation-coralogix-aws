@@ -2,7 +2,7 @@ name: Publish
 
 on:
   push:
-    branches: [master]
+    branches: [master, test-master]
     paths:
       - "**/template.yaml"
       - "**/template.yml"
