@@ -8,7 +8,7 @@ on:
 
 jobs:
   get-label:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     name: get label
     outputs:
       labels: "${{ steps.pr-labels.outputs.labels }}"
@@ -19,7 +19,7 @@ jobs:
         
   check-changelog-updates:
     if: "${{ needs.get-label.outputs.labels != ' skip-changelog ' }}"
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     needs: get-label
     name: Check changelog update
     steps:
