@@ -96,7 +96,7 @@ jobs:
 
       - name: apply changes to the files
         run: |
-          if echo "${{ github.event.head_commit.message }}" | grep -q '\(#\d*\)'; then
+          if echo "${{ github.event.head_commit.message }}" | grep -q '#\d*'; then
             branch_name=$(echo "${{ github.event.head_commit.message }}" | grep -o '#\d*')
           else
             branch_name=update_integration_branch
@@ -137,7 +137,7 @@ jobs:
 
       - name: Create pull request
         run: |
-          if echo "${{ github.event.head_commit.message }}" | grep -q '\(#\d*\)'; then
+          if echo "${{ github.event.head_commit.message }}" | grep -q '#\d*'; then
             branch_name=$(echo "${{ github.event.head_commit.message }}" | grep -o '#\d*')
             Pr_name="${{ github.event.head_commit.message }}"
           else
