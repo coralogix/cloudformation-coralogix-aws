@@ -37,7 +37,7 @@ Parameters:
     Default: 1
   IntegrationTypeLogs:
     Type: String
-    Description: The data structure of the Firehose delivery stream for logs [CloudWatch_JSON, WAF, CloudWatch_CloudTrail, EksFargate, Default, RawText]
+    Description: The data structure of the Firehose delivery stream for logs [CloudWatch_JSON, WAF, CloudWatch_CloudTrail, EksFargate, Default, RawText].
     AllowedValues:
       - ""
       - CloudWatch_JSON
@@ -49,7 +49,7 @@ Parameters:
     Default: ""
   DynamicMetadataLogs:
     Type: String
-    Description: When set to true, it fetches set the applicationName / subsystemName dynamically
+    Description: When set to true, it fetches set the applicationName / subsystemName dynamically.
     AllowedValues:
       - ""
       - 'true'
