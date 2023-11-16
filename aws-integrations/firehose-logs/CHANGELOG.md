@@ -32,5 +32,5 @@
 ### 0.0.3 / 14 Nov 2023
 * [Feature] Split Firehose Logs and Metrics
 
-### 0.0.3 / 16 Nov 2023
+### 0.0.4 / 16 Nov 2023
 * [Update] DynamicFromFields changes and documentation
