@@ -47,21 +47,13 @@ Parameters:
       - Default
       - RawText
     Default: ""
-  DynamicMetadataLogs:
-    Type: String
-    Description: When set to true, it fetches set the applicationName / subsystemName dynamically.
-    AllowedValues:
-      - ""
-      - 'true'
-      - 'false'
-    Default: ""
   KinesisStreamAsSourceARN:
     Type: String
     Description: Optional - If using Kinesis Stream As Source of logs, enter the ARN of the Kinesis stream, else leave blank.
     Default: ""
   
 Metadata:
-  SemanticVersion: 0.0.3
+  SemanticVersion: 0.0.4
   AWS::CloudFormation::Interface: 
     ParameterGroups: 
       - Label: 
@@ -103,7 +95,6 @@ Conditions:
   IsApplicationName: !Not [!Equals [!Ref ApplicationName, ""]]
   IsSubsystemName: !Not [!Equals [!Ref SubsystemName, ""]]
   IsIntegrationTypeLogs: !Not [!Equals [!Ref IntegrationTypeLogs, ""]]
-  IsDynamicMetadataLogs: !Not [!Equals [ !Ref DynamicMetadataLogs, ""]]
   IsCustomDomain: !Equals [ !Ref CoralogixRegion, "Custom"]
   IsKinesisStreamAsSource: !Not [!Equals [ !Ref KinesisStreamAsSourceARN, "" ]]
   
@@ -255,23 +246,18 @@ Resources:
           CommonAttributes:
             - !If 
               - IsApplicationName
-              - AttributeName: 'applicationNameDefault'
+              - AttributeName: 'applicationName'
                 AttributeValue: !Ref ApplicationName
               - !Ref 'AWS::NoValue'
             - !If
               - IsSubsystemName
-              - AttributeName: 'subsystemNameDefault'
+              - AttributeName: 'subsystemName'
                 AttributeValue: !Ref SubsystemName
               - !Ref 'AWS::NoValue'
             - !If
               - IsIntegrationTypeLogs
               - AttributeName: 'integrationType'
                 AttributeValue: !Ref IntegrationTypeLogs
-              - !Ref 'AWS::NoValue'
-            - !If
-              - IsDynamicMetadataLogs
-              - AttributeName: 'dynamicMetadata'
-                AttributeValue: !Ref DynamicMetadataLogs
               - !Ref 'AWS::NoValue'
         CloudWatchLoggingOptions:
           Enabled: true
