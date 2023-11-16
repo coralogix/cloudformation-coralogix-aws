@@ -50,6 +50,7 @@ For `ApplicationName` and/or `SubsystemName` to be set dynamically in relation t
 
 For more information - visit [Kinesis Data Firehose - Logs](https://coralogix.com/docs/aws-firehose/).
 
+Note: `RawText` integrationType does not support dynamic values.
 
 ## Deploy the Cloudformation template using aws cli
 
