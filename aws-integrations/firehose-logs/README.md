@@ -34,15 +34,23 @@ For a more detailed description of the settigns and architecture of this AWS Kin
 ## Notes:
 
 * If you want to use the Kinesis Stream as a source for logs, you must create the Kinesis Stream before deploying the Cloudformation template and set the KinesisStreamAsSourceARN parameter to the ARN of the Kinesis Stream.
-* If `DynamicMetadataLogs` is set to `true`, and `ApplicationName` and `SubsystemName` is empty/not set, the applicationName and subsystemName for logs will be based on the selected IntegrationTypeLogs and follow the below Dynamic values table:
 
-| Type | Dynamic applicationName | Dynamic subsystemName | Notes |
-| --- | --- | --- | --- |
-| CloudWatch_JSON | the cloudwatch log group | none | supplied by aws |
-| CloudWatch_CloudTrail | the cloudwatch log group | none | supplied by aws |
-| Default | ‘applicationName’ field	| ‘subsystemName’ field	| need to be supplied in the log to be used |
-| EksFargate | ‘kubernetes.namespace_name’ field | ‘kubernetes.container_name’ field | supplied by the default configuration |
-| WAF | The web acl name | none | supplied by aws |
+## Dynamic Values Table for Logs
+
+For `ApplicationName` and/or `SubsystemName` to be set dynamically in relation to their `integrationType` resource fields (e.g. CloudWatch_JSON's loggroup name, EksFargate's k8s namespace). The source's `var` has to be mapped as a string literal to the `integrationType`'s as a DyanamicFromFrield with pre-defined values:
+
+| Field | Source `var` | Expected String Literal | Integration Type | Notes |
+|-------|--------------|-------------------------|------------------|-------|
+| `applicationName` field in logs | applicationName | `${applicationName}` | Default | need to be supplied in the log to be used |
+| `subsystemName` field in logs | subsystemName | `${subsystemName}` | Default |  need to be supplied in the log to be used |
+| CloudWatch LogGroup name | logGroup | `${logGroup}` | CloudWatch_JSON <br/> CloudWatch_CloudTrail | supplied by aws |
+| `kubernetes.namespace_name` field | kubernetesNamespaceName | `${kubernetesNamespaceName}` | EksFargate | supplied by the default configuration |
+| `kubernetes.container_name` field | kubernetesContainerName | `${kubernetesContainerName}` | EksFargate | supplied by the default configuration |
+| name part of the `log.webaclId` field | webAclName | `${webAclName}` | WAF | supplied by aws |
+
+For more information - visit [Kinesis Data Firehose - Logs](https://coralogix.com/docs/aws-firehose/).
+
+Note: `RawText` integrationType does not support dynamic values.
 
 ## Deploy the Cloudformation template using aws cli
 
