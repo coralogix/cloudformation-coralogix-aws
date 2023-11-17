@@ -57,9 +57,14 @@ jobs:
       - name: push files
         run: |
           mkdir -p ${{ env.CFN_INTEGRATION_DIR }}
-          cat .tmp/template.yaml | yq '.Resources.LambdaFunction.Properties.CodeUri = "s3://${{ env.REPO_BUCKET_PREFIX }}-${AWS::Region}/${{ env.REPO_PACKAGE_ZIP }}"' > ${{ env.CFN_INTEGRATION_DIR }}/template.yaml
+          cat .tmp/template.yaml | yq '(.Resources.[] | 
+            select(
+              has("Type") 
+              and .Type == "AWS::Serverless::Function" 
+              and .Properties.CodeUri != null) | 
+            .Properties.CodeUri) |= "s3://${{ env.REPO_BUCKET_PREFIX }}-${AWS::Region}/${{ env.REPO_PACKAGE_ZIP }}"' > ${{ env.CFN_INTEGRATION_DIR }}/template.yaml
+
           cat ${{ env.CFN_INTEGRATION_DIR }}/template.yaml | grep -i codeuri
-          
           mv -v .tmp/README.md ${{ env.CFN_INTEGRATION_DIR }}/README.md
           git add ${{ env.CFN_INTEGRATION_DIR }}
           git status
