@@ -7,7 +7,7 @@ on:
 
 env:
   REPO_BUCKET_PREFIX: coralogix-serverless-repo
-  REPO_PACKAGE_ZIP: coralogix-aws-serverless.rust.zip
+  REPO_PACKAGE_ZIP: coralogix-aws-shipper.zip
   AWS_SHIPPER_REPO: coralogix/coralogix-aws-shipper
   CFN_INTEGRATION_DIR: aws-integrations/aws-shipper-lambda
 
