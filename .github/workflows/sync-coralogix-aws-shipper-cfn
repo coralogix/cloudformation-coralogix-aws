@@ -55,6 +55,9 @@ jobs:
         
       - run: sudo snap install yq
       - name: push files
+
+        # Update the CodeUri property of all AWS::Serverless::Function resources using Yq
+        # and push the changes back to the repository
         run: |
           mkdir -p ${{ env.CFN_INTEGRATION_DIR }}
           cat .tmp/template.yaml | yq '(.Resources.[] | 
