@@ -92,6 +92,7 @@ jobs:
         # git add files if they've changed
         run: |
           set -xv
+          ls -ltr .tmp
           mkdir -p ${{ env.CFN_INTEGRATION_DIR }}
           mv -v ./tmp/${{ matrix.file.name }} ${{ env.CFN_INTEGRATION_DIR }}/${{ matrix.file.name }}
 
