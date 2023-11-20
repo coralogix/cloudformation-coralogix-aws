@@ -25,9 +25,9 @@ jobs:
       - name: get last commit_message
         id: commits
         run: |
-          echo "template_commit=$(git log -1 --pretty=%B -- template.yaml)" >> $GITHUB_OUTPUT
-          echo "readme_commit=$(git log -1 --pretty=%B -- README.md)" >> $GITHUB_OUTPUT
-          echo "changelog_commit=$(git log -1 --pretty=%B -- CHANGELOG.md)" >> $GITHUB_OUTPUT
+          echo "template_commit='$(git log -1 --pretty=%B -- template.yaml)'" >> $GITHUB_OUTPUT
+          echo "readme_commit='$(git log -1 --pretty=%B -- README.md)'" >> $GITHUB_OUTPUT
+          echo "changelog_commit='$(git log -1 --pretty=%B -- CHANGELOG.md)'" >> $GITHUB_OUTPUT
 
       - run: sudo snap install yq
         # Update the CodeUri property of all AWS::Serverless::Function resources using Yq
