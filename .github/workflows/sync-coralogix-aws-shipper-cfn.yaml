@@ -41,7 +41,7 @@ jobs:
               and .Properties.CodeUri != null) | 
             .Properties.CodeUri) |= "s3://${{ env.REPO_BUCKET_PREFIX }}-${AWS::Region}/${{ env.REPO_PACKAGE_ZIP }}"' ./template.yaml
 
-          cat ${{ env.CFN_INTEGRATION_DIR }}/template.yaml | grep -i codeuri        
+          cat ./template.yaml | grep -i codeuri        
           set +xv
 
       - name: store artifacts
