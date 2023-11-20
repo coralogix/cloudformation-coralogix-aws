@@ -3,7 +3,8 @@ name: Template Sync
 on:
   workflow_dispatch:
   repository_dispatch:
-    types: [sync]
+    types:
+      - aws-shipper-sync
 
 env:
   REPO_BUCKET_PREFIX: coralogix-serverless-repo
@@ -29,6 +30,29 @@ jobs:
           path: |
             ./template.yaml
             ./README.md
+
+      - name: get last commit_message
+        id: commits
+        run: |
+          echo "template_commit=$(git log -1 --pretty=%B -- template.yaml)" >> $GITHUB_OUTPUT
+          echo "readme_commit=$(git log -1 --pretty=%B -- README.md)" >> $GITHUB_OUTPUT
+          echo "changelog_commit=$(git log -1 --pretty=%B -- CHANGELOG.md)" >> $GITHUB_OUTPUT
+
+      - run: snap install yq
+        # Update the CodeUri property of all AWS::Serverless::Function resources using Yq
+      - name: update-template
+        run: |
+          set -xv
+          yq -i '(.Resources.[] | 
+            select(
+              has("Type") 
+              and .Type == "AWS::Serverless::Function" 
+              and .Properties.CodeUri != null) | 
+            .Properties.CodeUri) |= "s3://${{ env.REPO_BUCKET_PREFIX }}-${AWS::Region}/${{ env.REPO_PACKAGE_ZIP }}"' ./template.yaml
+
+          cat ${{ env.CFN_INTEGRATION_DIR }}/template.yaml | grep -i codeuri        
+          set +xv
+
       - name: store artifacts
         uses: actions/upload-artifact@v3
         with:
@@ -36,6 +60,11 @@ jobs:
           path: |
             ./template.yaml
             ./README.md
+            ./CHANGELOG.md
+    outputs:
+      template_commit: ${{ steps.commits.outputs.template_commit }}
+      readme_commit: ${{ steps.commits.outputs.readme_commit }}
+      changelog_commit: ${{ steps.commits.outputs.changelog_commit }}
 
 
   sync-changes:
@@ -43,6 +72,18 @@ jobs:
     permissions:
       contents: write
     needs: get-template
+    strategy:
+      matrix:
+        file:
+        - name: template.yaml
+          commit: ${{ needs.get-template.outputs.template_commit }}
+
+        - name: README.md
+          commit: ${{ needs.get-template.outputs.readme_commit }}
+
+        - name: CHANGELOG.md 
+          commit: ${{ needs.get-template.outputs.changelog_commit }}
+
     steps:
       - uses: actions/checkout@v3
       - run: mkdir .tmp
@@ -54,31 +95,29 @@ jobs:
           path: .tmp
         
       - run: sudo snap install yq
-      - name: push files
-
-        # Update the CodeUri property of all AWS::Serverless::Function resources using Yq
-        # and push the changes back to the repository
+      - name: git-add
+        id: changes
+  
+        # git add files if they've changed
         run: |
+          set -xv
           mkdir -p ${{ env.CFN_INTEGRATION_DIR }}
-          cat .tmp/template.yaml | yq '(.Resources.[] | 
-            select(
-              has("Type") 
-              and .Type == "AWS::Serverless::Function" 
-              and .Properties.CodeUri != null) | 
-            .Properties.CodeUri) |= "s3://${{ env.REPO_BUCKET_PREFIX }}-${AWS::Region}/${{ env.REPO_PACKAGE_ZIP }}"' > ${{ env.CFN_INTEGRATION_DIR }}/template.yaml
+          mv -v ./tmp/${{ matrix.file.name }} ${{ env.CFN_INTEGRATION_DIR }}/${{ matrix.file.name }
 
-          cat ${{ env.CFN_INTEGRATION_DIR }}/template.yaml | grep -i codeuri
-          mv -v .tmp/README.md ${{ env.CFN_INTEGRATION_DIR }}/README.md
-          git add ${{ env.CFN_INTEGRATION_DIR }}
-          git status
-          git diff
+          echo "${{ matrix.file.name }}-changed=false" >> $GITHUB_ENV
+          [[ `git status --porcelain | grep -c "${{ matrix.file.name }}"` -gt 0 ]] && \
+            git add ${{ env.CFN_INTEGRATION_DIR }}/${{ matrix.file.name }} && \
+            echo "${{ matrix.file.name }}-changed=true" >> $GITHUB_ENV    
+
+          set +xv
 
       # Commit all changed files back to the repository
       - uses: planetscale/ghcommit-action@v0.1.19
+        if: ${{ env.${{ matrix.file.name }}-changed == 'true' }}
         with:
-          commit_message: "syncing change from github.com/coralogix/coragix-aws-serverless-rust, ${{ github.event.head_commit.message }}"
+          commit_message: ${{ matrix.file.commit }}
           repo: ${{ env.CLOUDFORMATION_REPO }}
           branch: master
-          file_pattern: '*.yaml *.md'
+          file_pattern: '${{ env.CFN_INTEGRATION_DIR }}/${{ matrix.file.name  }}'
         env:
           GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
