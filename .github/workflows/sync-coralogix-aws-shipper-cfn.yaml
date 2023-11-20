@@ -102,7 +102,7 @@ jobs:
         run: |
           set -xv
           mkdir -p ${{ env.CFN_INTEGRATION_DIR }}
-          mv -v ./tmp/${{ matrix.file.name }} ${{ env.CFN_INTEGRATION_DIR }}/${{ matrix.file.name }
+          mv -v ./tmp/${{ matrix.file.name }} ${{ env.CFN_INTEGRATION_DIR }}/${{ matrix.file.name }}
 
           echo "${{ matrix.file.name }}-changed=false" >> $GITHUB_ENV
           [[ `git status --porcelain | grep -c "${{ matrix.file.name }}"` -gt 0 ]] && \
@@ -113,7 +113,7 @@ jobs:
 
       # Commit all changed files back to the repository
       - uses: planetscale/ghcommit-action@v0.1.19
-        if: ${{ env.${{ matrix.file.name }}-changed == 'true' }}
+        if: env.${{ matrix.file.name }}-changed == 'true'
         with:
           commit_message: ${{ matrix.file.commit }}
           repo: ${{ env.CLOUDFORMATION_REPO }}
