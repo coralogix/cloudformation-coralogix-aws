@@ -11,6 +11,8 @@ env:
   REPO_PACKAGE_ZIP: coralogix-aws-shipper.zip
   AWS_SHIPPER_REPO: coralogix/coralogix-aws-shipper
   CFN_INTEGRATION_DIR: aws-integrations/aws-shipper-lambda
+  CLOUDFORMATION_REPO: coralogix/cloudformation-coralogix-aws
+
 
 jobs:
   get-template:
