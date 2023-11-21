@@ -41,10 +41,7 @@ echo "
       #      {{AWS_ACCOUNT_ID}} is replaced during the template synchronisation
       ServiceToken: !Sub \"arn:aws:lambda:\${AWS::Region}:{{AWS_ACCOUNT_ID}}:function:integrations-custom-resource-notifier\"
       IntegrationId: !Ref IntegrationId
-      CoralogixDomain: !If
-        - IsRegionCustomUrlEmpty
-        - !Ref CustomDomain
-        - !FindInMap [ CoralogixRegionMap, !Ref CoralogixRegion, LogUrl ]
+      CoralogixDomain: !Ref CustomDomain
       CoralogixApiKey: !Ref ApiKey
 
       # Parameters to track
