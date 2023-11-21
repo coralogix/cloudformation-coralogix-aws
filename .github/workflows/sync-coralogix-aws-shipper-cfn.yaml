@@ -98,6 +98,8 @@ jobs:
           mkdir -p ${{ env.CFN_INTEGRATION_DIR }}
           mv -v ./.tmp/${{ matrix.file.name }} ${{ env.CFN_INTEGRATION_DIR }}/${{ matrix.file.name }}
 
+          git status --porcelain
+
           echo "${{ matrix.file.name }}-changed=false" >> $GITHUB_ENV
           [[ `git status --porcelain | grep -c "${{ matrix.file.name }}"` -gt 0 ]] && \
             git add ${{ env.CFN_INTEGRATION_DIR }}/${{ matrix.file.name }} && \
