@@ -114,7 +114,7 @@ jobs:
         with:
           commit_message: ${{ matrix.file.commit }}
           repo: ${{ env.CLOUDFORMATION_REPO }}
-          branch: dev
+          branch: cds-724
           file_pattern: '${{ env.CFN_INTEGRATION_DIR }}/${{ matrix.file.name  }}'
         env:
           GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
