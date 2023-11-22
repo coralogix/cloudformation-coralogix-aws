@@ -79,6 +79,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
+        id: checkout
       - run: mkdir .tmp
 
       - name: download template
@@ -113,7 +114,7 @@ jobs:
         with:
           commit_message: ${{ matrix.file.commit }}
           repo: ${{ env.CLOUDFORMATION_REPO }}
-          branch: master
+          branch: ${{ github.ref == 'refs/heads/main' && 'main' || github.ref == 'refs/heads/master' && 'master' || steps.checkout.outputs.ref  }}
           file_pattern: '${{ env.CFN_INTEGRATION_DIR }}/${{ matrix.file.name  }}'
         env:
           GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
