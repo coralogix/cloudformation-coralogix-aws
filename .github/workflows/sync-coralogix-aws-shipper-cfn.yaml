@@ -27,9 +27,7 @@ jobs:
       - name: get last commit_message
         id: commits
         run: |
-          echo "template_commit=$(git log -1 --pretty=%B -- template.yaml | tr '\n' ' ' )" >> $GITHUB_OUTPUT
-          echo "readme_commit=$(git log -1 --pretty=%B -- README.md | tr '\n' ' ')" >> $GITHUB_OUTPUT
-          echo "changelog_commit=$(git log -1 --pretty=%B -- CHANGELOG.md | tr '\n' ' ')" >> $GITHUB_OUTPUT
+          echo "last_commit=$(git log -1 --pretty=%B -- template.yaml | tr '\n' ' ' )" >> $GITHUB_OUTPUT
 
       - run: sudo snap install yq
         # Update the CodeUri property of all AWS::Serverless::Function resources using Yq
@@ -55,9 +53,7 @@ jobs:
             ./README.md
             ./CHANGELOG.md
     outputs:
-      template_commit: ${{ steps.commits.outputs.template_commit }}
-      readme_commit: ${{ steps.commits.outputs.readme_commit }}
-      changelog_commit: ${{ steps.commits.outputs.changelog_commit }}
+      last_commit: ${{ steps.commits.outputs.last_commit }}
 
 
   sync-changes:
@@ -65,17 +61,17 @@ jobs:
     permissions:
       contents: write
     needs: get-template
-    strategy:
-      matrix:
-        file:
-        - name: template.yaml
-          commit: ${{ needs.get-template.outputs.template_commit }}
+    # strategy:
+    #   matrix:
+    #     file:
+    #     - name: template.yaml
+    #       commit: ${{ needs.get-template.outputs.last_commit }}
 
-        - name: README.md
-          commit: ${{ needs.get-template.outputs.readme_commit }}
+    #     - name: README.md
+    #       commit: ${{ needs.get-template.outputs.readme_commit }}
 
-        - name: CHANGELOG.md 
-          commit: ${{ needs.get-template.outputs.changelog_commit }}
+    #     - name: CHANGELOG.md 
+    #       commit: ${{ needs.get-template.outputs.changelog_commit }}
 
     steps:
       - uses: actions/checkout@v3
@@ -97,24 +93,18 @@ jobs:
           set -xv
           ls -ltr .tmp
           mkdir -p ${{ env.CFN_INTEGRATION_DIR }}
-          mv -v ./.tmp/${{ matrix.file.name }} ${{ env.CFN_INTEGRATION_DIR }}/${{ matrix.file.name }}
+          mv -v ./.tmp/* ${{ env.CFN_INTEGRATION_DIR }}/
 
-          git status --porcelain
-
-          # echo "${{ matrix.file.name }}-changed=false" >> $GITHUB_ENV
-          # [[ `git status --porcelain | grep -c "${{ matrix.file.name }}"` -gt 0 ]] && \
-          git add ${{ env.CFN_INTEGRATION_DIR }}/${{ matrix.file.name }}
-          # echo "${{ matrix.file.name }}-changed=true" >> $GITHUB_ENV    
+          git add ${{ env.CFN_INTEGRATION_DIR }}/  
           git status
           set +xv
 
       # Commit all changed files back to the repository
       - uses: planetscale/ghcommit-action@v0.1.19
-        # if: env.${{ matrix.file.name }}-changed == 'true'
         with:
-          commit_message: ${{ matrix.file.commit }}
+          commit_message: ${{ needs.get-template.outputs.last_commit }}
           repo: ${{ env.CLOUDFORMATION_REPO }}
           branch: cds-724
-          file_pattern: '${{ env.CFN_INTEGRATION_DIR }}/${{ matrix.file.name  }}'
+          file_pattern: '*.yaml *.md' 
         env:
           GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
