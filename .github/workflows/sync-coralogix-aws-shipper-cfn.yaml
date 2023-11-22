@@ -100,16 +100,16 @@ jobs:
 
           git status --porcelain
 
-          echo "${{ matrix.file.name }}-changed=false" >> $GITHUB_ENV
-          [[ `git status --porcelain | grep -c "${{ matrix.file.name }}"` -gt 0 ]] && \
-            git add ${{ env.CFN_INTEGRATION_DIR }}/${{ matrix.file.name }} && \
-            echo "${{ matrix.file.name }}-changed=true" >> $GITHUB_ENV    
-
+          # echo "${{ matrix.file.name }}-changed=false" >> $GITHUB_ENV
+          # [[ `git status --porcelain | grep -c "${{ matrix.file.name }}"` -gt 0 ]] && \
+          git add ${{ env.CFN_INTEGRATION_DIR }}/${{ matrix.file.name }}
+          # echo "${{ matrix.file.name }}-changed=true" >> $GITHUB_ENV    
+          git status
           set +xv
 
       # Commit all changed files back to the repository
       - uses: planetscale/ghcommit-action@v0.1.19
-        if: env.${{ matrix.file.name }}-changed == 'true'
+        # if: env.${{ matrix.file.name }}-changed == 'true'
         with:
           commit_message: ${{ matrix.file.commit }}
           repo: ${{ env.CLOUDFORMATION_REPO }}
