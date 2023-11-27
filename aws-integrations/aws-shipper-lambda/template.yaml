@@ -184,6 +184,8 @@ Mappings:
       Domain: coralogix.us
     US2:
       Domain: cx498.coralogix.com
+    Custom:
+      Domain: ""
 Conditions:
   IsNotificationEnabled: !Not [!Equals [!Ref NotificationEmail, '']]
   IsCustomDomain: !Equals [!Ref CoralogixRegion, Custom]
@@ -273,7 +275,9 @@ Resources:
     Condition: UseDefault
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: s3://coralogix-serverless-repo-${AWS::Region}/coralogix-aws-shipper.zip
+      CodeUri:
+        Bucket: !Sub 'coralogix-serverless-repo-${AWS::Region}'
+        Key: coralogix-aws-shipper.zip
       Policies:
         - S3ReadPolicy:
             BucketName: !Ref S3BucketName
@@ -339,7 +343,9 @@ Resources:
     Condition: UseSNSTopicARN
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: s3://coralogix-serverless-repo-${AWS::Region}/coralogix-aws-shipper.zip
+      CodeUri:
+        Bucket: !Sub 'coralogix-serverless-repo-${AWS::Region}'
+        Key: coralogix-aws-shipper.zip
       Policies:
         - S3ReadPolicy:
             BucketName: !Ref S3BucketName
@@ -388,7 +394,9 @@ Resources:
     Condition: UseCloudwatchLogs
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: s3://coralogix-serverless-repo-${AWS::Region}/coralogix-aws-shipper.zip
+      CodeUri:
+        Bucket: !Sub 'coralogix-serverless-repo-${AWS::Region}'
+        Key: coralogix-aws-shipper.zip
       Policies:
         - S3ReadPolicy:
             BucketName: !Ref S3BucketName
