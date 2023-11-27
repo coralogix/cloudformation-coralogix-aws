@@ -127,13 +127,13 @@ Resources:
             LogDriver: awsfirelens
             Options:
               Format: json_lines
-              Header: !Sub "private_key ${PrivateKey}"
+              Header: !Sub "Authorization Bearer ${PrivateKey}"
               Host: !FindInMap [CoralogixRegionMap, !Ref CoralogixRegion, Endpoint]
               Name: http
               Port: "443"
               Retry_Limit: "10"
               TLS: On
-              URI: /logs/rest/singles
+              URI: /logs/v1/singles
               Compress: gzip
         - Name: otel-collector
           Image: public.ecr.aws/aws-observability/aws-otel-collector
@@ -160,13 +160,13 @@ Resources:
             LogDriver: awsfirelens
             Options:
               Format: json_lines
-              Header: !Sub "private_key ${PrivateKey}"
+              Header: !Sub "Authorization Bearer ${PrivateKey}"
               Host: !FindInMap [CoralogixRegionMap, !Ref CoralogixRegion, Endpoint]
               Name: http
               Port: "443"
               Retry_Limit: "10"
               TLS: On
-              URI: /logs/rest/singles
+              URI: /logs/v1/singles
               Compress: gzip
         - Name: log_router
           Image: public.ecr.aws/aws-observability/aws-for-fluent-bit:init-2.31.12
