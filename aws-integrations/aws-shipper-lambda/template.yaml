@@ -30,7 +30,6 @@ Metadata:
           - SubsystemName
           - ApiKey
           - StoreAPIKeyInSecretsManager
-          - LogsPerBatch
       - Label:
           default: Integration S3/Cloudtrail/vpcflowlogs/s3_csv configuration
         Parameters:
@@ -55,6 +54,8 @@ Metadata:
           - FunctionMemorySize
           - FunctionTimeout
           - LogLevel
+          - LambdaLogRetention
+          - LogsPerBatch
 Parameters:
   CoralogixRegion:
     Type: String
