@@ -14,6 +14,7 @@ Metadata:
       - logs
       - sns
       - s3
+      - s3_csv
     HomePageUrl: https://coralogix.com
     SemanticVersion: 0.0.0
     SourceCodeUrl: https://github.com/coralogix/coralogix-aws-shipper
@@ -29,8 +30,9 @@ Metadata:
           - SubsystemName
           - ApiKey
           - StoreAPIKeyInSecretsManager
+          - LogsPerBatch
       - Label:
-          default: Integration S3 configuration
+          default: Integration S3/Cloudtrail/vpcflowlogs/s3_csv configuration
         Parameters:
           - S3BucketName
           - S3KeyPrefix
@@ -108,6 +110,12 @@ Parameters:
       - "ERROR"
       - "DEBUG"
     Default: "INFO"
+  LogsPerBatch:
+    Type: Number
+    Description: Number of logs to send in each batch
+    MinValue: 1
+    MaxValue: 10000
+    Default: 500
   S3BucketName:
     Type: String
     Description: The name of the AWS S3 bucket to watch
@@ -142,12 +150,13 @@ Parameters:
     Default: ''
   IntegrationType:
     Type: String
-    Description: 'The integration type. Can be one of: s3, cloudtrail, vpcflowlogs, cloudwatch'
+    Description: 'The integration type. Can be one of: s3, cloudtrail, vpcflowlogs, cloudwatch, s3_csv'
     AllowedValues:
       - s3
       - cloudtrail
       - cloudwatch
       - vpcflowlogs
+      - s3_csv
     Default: s3
   CloudWatchLogGroupName:
     Type: String
@@ -240,13 +249,14 @@ Globals:
           - StoreAPIKeyInSecretsManager
           - !Ref Secret
           - !Ref ApiKey
-        app_name: !Ref ApplicationName
-        sub_name: !Ref SubsystemName
+        APP_NAME: !Ref ApplicationName
+        SUB_NAME: !Ref SubsystemName
         NEWLINE_PATTERN: !Ref NewlinePattern
-        blocking_pattern: !Ref BlockingPattern
-        sampling: !Ref SamplingRate
+        BLOCKING_PATTERN: !Ref BlockingPattern
+        SAMPLING: !Ref SamplingRate
         INTEGRATION_TYPE: !Ref IntegrationType
         RUST_LOG: !Ref LogLevel
+        LOGS_PER_BATCH: !Ref LogsPerBatch
 Resources:
   Secret:
     Type: 'AWS::SecretsManager::Secret'
