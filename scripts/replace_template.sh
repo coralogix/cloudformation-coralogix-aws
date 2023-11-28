@@ -28,6 +28,10 @@ while IFS= read -r resource; do
       no_condition_resource+=($resource)
     fi
 done <<< "$resources"
+if [[ $file == *"aws-shipper-lambda"* ]]; then
+  yq eval --inplace '.Conditions += {"IsApiKeySecretArn": "condition"}' $file
+  sed -i "s/IsApiKeySecretArn: condition/IsApiKeySecretArn: \!Not [\!Equals [\!Ref ApiKey , \!Select [0,\!Split [\":\" , \!Ref ApiKey]]]]/g" $file
+fi
 
 echo "  IntegrationStatusNotifier:
     Type: Custom::IntegrationsServiceNotifier
@@ -36,14 +40,38 @@ echo "  IntegrationStatusNotifier:
 for resource in "${no_condition_resource[@]}"; do
   echo "      - $resource" >> $file
 done
+
+
 echo "
     Properties:
       #      {{AWS_ACCOUNT_ID}} is replaced during the template synchronisation
       ServiceToken: !Sub \"arn:aws:lambda:\${AWS::Region}:{{AWS_ACCOUNT_ID}}:function:integrations-custom-resource-notifier\"
-      IntegrationId: !Ref IntegrationId
-      CoralogixDomain: !Ref CustomDomain
-      CoralogixApiKey: !Ref ApiKey
-
+      IntegrationId: !Ref IntegrationId" >> $file
+if [[ $file == *"aws-shipper-lambda"* ]]; then
+  echo "      CoralogixRegion: !If
+        - IsCustomDomain
+        - !Sub
+          - https://ingress.\${domain}
+          - {domain: !Ref CustomDomain}
+        - !Sub
+          - https://ingress.\${domain}
+          - {domain: !FindInMap [CoralogixRegionMap, !Ref CoralogixRegion, Domain]}
+      CoralogixApiKey: !If
+          - StoreAPIKeyInSecretsManager
+          - !Sub [\"{{resolve:secretsmanager:\${secret_arn}:SecretString:}}\", {\"secret_arn\": !Ref Secret}]
+          - !If
+            - IsApiKeySecretArn
+            - !Sub [\"{{resolve:secretsmanager:\${secret_arn}:SecretString:}}\", {\"secret_arn\": !Ref ApiKey}]
+            - !Ref ApiKey" >> $file
+else
+  echo "
+      CoralogixDomain: !If
+        - IsRegionCustomUrlEmpty
+        - !Ref CustomDomain
+        - !FindInMap [ CoralogixRegionMap, !Ref CoralogixRegion, LogUrl ]
+      CoralogixApiKey: !Ref ApiKey" >> $file
+fi
+echo "
       # Parameters to track
       IntegrationNameField: !Ref \"AWS::StackName\"
       SubsystemField: !Ref SubsystemName
