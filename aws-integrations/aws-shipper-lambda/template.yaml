@@ -136,7 +136,7 @@ Parameters:
     Type: Number
     Description: Memory size for lambda function
     MinValue: 128
-    MaxValue: 3008
+    MaxValue: 10240
     Default: 1024
   FunctionTimeout:
     Type: Number
