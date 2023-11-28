@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     name: upload files
     env:
-      integration_list: "s3,s3-sns,cloudtrail,cloudtrail-sns,cloudwatch-logs,vpc-flow-logs,firehose-logs,firehose-metrics,resource-metadata"
+      integration_list: "s3,s3-sns,cloudtrail,cloudtrail-sns,cloudwatch-logs,vpc-flow-logs,firehose-logs,firehose-metrics,resource-metadata,aws-shipper-lambda"
     steps:
       - uses: actions/checkout@v3
         with:
@@ -29,7 +29,6 @@ jobs:
         run: |
           changed_files_string="${{ steps.changed-files.outputs.all_changed_files }}"
           read -ra changed_files_array <<< "$changed_files_string"
-
           for changed_file in "${changed_files_array[@]}"; do
             integration=$(echo "$changed_file" | xargs -n1 dirname | xargs -n1 basename)
             if [[ $changed_file == **"/$integration/template.yaml" ]]; then
@@ -96,19 +95,20 @@ jobs:
 
       - name: apply changes to the files
         run: |
-          if echo "${{ github.event.head_commit.message }}" | tr '\n' ' ' | grep -Eq '(#\d+)'; then
-            branch_name=$(echo "${{ github.event.head_commit.message }}" | grep -Epo '(#\d+)')
+          if [[ $(echo "${{ github.event.head_commit.message }}" | grep -oE '[0-9]+') ]]; then
+            branch_name=branch-$(echo "${{ github.event.head_commit.message }}" | grep -oE '[0-9]+')
+          elif echo "${{ github.event.head_commit.message }}" | grep -q "#"; then
+            branch_name=$(echo "${{ github.event.head_commit.message }}" | cut -d '#' -f 2)
+            echo "${{ github.event.head_commit.message }}"
           else
-            branch_name=update_integration_branch
+            branch_name=update_integration-branch
           fi
-          echo "branch_name: ${branch_name}"
+          echo $branch_name
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
-          git remote update
-          git fetch
           git pull origin master
-          git branch ${branch_name}
-          git checkout ${branch_name}
+          git checkout -b ${branch_name}
+          git push --set-upstream origin ${branch_name}
           sync_branch_exists=$(git ls-remote --heads origin "${branch_name}" | wc -l)
           if [[ $sync_branch_exists -ne 0 ]]; then
             git pull origin ${branch_name} --rebase
@@ -132,17 +132,29 @@ jobs:
           rm -rf template-directory
           rm changed-integration.txt
           git add .
-          git commit -m "Copy file from cloudformation repository"
-          git push --set-upstream origin ${branch_name}
+          echo "branch_name=$branch_name" >> $GITHUB_ENV
+
+      - name: commit change
+        uses: planetscale/ghcommit-action@v0.1.19
+        with:
+          commit_message: "Copy file from cloudformation repository"
+          repo: coralogix/integration-definitions
+          branch: ${{env.branch_name}}
+          file_pattern: '*.yaml *.md'
+        env:
+          GITHUB_TOKEN: ${{secrets.GH_TOKEN}}
 
       - name: Create pull request
         run: |
-          if echo "${{ github.event.head_commit.message }}" | tr '\n' ' ' | grep -Eq '(#\d+)'; then
-            branch_name=$(echo "${{ github.event.head_commit.message }}" | grep -Epo '(#\d+)')
-            Pr_name=$(echo "${{ github.event.head_commit.message }}" | grep -E '(#\d+)')
+          if [[ $(echo "${{ github.event.head_commit.message }}" | grep -oE '[0-9]+') ]]; then
+            branch_name=branch-$(echo "${{ github.event.head_commit.message }}" | grep -oE '[0-9]+')
+            Pr_name=$(echo "${{ github.event.head_commit.message }}" | awk '{sub(/ *\(#[0-9]+\)/, ""); print}')
+          elif echo "${{ github.event.head_commit.message }}" | grep -q "#"; then
+            branch_name=$(echo "${{ github.event.head_commit.message }}" | cut -d '#' -f 2)
+            Pr_name=$(echo "${{ github.event.head_commit.message }}" | cut -d '#' -f 1)
           else
-            branch_name=update_integration_branch
-            Pr_name=$(echo "${{ github.event.head_commit.message }}" | grep -E '(#\d+)')
+            branch_name=update_integration-branch
+            Pr_name="${{ github.event.head_commit.message }}"
           fi
           pr_exists=$(gh pr list --base master --head "${branch_name}" --json number -q '.[].number')
           if [[ -n "$pr_exists" ]]; then
