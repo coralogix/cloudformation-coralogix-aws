@@ -12,7 +12,7 @@ Parameters:
       - US2
   PrivateKey:
     Type: String
-    Description: The Coralogix private key which is used to validate your authenticity
+    Description: The Coralogix Send-Your-Data API Key which is used to validate your authenticity
     NoEcho: true
   S3ConfigARN:
     Type: String
@@ -112,12 +112,12 @@ Resources:
       ExecutionRoleArn: !GetAtt ECSExecutionRole.Arn
       NetworkMode: awsvpc
       ContainerDefinitions:
-        - Name: node-app
-          Image: mikebriggs2k/nodeapp:0.0.6
+        - Name: demo
+          Image: nginx
           Cpu: 0
           PortMappings:
-            - ContainerPort: 8080
-              HostPort: 8080
+            - ContainerPort: 80
+              HostPort: 80
               Protocol: tcp
           Essential: true
           Environment: []
@@ -155,7 +155,7 @@ Resources:
           VolumesFrom: []
           Secrets:
             - Name: AOT_CONFIG_CONTENT
-              ValueFrom: config.yaml
+              ValueFrom: /OTEL/config.yaml
           LogConfiguration:
             LogDriver: awsfirelens
             Options:
