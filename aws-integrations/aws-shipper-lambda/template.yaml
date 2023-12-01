@@ -56,6 +56,12 @@ Metadata:
           - LogLevel
           - LambdaLogRetention
           - LogsPerBatch
+      - Label:
+          default: VPC configuration Optional
+        Parameters:
+          - LambdaSubnetID
+          - LambdaSecurityGroupID
+          - UsePrivateLink
 Parameters:
   CoralogixRegion:
     Type: String
@@ -121,7 +127,6 @@ Parameters:
     Type: String
     Description: The name of the AWS S3 bucket to watch
     AllowedPattern: '^[0-9A-Za-z\.\-_]*(?<!\.)$'
-    MinLength: 3
     MaxLength: 63
   S3KeyPrefix:
     Type: String
@@ -161,7 +166,7 @@ Parameters:
     Default: s3
   CloudWatchLogGroupName:
     Type: String
-    Description: "A comma separated list of CloudWatch log groups names to watch\te.g, (log-group1,log-group2,log-group3)"
+    Description: 'A comma separated list of CloudWatch log groups names to watch  e.g, (log-group1,log-group2,log-group3)'
     Default: ''
   LambdaLogRetention:
     Type: Number
@@ -180,6 +185,21 @@ Parameters:
       - true
       - false
     Default: true
+  LambdaSubnetID:
+    Type: String
+    Description: ID of Subnet into which to deploy the integration
+    Default: ''
+  LambdaSecurityGroupID:
+    Type: String
+    Description: ID of the SecurityGroup into which to deploy the integration
+    Default: ''
+  UsePrivateLink:
+    Type: String
+    Description: Will you be using our PrivateLink?
+    AllowedValues:
+      - true
+      - false
+    Default: false
 Mappings:
   CoralogixRegionMap:
     Europe:
@@ -203,9 +223,13 @@ Conditions:
   S3SuffixIsSet: !Not [!Equals [!Ref S3KeySuffix, '']]
   IsCloudTrailIntegration: !Equals [!Ref IntegrationType, 'cloudtrail']
   StoreAPIKeyInSecretsManager: !Equals [!Ref StoreAPIKeyInSecretsManager, 'true']
+  IsPrivateLink: !Equals [!Ref UsePrivateLink, 'true']
   UseSNSTopicARN: !And
     - !Not [!Equals [!Ref SNSTopicArn, '']]
     - !Equals [!Ref CloudWatchLogGroupName, '']
+  UseVpcConfig: !And
+    - !Not [!Equals [!Ref LambdaSubnetID, '']]
+    - !Not [!Equals [!Ref LambdaSecurityGroupID, '']]
   UseCloudwatchLogs: !And
     - !Not [!Equals [!Ref CloudWatchLogGroupName, '']]
     - !Not [!Condition UseSNSTopicARN]
@@ -222,11 +246,18 @@ Conditions:
     - !Condition UseSNSTopicARN
     - !Condition IsNotificationEnabled
 Rules:
-  ValidateParameters:
+  ValidateCustomDomain:
     RuleCondition: !Equals [!Ref CoralogixRegion, Custom]
     Assertions:
       - Assert: !Not [!Equals [!Ref CustomDomain, '']]
         AssertDescription: CustomDomain must be set when CoralogixRegion is set to Custom
+  ValidatePrivateLinkConfig:
+    RuleCondition: !Equals [!Ref UsePrivateLink, 'true']
+    Assertions:
+      - Assert: !And
+          - !Not [!Equals [!Ref LambdaSubnetID, '']]
+          - !Not [!Equals [!Ref LambdaSecurityGroupID, '']]
+        AssertDescription: Subnet ID and Security Group ID must be set when UsePrivateLink is set to true
 Globals:
   Function:
     Description: Send logs to Coralogix.
@@ -240,12 +271,22 @@ Globals:
       Variables:
         CORALOGIX_ENDPOINT: !If
           - IsCustomDomain
-          - !Sub
-            - https://ingress.${domain}
-            - {domain: !Ref CustomDomain}
-          - !Sub
-            - https://ingress.${domain}
-            - {domain: !FindInMap [CoralogixRegionMap, !Ref CoralogixRegion, Domain]}
+          - !If
+            - IsPrivateLink
+            - !Sub
+              - https://ingress.private.${domain}
+              - domain: !Ref CustomDomain
+            - !Sub
+              - https://ingress.${domain}
+              - domain: !Ref CustomDomain
+          - !If
+            - IsPrivateLink
+            - !Sub
+              - https://ingress.private.${domain}
+              - domain: !FindInMap [CoralogixRegionMap, !Ref CoralogixRegion, Domain]
+            - !Sub
+              - https://ingress.${domain}
+              - domain: !FindInMap [CoralogixRegionMap, !Ref CoralogixRegion, Domain]
         CORALOGIX_API_KEY: !If
           - StoreAPIKeyInSecretsManager
           - !Ref Secret
@@ -301,6 +342,14 @@ Resources:
         DestinationConfig:
           OnFailure:
             Type: SNS
+      VpcConfig:
+        Fn::If:
+          - UseVpcConfig
+          - SecurityGroupIds:
+              - !Ref LambdaSecurityGroupID
+            SubnetIds:
+              - !Ref LambdaSubnetID
+          - Ref: AWS::NoValue
   LambdaLogGroupDefault:
     Condition: UseDefault
     DeletionPolicy: Retain
@@ -374,6 +423,14 @@ Resources:
           Type: SNS
           Properties:
             Topic: !Ref SNSTopicArn
+      VpcConfig:
+        Fn::If:
+          - UseVpcConfig
+          - SecurityGroupIds:
+              - !Ref LambdaSecurityGroupID
+            SubnetIds:
+              - !Ref LambdaSubnetID
+          - Ref: AWS::NoValue
   LambdaLogGroupWithSNSTopic:
     Condition: UseSNSTopicARN
     DeletionPolicy: Retain
@@ -420,6 +477,14 @@ Resources:
         DestinationConfig:
           OnFailure:
             Type: SNS
+      VpcConfig:
+        Fn::If:
+          - UseVpcConfig
+          - SecurityGroupIds:
+              - !Ref LambdaSecurityGroupID
+            SubnetIds:
+              - !Ref LambdaSubnetID
+          - Ref: AWS::NoValue
   LambdaLogGroupCloudwatchLogs:
     Condition: UseCloudwatchLogs
     DeletionPolicy: Retain
@@ -460,6 +525,14 @@ Resources:
   CustomResourceLambdaTriggerFunction:
     Type: AWS::Serverless::Function
     Properties:
+      VpcConfig:
+        Fn::If:
+          - UseVpcConfig
+          - SecurityGroupIds:
+              - !Ref LambdaSecurityGroupID
+            SubnetIds:
+              - !Ref LambdaSubnetID
+          - Ref: AWS::NoValue
       Handler: index.lambda_handler
       Runtime: python3.11
       Timeout: 50
