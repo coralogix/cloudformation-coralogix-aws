@@ -1,24 +1,92 @@
-# coralogix-aws-rust-lambda
+# coralogix-aws-rust-lambda (Beta)
 
 [![license](https://img.shields.io/github/license/coralogix/terraform-provider-coralogix.svg)](https://raw.githubusercontent.com/coralogix/terraform-provider-coralogix/master/LICENSE)
 
 ## Overview
-AWS Lambda function that ships logs from AWS to Coralogix
+Coralogix provides a predefined AWS Lambda function to easily forward your logs to the Coralogix platform.
+The Function support s3, s3_csv, cloudtrail, vpcflowlogs, cloudwatch
+
+## Prerequisites
+
+* AWS account (Your AWS user should have permissions to create lambdas and IAM roles)
+* Coralogix account
+* The application should be installed in the same AWS region as your resource are (i.e the S3 bucket you want to send the logs from)
 
 ## Installation
 
-### Coralogix Integration (from within the product)
+### AWS Serverless Application
 
-### Serverless Application
+The lambda can be deployed by clicking the link below and signing into your AWS account:
+[Deployment link](https://serverlessrepo.aws.amazon.com/applications/eu-central-1/597078901540/Coralogix-aws-shipper)
+Please make sure you selecet the AWS region before you deploy
 
-### CloudFormation
+### Coralogix In Product Integration
+
+Link To Coralogix Document TBD
+
+### AWS CloudFormation Application
+
+Link To CF template TBD
 
 ### Terraform
 
-### Manual
+Link To coralogix Module TBD
+
+## Paramaters 
+
+### Coralogix configuration
+| Parameter | Description | Default Value | Required |
+|---|---|---|---|
+| Application name | The stack name of this application created via AWS CloudFormation. |   | :heavy_check_mark: |
+| IntegrationType | The integration type. Can be one of: s3, cloudtrail, vpcflowlogs, cloudwatch, s3_csv' |  s3 | :heavy_check_mark: | 
+| CoralogixRegion | The Coralogix location region, possible options are [Custom, Europe, Europe2, India, Singapore, US, US2] If this value is set to Custom you must specify the Custom Domain to use via the CustomDomain parameter |  Custom | :heavy_check_mark: | 
+| CustomDomain | The Custom Domain. If set, will be the domain used to send telemetry (e.g. cx123.coralogix.com) |   |   |
+| ApplicationName | The [name](https://coralogix.com/docs/application-and-subsystem-names/) of your application. for dynamically value from the log you should use $.my_log.field |   | :heavy_check_mark: | 
+| SubsystemName | The [name](https://coralogix.com/docs/application-and-subsystem-names/) of your subsystem. for dynamically value from the log you should use $.my_log.field . for cloudwatch loggroup leave empty |   |   |
+| ApiKey | Your Coralogix Send Your Data - [API Key](https://coralogix.com/docs/send-your-data-api-key/) which is used to validate your authenticity, This value can be a Coralogix API Key or an AWS Secret Manager ARN that holds the API Key |   | :heavy_check_mark: |
+| StoreAPIKeyInSecretsManager | Store the API key in AWS Secrets Manager.  If this option is set to false, the ApiKey will apeear in plain text as an environment variable in the lambda function console. | True  | :heavy_check_mark: |
+
+### Integration S3/Cloudtrail/vpcflowlogs/s3_csv configuration
+| Parameter | Description | Default Value | Required |
+|---|---|---|---|
+| S3BucketName | The name of the AWS S3 bucket to watch |   | :heavy_check_mark: |
+| S3KeyPrefix | The AWS S3 path prefix to watch | cloudtrail 'AWSLogs/' |   |
+| S3KeySuffix | The AWS S3 path suffix to watch | cloudtrail/vpcflowlogs '.json.gz' |   |
+| NewlinePattern | Regular expression to detect a new log line for multiline logs from S3 source, e.g., use expression \n(?:\r\n\|\r\|\n) | \n(?:\r\n\|\r\|\n) |   |
+| SNSTopicArn | The ARN of SNS topic that will contain the SNS subscription for retrieving logs from S3 |   |   |
+
+### Integration Cloudwatch configuration
+| Parameter | Description | Default Value | Required |
+|---|---|---|---|
+| CloudWatchLogGroupName | A comma separated list of CloudWatch log groups names to watch  e.g, (log-group1,log-group2,log-group3) |   | :heavy_check_mark: | 
+
+### Integration Generic Config (Optional)
+| Parameter | Description | Default Value | Required |
+|---|---|---|---|
+| NotificationEmail | Failure notification email address |   |   | 
+| BlockingPattern | Regular expression to detect lines that should be excluded from sent to Coralogix |   |   | 
+| SamplingRate | Send messages with specific rate (1 out of N) e.g., put the value 10 if you want to send every 10th log | 1 | :heavy_check_mark: | 
+
+
+### Lambda configuration (Optional)
+| Parameter | Description | Default Value | Required |
+|---|---|---|---|
+| FunctionMemorySize | Memory size for lambda function in mb | 1024 | :heavy_check_mark: | 
+| FunctionTimeout | Timeout for the lambda function in sec | 300 | :heavy_check_mark: | 
+| LogLevel | Log level for the Lambda function. Can be one of: INFO, WARNING, ERROR, DEBUG | INFO | :heavy_check_mark: | 
+| LambdaLogRetention | CloudWatch log retention days for logs generated by the Lambda function | 5 | :heavy_check_mark: | 
+
+### VPC configuration (Optional)
+| Parameter | Description | Default Value | Required |
+|---|---|---|---|
+| LambdaSubnetID | ID of Subnet into which to deploy the integration |   | :heavy_check_mark: | 
+| LambdaSecurityGroupID | ID of the SecurityGroup into which to deploy the integration |   | :heavy_check_mark: | 
+| UsePrivateLink | Will you be using our PrivateLink? | false | :heavy_check_mark: | 
 
 ## Advanced
 
 ### AWS PrivateLink
+To use privatelink please forllow the instruction in this [link](https://coralogix.com/docs/coralogix-amazon-web-services-aws-privatelink-endpoints/)
 
 ## Troubleshooting
+TBD
