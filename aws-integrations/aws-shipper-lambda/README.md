@@ -1,10 +1,24 @@
-# coralogix-aws-rust-lambda (Beta)
+# coralogix-aws-shipper (Beta)
 
 [![license](https://img.shields.io/github/license/coralogix/terraform-provider-coralogix.svg)](https://raw.githubusercontent.com/coralogix/terraform-provider-coralogix/master/LICENSE)
 
 ## Overview
 Coralogix provides a predefined AWS Lambda function to easily forward your logs to the Coralogix platform.
-The Function support s3, s3_csv, cloudtrail, vpcflowlogs, cloudwatch
+
+The `coralogix-aws-shipper` supports forwarding of logs for the following AWS Services:
+
+* [Amazon CloudWatch](https://docs.aws.amazon.com/cloudwatch/)
+* [AWS CloudTrail](https://docs.aws.amazon.com/awscloudtrail/latest/userguide/cloudtrail-log-file-examples.html)
+* [Amazon VPC Flow logs](https://docs.aws.amazon.com/vpc/latest/userguide/flow-logs-s3.html)
+* AWS Elastic Load Balancing access logs ([ALB](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer-access-logs.html), [NLB](https://docs.aws.amazon.com/elasticloadbalancing/latest/network/load-balancer-access-logs.html) and [ELB](https://docs.aws.amazon.com/elasticloadbalancing/latest/classic/access-log-collection.html))
+* [Amazon CloudFront](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/AccessLogs.html)
+* [AWS Network Firewall](https://docs.aws.amazon.com/network-firewall/latest/developerguide/logging-s3.html)
+* [Amazon Redshift](https://docs.aws.amazon.com/redshift/latest/mgmt/db-auditing.html#db-auditing-manage-log-files)
+* [Amazon S3 access logs](https://docs.aws.amazon.com/AmazonS3/latest/userguide/ServerLogs.html)
+* [Amazon VPC DNS query logs](https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/resolver-query-logs.html)
+* [AWS WAF](https://docs.aws.amazon.com/waf/latest/developerguide/logging-s3.html)
+
+Additionally, you can ingest any generic text, JSON and csv logs stored in your S3 bucket
 
 ## Prerequisites
 
@@ -12,7 +26,7 @@ The Function support s3, s3_csv, cloudtrail, vpcflowlogs, cloudwatch
 * Coralogix account
 * The application should be installed in the same AWS region as your resource are (i.e the S3 bucket you want to send the logs from)
 
-## Installation
+## Deployment instructions
 
 ### AWS Serverless Application
 
@@ -26,7 +40,8 @@ Link To Coralogix Document TBD
 
 ### AWS CloudFormation Application
 
-Link To CF template TBD
+Log into your AWS account and deploy the CloudFormation Stack with the button below
+[![Launch Stack](https://s3.amazonaws.com/cloudformation-examples/cloudformation-launch-stack.png)](https://console.aws.amazon.com/cloudformation/home#/stacks/create/review?stackName=coralogix-aws-shipper&templateURL=https://cgx-cloudformation-templates.s3.amazonaws.com/aws-integrations/aws-shipper-lambda/template.yaml)
 
 ### Terraform
 
