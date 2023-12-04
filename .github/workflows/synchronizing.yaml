@@ -96,7 +96,7 @@ jobs:
       - name: apply changes to the files
         run: |
           if [[ $(echo "${{ github.event.head_commit.message }}" | grep -oE '[0-9]+') ]]; then
-            branch_name=branch-$(echo "${{ github.event.head_commit.message }}" | grep -oE '[0-9]+')
+            branch_name=branch-$(echo "${{ github.event.head_commit.message }}" | grep -oE '[0-9]+' | awk '{ printf $0 }')
           elif echo "${{ github.event.head_commit.message }}" | grep -q "#"; then
             branch_name=$(echo "${{ github.event.head_commit.message }}" | cut -d '#' -f 2)
             echo "${{ github.event.head_commit.message }}"
@@ -107,8 +107,12 @@ jobs:
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
           git pull origin master
-          git checkout -b ${branch_name}
-          git push --set-upstream origin ${branch_name}
+          git fetch origin
+          git switch -c ${branch_name} --track origin/master 
+          pr_exists=$(gh pr list --base master --head "${branch_name}" --json number -q '.[].number')
+          if [[ -z "$pr_exists" ]]; then
+            git push --set-upstream origin ${branch_name}
+          fi
           sync_branch_exists=$(git ls-remote --heads origin "${branch_name}" | wc -l)
           if [[ $sync_branch_exists -ne 0 ]]; then
             git pull origin ${branch_name} --rebase
@@ -133,6 +137,8 @@ jobs:
           rm changed-integration.txt
           git add .
           echo "branch_name=$branch_name" >> $GITHUB_ENV
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
 
       - name: commit change
         uses: planetscale/ghcommit-action@v0.1.19
@@ -147,7 +153,7 @@ jobs:
       - name: Create pull request
         run: |
           if [[ $(echo "${{ github.event.head_commit.message }}" | grep -oE '[0-9]+') ]]; then
-            branch_name=branch-$(echo "${{ github.event.head_commit.message }}" | grep -oE '[0-9]+')
+            branch_name=branch-$(echo "${{ github.event.head_commit.message }}" | grep -oE '[0-9]+' | awk '{ printf $0 }')
             Pr_name=$(echo "${{ github.event.head_commit.message }}" | awk '{sub(/ *\(#[0-9]+\)/, ""); print}')
           elif echo "${{ github.event.head_commit.message }}" | grep -q "#"; then
             branch_name=$(echo "${{ github.event.head_commit.message }}" | cut -d '#' -f 2)
