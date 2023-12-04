@@ -1,6 +1,6 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
-Description: Send logs to Coralogix from AWS, (S3, SNS, Cloudwatch and more)
+Description: Send logs to Coralogix from AWS, (S3, SNS, Cloudwatch and more).
 Metadata:
   AWS::ServerlessRepo::Application:
     Name: Coralogix-Logs
@@ -67,7 +67,7 @@ Parameters:
     Type: String
     Description: |
       The Coralogix location region, possible options are [Europe, Europe2, India, Singapore, US, US2]
-      If this value is set to Custom you must specify the Custom Domain to use via the CustomDomain parameter
+      If this value is set to Custom you must specify the Custom Domain to use via the CustomDomain parameter.
     AllowedValues:
       - Europe
       - Europe2
