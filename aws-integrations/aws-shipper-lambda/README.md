@@ -71,7 +71,7 @@ Link To coralogix Module TBD
 | S3BucketName | The name of the AWS S3 bucket to watch |   | :heavy_check_mark: |
 | S3KeyPrefix | The AWS S3 path prefix to watch | cloudtrail 'AWSLogs/' |   |
 | S3KeySuffix | The AWS S3 path suffix to watch | cloudtrail/vpcflow '.json.gz' |   |
-| NewlinePattern | Regular expression to detect a new log line for multiline logs from S3 source, e.g., use expression \n(?:\r\n\|\r\|\n) | \n(?:\r\n\|\r\|\n) |   |
+| NewlinePattern | Regular expression to detect a new log line for multiline logs from S3 source, e.g., use expression \n(?:\r\n\|\r\|\n) | \n(?=\d{2}\-\d{2}\s\d{2}\:\d{2}\:\d{2}\.\d{3}) |   |
 | SNSTopicArn | The ARN of SNS topic that will contain the SNS subscription for retrieving logs from S3 |   |   |
 | CsvDelimiter | Single Character for using as a Delimiter when ingesting CSV (This value is applied when the s3_csv integration type  is selected), e.g. "," or " " |   |   |
 
@@ -84,7 +84,7 @@ Link To coralogix Module TBD
 | Parameter | Description | Default Value | Required |
 |---|---|---|---|
 | NotificationEmail | Failure notification email address |   |   | 
-| BlockingPattern | Regular expression to detect lines that should be excluded from sent to Coralogix |   |   | 
+| BlockingPattern | Regular expression to detect lines that should be excluded from sent to Coralogix, e.g., use expression MainActivity.java\:\d{3} to match all log that MainActivity ends with 3 digits|   |   | 
 | SamplingRate | Send messages with specific rate (1 out of N) e.g., put the value 10 if you want to send every 10th log | 1 | :heavy_check_mark: | 
 
 
