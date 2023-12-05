@@ -31,13 +31,14 @@ Metadata:
           - ApiKey
           - StoreAPIKeyInSecretsManager
       - Label:
-          default: Integration S3/Cloudtrail/vpcflowlogs/s3_csv configuration
+          default: Integration S3/Cloudtrail/vpcflow/s3_csv configuration
         Parameters:
           - S3BucketName
           - S3KeyPrefix
           - S3KeySuffix
           - NewlinePattern
           - SNSTopicArn
+          - CsvDelimiter
       - Label:
           default: Integration Cloudwatch configuration
         Parameters:
@@ -128,6 +129,11 @@ Parameters:
     Description: The name of the AWS S3 bucket to watch
     AllowedPattern: '^[0-9A-Za-z\.\-_]*(?<!\.)$'
     MaxLength: 63
+  CsvDelimiter:
+    Type: String
+    Description: The delimiter used in the CSV file to process
+    MaxLength: 1
+    Default: ','
   S3KeyPrefix:
     Type: String
     Description: The AWS S3 path prefix to watch
@@ -156,12 +162,12 @@ Parameters:
     Default: ''
   IntegrationType:
     Type: String
-    Description: 'The integration type. Can be one of: s3, cloudtrail, vpcflowlogs, cloudwatch, s3_csv'
+    Description: 'The integration type. Can be one of: s3, cloudtrail, vpcflow, cloudwatch, s3_csv'
     AllowedValues:
       - s3
       - cloudtrail
       - cloudwatch
-      - vpcflowlogs
+      - vpcflow
       - s3_csv
     Default: s3
   CloudWatchLogGroupName:
@@ -299,6 +305,7 @@ Globals:
         INTEGRATION_TYPE: !Ref IntegrationType
         RUST_LOG: !Ref LogLevel
         LOGS_PER_BATCH: !Ref LogsPerBatch
+        CSV_DELIMITER: !Ref CsvDelimiter
 Resources:
   Secret:
     Type: 'AWS::SecretsManager::Secret'
