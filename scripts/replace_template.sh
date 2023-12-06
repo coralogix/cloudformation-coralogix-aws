@@ -50,12 +50,8 @@ echo "
 if [[ $file == *"aws-shipper-lambda"* ]]; then
   echo "      CoralogixDomain: !If
         - IsCustomDomain
-        - !Sub
-          - https://ingress.\${domain}
-          - {domain: !Ref CustomDomain}
-        - !Sub
-          - https://ingress.\${domain}
-          - {domain: !FindInMap [CoralogixRegionMap, !Ref CoralogixRegion, Domain]}
+        - !Ref CustomDomain
+        - !FindInMap [CoralogixRegionMap, !Ref CoralogixRegion, Domain]
       CoralogixApiKey: !If
           - StoreAPIKeyInSecretsManager
           - !Sub [\"{{resolve:secretsmanager:\${secret_arn}:SecretString:}}\", {\"secret_arn\": !Ref Secret}]
