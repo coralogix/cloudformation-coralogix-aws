@@ -18,6 +18,9 @@ Metadata:
       - sns
       - s3
       - s3_csv
+      - cloudwatch
+      - cloudtrail
+      - vpc
     HomePageUrl: https://coralogix.com
     SemanticVersion: 0.0.0
     SourceCodeUrl: https://github.com/coralogix/coralogix-aws-shipper
@@ -34,20 +37,20 @@ Metadata:
           - ApiKey
           - StoreAPIKeyInSecretsManager
       - Label:
-          default: Integration S3/Cloudtrail/vpcflow/s3_csv configuration
+          default: S3/Cloudtrail/vpcflow/s3_csv configuration
         Parameters:
           - S3BucketName
           - S3KeyPrefix
           - S3KeySuffix
           - NewlinePattern
           - SNSTopicArn
-          - CsvDelimiter
+          - CSVDelimiter
       - Label:
-          default: Integration Cloudwatch configuration
+          default: Cloudwatch configuration
         Parameters:
           - CloudWatchLogGroupName
       - Label:
-          default: Integration Generic Config
+          default: Generic Config
         Parameters:
           - NotificationEmail
           - BlockingPattern
@@ -82,7 +85,7 @@ Parameters:
     Default: Custom
   CustomDomain:
     Type: String
-    Description: The Custom Domain. If set, will be the domain used to send telemetry (e.g. coralogix.com, private.coralogix.com)
+    Description: The Custom Domain. If set, will be the domain used to send telemetry (e.g. cx123.coralogix.com)
     Default: ''
   ApiKey:
     Type: String
@@ -123,13 +126,15 @@ Parameters:
   S3BucketName:
     Type: String
     Description: |
-      The name of the AWS S3 bucket to watch.
+      The name of the AWS S3 bucket to watch
     AllowedPattern: '^[0-9A-Za-z\.\-_]*(?<!\.)$'
     Default: ""
     MaxLength: 63
-  CsvDelimiter:
+  CSVDelimiter:
     Type: String
-    Description: The delimiter used in the CSV file to process
+    Description: |
+      The delimiter used in the CSV file to process
+      This value is applied when the s3_csv integration type is selected
     MaxLength: 1
     Default: ','
   S3KeyPrefix:
