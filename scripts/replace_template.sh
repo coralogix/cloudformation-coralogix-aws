@@ -48,14 +48,10 @@ echo "
       ServiceToken: !Sub \"arn:aws:lambda:\${AWS::Region}:{{AWS_ACCOUNT_ID}}:function:integrations-custom-resource-notifier\"
       IntegrationId: !Ref IntegrationId" >> $file
 if [[ $file == *"aws-shipper-lambda"* ]]; then
-  echo "      CoralogixRegion: !If
+  echo "      CoralogixDomain: !If
         - IsCustomDomain
-        - !Sub
-          - https://ingress.\${domain}
-          - {domain: !Ref CustomDomain}
-        - !Sub
-          - https://ingress.\${domain}
-          - {domain: !FindInMap [CoralogixRegionMap, !Ref CoralogixRegion, Domain]}
+        - !Ref CustomDomain
+        - !FindInMap [CoralogixRegionMap, !Ref CoralogixRegion, Domain]
       CoralogixApiKey: !If
           - StoreAPIKeyInSecretsManager
           - !Sub [\"{{resolve:secretsmanager:\${secret_arn}:SecretString:}}\", {\"secret_arn\": !Ref Secret}]
