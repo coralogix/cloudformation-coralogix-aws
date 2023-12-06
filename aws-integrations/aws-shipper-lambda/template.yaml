@@ -37,7 +37,7 @@ Metadata:
           - ApiKey
           - StoreAPIKeyInSecretsManager
       - Label:
-          default: S3/Cloudtrail/vpcflow/s3_csv configuration
+          default: S3/CloudTrail/VpcFlow/S3Csv configuration
         Parameters:
           - S3BucketName
           - S3KeyPrefix
@@ -134,7 +134,7 @@ Parameters:
     Type: String
     Description: |
       The delimiter used in the CSV file to process
-      This value is applied when the s3_csv integration type is selected
+      This value is applied when the S3Csv integration type is selected
     MaxLength: 1
     Default: ','
   S3KeyPrefix:
@@ -169,14 +169,14 @@ Parameters:
     Default: ''
   IntegrationType:
     Type: String
-    Description: 'The integration type. Can be one of: s3, cloudtrail, vpcflow, cloudwatch, s3_csv'
+    Description: 'The integration type. Can be one of: S3, CloudTrail, VpcFlow, CloudWatch, S3Csv'
     AllowedValues:
-      - s3
-      - cloudtrail
-      - cloudwatch
-      - vpcflow
-      - s3_csv
-    Default: s3
+      - S3
+      - CloudTrail
+      - CloudWatch
+      - VpcFlow
+      - S3Csv
+    Default: S3
   CloudWatchLogGroupName:
     Type: String
     Description: 'A comma separated list of CloudWatch log groups names to watch  e.g, (log-group1,log-group2,log-group3)'
@@ -234,11 +234,11 @@ Conditions:
   IsCustomDomain: !Equals [!Ref CoralogixRegion, Custom]
   S3KeyPrefixIsSet: !Not [!Equals [!Ref S3KeyPrefix, '']]
   S3SuffixIsSet: !Not [!Equals [!Ref S3KeySuffix, '']]
-  IsCloudTrailIntegration: !Equals [!Ref IntegrationType, 'cloudtrail']
-  # IsVPCFlowLogsIntegration: !Equals [ !Ref IntegrationType, 'vpcflowlogs' ]
+  IsCloudTrailIntegration: !Equals [!Ref IntegrationType, 'CloudTrail']
+  # IsVPCFlowLogsIntegration: !Equals [ !Ref IntegrationType, 'VpcFlow' ]
   UseAWSDefaultSuffix: !Or
-    - !Equals [!Ref IntegrationType, 'vpcflowlogs']
-    - !Equals [!Ref IntegrationType, 'cloudtrail']
+    - !Equals [!Ref IntegrationType, 'VpcFlow']
+    - !Equals [!Ref IntegrationType, 'CloudTrail']
   StoreAPIKeyInSecretsManager: !Equals [!Ref StoreAPIKeyInSecretsManager, 'true']
   IsPrivateLink: !Equals [!Ref UsePrivateLink, 'true']
   UseSNSTopicARN: !And

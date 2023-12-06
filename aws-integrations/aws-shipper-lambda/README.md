@@ -56,23 +56,23 @@ Link To coralogix Module TBD
 | Parameter | Description | Default Value | Required |
 |---|---|---|---|
 | Application name | The stack name of this application created via AWS CloudFormation. |   | :heavy_check_mark: |
-| IntegrationType | The integration type. Can be one of: s3, cloudtrail, vpcflow, cloudwatch, s3_csv' |  s3 | :heavy_check_mark: | 
+| IntegrationType | The integration type. Can be one of: S3, CloudTrail, VpcFlow, CloudWatch, S3Csv' |  S3 | :heavy_check_mark: | 
 | CoralogixRegion | The Coralogix location region, possible options are [Custom, Europe, Europe2, India, Singapore, US, US2] If this value is set to Custom you must specify the Custom Domain to use via the CustomDomain parameter |  Custom | :heavy_check_mark: | 
 | CustomDomain | The Custom Domain. If set, will be the domain used to send telemetry (e.g. cx123.coralogix.com) |   |   |
 | ApplicationName | The [name](https://coralogix.com/docs/application-and-subsystem-names/) of your application. for dynamically value from the log you should use $.my_log.field |   | :heavy_check_mark: | 
-| SubsystemName | The [name](https://coralogix.com/docs/application-and-subsystem-names/) of your subsystem. for dynamically value from the log you should use $.my_log.field . for cloudwatch loggroup leave empty |   |   |
+| SubsystemName | The [name](https://coralogix.com/docs/application-and-subsystem-names/) of your subsystem. for dynamically value from the log you should use $.my_log.field . for CloudWatch loggroup leave empty |   |   |
 | ApiKey | Your Coralogix Send Your Data - [API Key](https://coralogix.com/docs/send-your-data-api-key/) which is used to validate your authenticity, This value can be a Coralogix API Key or an AWS Secret Manager ARN that holds the API Key |   | :heavy_check_mark: |
 | StoreAPIKeyInSecretsManager | Store the API key in AWS Secrets Manager.  If this option is set to false, the ApiKey will apeear in plain text as an environment variable in the lambda function console. | True  | :heavy_check_mark: |
 
-### Integration S3/Cloudtrail/vpcflow/s3_csv configuration
+### Integration S3/CloudTrail/VpcFlow/S3Csv configuration
 | Parameter | Description | Default Value | Required |
 |---|---|---|---|
 | S3BucketName | The name of the AWS S3 bucket to watch |   | :heavy_check_mark: |
-| S3KeyPrefix | The AWS S3 path prefix to watch | cloudtrail 'AWSLogs/' |   |
-| S3KeySuffix | The AWS S3 path suffix to watch | cloudtrail/vpcflow '.json.gz' |   |
+| S3KeyPrefix | The AWS S3 path prefix to watch | CloudTrail 'AWSLogs/' |   |
+| S3KeySuffix | The AWS S3 path suffix to watch | CloudTrail/VpcFlow '.json.gz' |   |
 | NewlinePattern | Regular expression to detect a new log line for multiline logs from S3 source, e.g., use expression \n(?=\d{2}\-\d{2}\s\d{2}\:\d{2}\:\d{2}\.\d{3}) |   |   |
 | SNSTopicArn | The ARN of SNS topic that will contain the SNS subscription for retrieving logs from S3 |   |   |
-| CSVDelimiter | Single Character for using as a Delimiter when ingesting CSV (This value is applied when the s3_csv integration type  is selected), e.g. "," or " " | , |   |
+| CSVDelimiter | Single Character for using as a Delimiter when ingesting CSV (This value is applied when the S3Csv integration type  is selected), e.g. "," or " " | , |   |
 
 ### Integration Cloudwatch configuration
 | Parameter | Description | Default Value | Required |
