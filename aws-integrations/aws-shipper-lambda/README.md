@@ -83,7 +83,7 @@ Link To coralogix Module TBD
 | Parameter | Description | Default Value | Required |
 |---|---|---|---|
 | NotificationEmail | Failure notification email address |   |   | 
-| BlockingPattern | Regular expression to detect lines that should be excluded from sent to Coralogix, e.g., use expression MainActivity.java\:\d{3} to match all log that MainActivity ends with 3 digits|   |   | 
+| BlockingPattern | Regular expression to detect lines that should be excluded from sent to Coralogix, e.g., use expression MainActivity.java\:\d{3} to match all log that MainActivity ends with 3 digits| This will block a specific ipaddr in a json ' "srcaddr"\:"172\.31\.24\.253" ' |   | 
 | SamplingRate | Send messages with specific rate (1 out of N) e.g., put the value 10 if you want to send every 10th log | 1 | :heavy_check_mark: | 
 
 ### Lambda configuration (Optional)
