@@ -37,11 +37,10 @@ Parameters:
     Default: 1
   IntegrationTypeMetrics:
     Type: String
-    Description: "The integration type of the firehose delivery stream [CloudWatch_Metrics_OpenTelemetry070, CloudWatch_Metrics_OpenTelemetry070_WithAggregations, CloudWatch_Metrics_JSON] - default: CloudWatch_Metrics_OpenTelemetry070"
+    Description: "The integration type of the firehose delivery stream [CloudWatch_Metrics_OpenTelemetry070, CloudWatch_Metrics_OpenTelemetry070_WithAggregations] - default: CloudWatch_Metrics_OpenTelemetry070"
     AllowedValues:
       - CloudWatch_Metrics_OpenTelemetry070
       - CloudWatch_Metrics_OpenTelemetry070_WithAggregations
-      - CloudWatch_Metrics_JSON
     Default: CloudWatch_Metrics_OpenTelemetry070
   OutputFormat:
     Type: String
