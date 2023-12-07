@@ -235,11 +235,14 @@ Conditions:
   S3KeyPrefixIsSet: !Not [!Equals [!Ref S3KeyPrefix, '']]
   S3SuffixIsSet: !Not [!Equals [!Ref S3KeySuffix, '']]
   IsCloudTrailIntegration: !Equals [!Ref IntegrationType, 'CloudTrail']
+  IsApiKeyNotArn: !Equals [!Ref ApiKey, !Select [0, !Split [":", !Ref ApiKey]]]
   # IsVPCFlowLogsIntegration: !Equals [ !Ref IntegrationType, 'VpcFlow' ]
   UseAWSDefaultSuffix: !Or
     - !Equals [!Ref IntegrationType, 'VpcFlow']
     - !Equals [!Ref IntegrationType, 'CloudTrail']
-  StoreAPIKeyInSecretsManager: !Equals [!Ref StoreAPIKeyInSecretsManager, 'true']
+  StoreAPIKeyInSecretsManager: !And
+    - !Equals [!Ref StoreAPIKeyInSecretsManager, 'true']
+    - !Condition IsApiKeyNotArn
   IsPrivateLink: !Equals [!Ref UsePrivateLink, 'true']
   UseSNSTopicARN: !And
     - !Not [!Equals [!Ref SNSTopicArn, '']]
@@ -347,6 +350,7 @@ Globals:
         SAMPLING: !Ref SamplingRate
         INTEGRATION_TYPE: !Ref IntegrationType
         RUST_LOG: !Ref LogLevel
+        CSV_DELIMITER: !Ref CSVDelimiter
 Resources:
   Secret:
     Type: 'AWS::SecretsManager::Secret'

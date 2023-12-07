@@ -60,7 +60,7 @@ Link To coralogix Module TBD
 | CoralogixRegion | The Coralogix location region, possible options are [Custom, Europe, Europe2, India, Singapore, US, US2] If this value is set to Custom you must specify the Custom Domain to use via the CustomDomain parameter |  Custom | :heavy_check_mark: | 
 | CustomDomain | The Custom Domain. If set, will be the domain used to send telemetry (e.g. cx123.coralogix.com) |   |   |
 | ApplicationName | The [name](https://coralogix.com/docs/application-and-subsystem-names/) of your application. for dynamically value from the log you should use $.my_log.field |   | :heavy_check_mark: | 
-| SubsystemName | The [name](https://coralogix.com/docs/application-and-subsystem-names/) of your subsystem. for dynamically value from the log you should use $.my_log.field . for CloudWatch loggroup leave empty |   |   |
+| SubsystemName | The [name](https://coralogix.com/docs/application-and-subsystem-names/) of your subsystem. for dynamically value from the log you should use $.my_log.field. For Cloudwatch leave empty to use the loggroup name. For cloudtrail use $.eventSource to use the trail source|   |   |
 | ApiKey | Your Coralogix Send Your Data - [API Key](https://coralogix.com/docs/send-your-data-api-key/) which is used to validate your authenticity, This value can be a Coralogix API Key or an AWS Secret Manager ARN that holds the API Key |   | :heavy_check_mark: |
 | StoreAPIKeyInSecretsManager | Store the API key in AWS Secrets Manager.  If this option is set to false, the ApiKey will apeear in plain text as an environment variable in the lambda function console. | True  | :heavy_check_mark: |
 
