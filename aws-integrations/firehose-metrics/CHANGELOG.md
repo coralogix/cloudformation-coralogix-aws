@@ -31,3 +31,6 @@
 
 ### 0.0.3 / 14 Nov 2023
 * [Feature] Split Firehose Logs and Metrics
+
+### 0.0.4 / 7 Dec 2023
+* [Update] Remove CloudWatch_Metrics_JSON metrics integrationType option
