@@ -2,7 +2,7 @@
 
 [![license](https://img.shields.io/github/license/coralogix/coralogix-aws-shipper.svg)](https://raw.githubusercontent.com/coralogix/coralogix-aws-shipper/master/LICENSE)
 ![publish workflow](https://github.com/coralogix/coralogix-aws-shipper/actions/workflows/publish.yaml/badge.svg)
-![Dynamic TOML Badge](https://img.shields.io/badge/dynamic/toml?url=https%3A%2F%2Fraw.githubusercontent.com%2Fcoralogix%2Fcoralogix-aws-shipper%2Fmaster%2FCargo.toml%3Ftoken%3DGHSAT0AAAAAACJIQT3CA3OFRU7Z5NU4T6YKZLPLLSQ&query=%24.package.version&label=version)
+![Dynamic TOML Badge](https://img.shields.io/badge/dynamic/toml?url=https%3A%2F%2Fraw.githubusercontent.com%2Fcoralogix%2Fcoralogix-aws-shipper%2Fmaster%2FCargo.toml&query=.package.version)
 ![Static Badge](https://img.shields.io/badge/status-beta-purple)
 
 ## Overview
@@ -39,7 +39,7 @@ Please make sure you selecet the AWS region before you deploy
 
 ### Coralogix In Product Integration
 
-Link To Coralogix Document TBD
+Link To Coralogix Document (Work in Progress)
 
 ### AWS CloudFormation Application
 
@@ -48,7 +48,7 @@ Log into your AWS account and deploy the CloudFormation Stack with the button be
 
 ### Terraform
 
-Link To coralogix Module TBD
+Link To coralogix Module (Work in Progress)
 
 ## Paramaters 
 
@@ -100,6 +100,11 @@ Link To coralogix Module TBD
 | LambdaSubnetID | ID of Subnet into which to deploy the integration |   | :heavy_check_mark: | 
 | LambdaSecurityGroupID | ID of the SecurityGroup into which to deploy the integration |   | :heavy_check_mark: | 
 | UsePrivateLink | Will you be using our PrivateLink? | false | :heavy_check_mark: | 
+
+### SNS configuration (Optional)
+| Parameter | Description | Default Value | Required |
+|---|---|---|---|
+| SNSIntegrationTopicARN | The SNS Topic ARN that the coralogix-aws-shipper will subscribe<br>to receive logs |   | :heavy_check_mark: | 
 
 ## Advanced
 

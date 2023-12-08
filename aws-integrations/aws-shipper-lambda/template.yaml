@@ -46,6 +46,10 @@ Metadata:
           - SNSTopicArn
           - CSVDelimiter
       - Label:
+          default: SNS configuration
+        Parameters:
+          - SNSIntegrationTopicArn
+      - Label:
           default: Cloudwatch configuration
         Parameters:
           - CloudWatchLogGroupName
@@ -167,6 +171,10 @@ Parameters:
     Type: String
     Description: The ARN of SNS topic that will contain the SNS subscription for retrieving logs from S3
     Default: ''
+  SNSIntegrationTopicArn:
+    Type: String
+    Description: The ARN of SNS topic that will contain the SNS subscription that will be sending logs to coralogix-aws-shipper
+    Default: ''
   IntegrationType:
     Type: String
     Description: 'The integration type. Can be one of: S3, CloudTrail, VpcFlow, CloudWatch, S3Csv'
@@ -230,6 +238,7 @@ Mappings:
     Custom:
       Domain: ""
 Conditions:
+  IsSNSIntegration: !Equals [!Ref IntegrationType, 'SNS']
   IsNotificationEnabled: !Not [!Equals [!Ref NotificationEmail, '']]
   IsCustomDomain: !Equals [!Ref CoralogixRegion, Custom]
   S3KeyPrefixIsSet: !Not [!Equals [!Ref S3KeyPrefix, '']]
@@ -244,9 +253,14 @@ Conditions:
     - !Equals [!Ref StoreAPIKeyInSecretsManager, 'true']
     - !Condition IsApiKeyNotArn
   IsPrivateLink: !Equals [!Ref UsePrivateLink, 'true']
-  UseSNSTopicARN: !And
-    - !Not [!Equals [!Ref SNSTopicArn, '']]
-    - !Equals [!Ref CloudWatchLogGroupName, '']
+  UseSNSTopicARN:
+    Fn::Or:
+      - !And
+        - !Not [!Equals [!Ref SNSTopicArn, '']]
+        - !Equals [!Ref CloudWatchLogGroupName, '']
+      - !And
+        - !Not [!Equals [!Ref SNSIntegrationTopicArn, '']]
+        - !Equals [!Ref CloudWatchLogGroupName, '']
   UseVpcConfig: !And
     - !Not [!Equals [!Ref LambdaSubnetID, '']]
     - !Not [!Equals [!Ref LambdaSecurityGroupID, '']]
@@ -451,8 +465,11 @@ Resources:
         Bucket: !Sub 'coralogix-serverless-repo-${AWS::Region}'
         Key: coralogix-aws-shipper.zip
       Policies:
-        - S3ReadPolicy:
-            BucketName: !Ref S3BucketName
+        - !If
+          - IsSNSIntegration
+          - !Ref AWS::NoValue
+          - S3ReadPolicy:
+              BucketName: !Ref S3BucketName
         - Statement:
             - Effect: Allow
               Action:
@@ -466,7 +483,10 @@ Resources:
         SNSEvent:
           Type: SNS
           Properties:
-            Topic: !Ref SNSTopicArn
+            Topic: !If
+              - IsSNSIntegration
+              - !Ref SNSIntegrationTopicArn
+              - !Ref SNSTopicArn
   LambdaLogGroupWithSNSTopic:
     Condition: UseSNSTopicARN
     DeletionPolicy: Retain
