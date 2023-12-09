@@ -46,13 +46,13 @@ Metadata:
           - SNSTopicArn
           - CSVDelimiter
       - Label:
-          default: SNS configuration
-        Parameters:
-          - SNSIntegrationTopicArn
-      - Label:
           default: Cloudwatch configuration
         Parameters:
           - CloudWatchLogGroupName
+      - Label:
+          default: SNS configuration
+        Parameters:
+          - SNSIntegrationTopicArn
       - Label:
           default: Generic Config
         Parameters:
@@ -169,21 +169,22 @@ Parameters:
     Default: 300
   SNSTopicArn:
     Type: String
-    Description: The ARN of SNS topic that will contain the SNS subscription for retrieving logs from S3
+    Description: The ARN for the SNS topic that contains the SNS subscription responsible for retrieving logs from Amazon S3
     Default: ''
   SNSIntegrationTopicArn:
     Type: String
-    Description: The ARN of SNS topic that will contain the SNS subscription that will be sending logs to coralogix-aws-shipper
+    Description: The ARN of SNS topic to subscribe to retrieving messages
     Default: ''
   IntegrationType:
     Type: String
-    Description: 'The integration type. Can be one of: S3, CloudTrail, VpcFlow, CloudWatch, S3Csv'
+    Description: 'The integration type. Can be one of: S3, CloudTrail, VpcFlow, CloudWatch, S3Csv, Sns'
     AllowedValues:
       - S3
       - CloudTrail
       - CloudWatch
       - VpcFlow
       - S3Csv
+      - Sns
     Default: S3
   CloudWatchLogGroupName:
     Type: String
@@ -238,7 +239,7 @@ Mappings:
     Custom:
       Domain: ""
 Conditions:
-  IsSNSIntegration: !Equals [!Ref IntegrationType, 'SNS']
+  IsSNSIntegration: !Equals [!Ref IntegrationType, 'Sns']
   IsNotificationEnabled: !Not [!Equals [!Ref NotificationEmail, '']]
   IsCustomDomain: !Equals [!Ref CoralogixRegion, Custom]
   S3KeyPrefixIsSet: !Not [!Equals [!Ref S3KeyPrefix, '']]
