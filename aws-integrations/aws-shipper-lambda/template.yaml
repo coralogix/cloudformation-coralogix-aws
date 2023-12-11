@@ -247,9 +247,11 @@ Conditions:
   IsCloudTrailIntegration: !Equals [!Ref IntegrationType, 'CloudTrail']
   IsApiKeyNotArn: !Equals [!Ref ApiKey, !Select [0, !Split [":", !Ref ApiKey]]]
   # IsVPCFlowLogsIntegration: !Equals [ !Ref IntegrationType, 'VpcFlow' ]
-  UseAWSDefaultSuffix: !Or
+  UseAWSDefaultPrefix: !Or
     - !Equals [!Ref IntegrationType, 'VpcFlow']
     - !Equals [!Ref IntegrationType, 'CloudTrail']
+  UseAWSDefaultVpcFlowSuffix: !Equals [!Ref IntegrationType, 'VpcFlow']
+  UseAWSDefaultCloudTrailSuffix: !Equals [!Ref IntegrationType, 'CloudTrail']
   StoreAPIKeyInSecretsManager: !And
     - !Equals [!Ref StoreAPIKeyInSecretsManager, 'true']
     - !Condition IsApiKeyNotArn
@@ -438,14 +440,17 @@ Resources:
         - S3SuffixIsSet
         - !Ref S3KeySuffix
         - !If
-          - UseAWSDefaultSuffix
+          - UseAWSDefaultCloudTrailSuffix
           - '.json.gz'
-          - ''
+          - !If
+            - UseAWSDefaultVpcFlowSuffix
+            - '.log.gz'
+            - ""
       Prefix: !If
         - S3KeyPrefixIsSet
         - !Ref S3KeyPrefix
         - !If
-          - IsCloudTrailIntegration
+          - UseAWSDefaultPrefix
           - 'AWSLogs/'
           - ''
   LambdaFunctionNotificationSubscriptionDefault:

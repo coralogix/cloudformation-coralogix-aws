@@ -68,8 +68,8 @@ Link To coralogix Module (Work in Progress)
 | Parameter | Description | Default Value | Required |
 |---|---|---|---|
 | S3BucketName | The name of the AWS S3 bucket to watch |   | :heavy_check_mark: |
-| S3KeyPrefix | The AWS S3 path prefix to watch | CloudTrail 'AWSLogs/' |   |
-| S3KeySuffix | The AWS S3 path suffix to watch | CloudTrail/VpcFlow '.json.gz' |   |
+| S3KeyPrefix | The AWS S3 path prefix to watch | CloudTrail/VpcFlow 'AWSLogs/' |   |
+| S3KeySuffix | The AWS S3 path suffix to watch | CloudTrail '.json.gz',  VpcFlow '.log.gz' |   |
 | NewlinePattern | Regular expression to detect a new log line for multiline logs from S3 source, e.g., use expression \n(?=\d{2}\-\d{2}\s\d{2}\:\d{2}\:\d{2}\.\d{3}) |   |   |
 | SNSTopicArn | The ARN for the SNS topic that contains the SNS subscription responsible for retrieving logs from Amazon S3 |   |   |
 | CSVDelimiter | Single Character for using as a Delimiter when ingesting CSV (This value is applied when the S3Csv integration type  is selected), e.g. "," or " " | , |   |
