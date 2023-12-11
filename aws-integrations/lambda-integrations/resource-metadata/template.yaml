@@ -1,6 +1,5 @@
 #Created automatically from coralogix/coralogix-aws-serverless
 #Link to the repo: https://github.com/coralogix/coralogix-aws-serverless/tree/master/src/resource-metadata
-#
 AWSTemplateFormatVersion: "2010-09-09"
 Transform: AWS::Serverless-2016-10-31
 Description: Send resource metadata  to  Coralogix.
@@ -16,7 +15,7 @@ Metadata:
       - coralogix
       - metadata
     HomePageUrl: https://coralogix.com
-    SemanticVersion: 1.2.3
+    SemanticVersion: 1.2.5
     SourceCodeUrl: https://github.com/coralogix/coralogix-aws-serverless
   AWS::CloudFormation::Interface:
     ParameterGroups:
@@ -33,6 +32,9 @@ Metadata:
           - ResourceTtlMinutes
           - LatestVersionsPerFunction
           - CollectAliases
+          - LambdaFunctionIncludeRegexFilter
+          - LambdaFunctionExcludeRegexFilter
+          - LambdaFunctionTagFilters
           - NotificationEmail
       - Label:
           default: Lambda Configuration
@@ -51,7 +53,7 @@ Metadata:
       CustomDomain:
         default: CustomDomain
       LayerARN:
-        default: In case you are using SSM This is the ARN of the Coralogix Security Layer. Copy from the ``SSM`` serverless application the ARN that was installed on the AWS account
+        default: In case you are using Secret Manager This is the ARN of the Coralogix Security lambda Layer.
       ApiKey:
         default: Api Key
       Schedule:
@@ -60,6 +62,12 @@ Metadata:
         default: Latest Versions Per Function
       CollectAliases:
         default: Collect Aliases
+      LambdaFunctionIncludeRegexFilter:
+        default: Lambda Function Include Regex
+      LambdaFunctionExcludeRegexFilter:
+        default: Lambda Function Exclude Regex
+      LambdaFunctionTagFilters:
+        default: Lambda Function Tag Filters
       ResourceTtlMinutes:
         default: Resource Time-to-live (TTL) in Minutes
       FunctionArchitecture:
@@ -90,11 +98,11 @@ Parameters:
     Default: ''
   ApiKey:
     Type: String
-    Description: Your Coralogix secret key or incase you use your own created secret put here the name of your secret that contains the coralogix Api Key
+    Description: Your Coralogix Send Your Data - API Key or incase you use pre created secret (created in AWS secret manager) put here the name of the secret that contains the Coralogix send your data key
     NoEcho: true
   LayerARN:
     Type: String
-    Description: In case you are using SSM This is the ARN of the Coralogix Security Layer. Copy from the ``SSM`` serverless application the ARN that was installed on the AWS account
+    Description: In case you are using Secret Manager This is the ARN of the Coralogix Security lambda Layer.
     Default: ''
   Schedule:
     Type: String
@@ -110,6 +118,18 @@ Parameters:
     Type: String
     Description: '[True/False]'
     Default: 'False'
+  LambdaFunctionIncludeRegexFilter:
+    Type: String
+    Description: 'If specified, only lambda functions with ARNs matching the regex will be included in the collected metadata'
+    Default: ""
+  LambdaFunctionExcludeRegexFilter:
+    Type: String
+    Description: 'If specified, only lambda functions with ARNs NOT matching the regex will be included in the collected metadata'
+    Default: ""
+  LambdaFunctionTagFilters:
+    Type: String
+    Description: 'If specified, only lambda functions with tags matching the filters will be included in the collected metadata. Values should follow the JSON syntax for --tag-filters as documented here: https://docs.aws.amazon.com/cli/latest/reference/resourcegroupstaggingapi/get-resources.html#options'
+    Default: ""
   ResourceTtlMinutes:
     Type: Number
     Description: Once a resource is collected, how long should it remain valid?
@@ -140,7 +160,7 @@ Parameters:
     Default: ""
   CreateSecret:
     Type: String
-    Description: In case you want to use SSM without creating a secret, set the value to False and write the name of the secret instead of your ApiKey in the ApkiKey parameter.
+    Description: Set to False In case you want to use secrets manager with a predefine secret that was already created and contains Coralogix Send Your Data API key.
     Default: 'True'
 Mappings:
   CoralogixRegionMap:
@@ -166,12 +186,12 @@ Conditions:
       - Fn::Equals:
           - Ref: NotificationEmail
           - ""
-  IsSsmEnabled:
+  IsSMEnabled:
     Fn::Not:
       - Fn::Equals:
           - Ref: LayerARN
           - ""
-  IsNotSsmEnabled:
+  IsNotSMEnabled:
     Fn::Equals:
       - Ref: LayerARN
       - ''
@@ -187,7 +207,7 @@ Conditions:
           - 'True'
 Resources:
   LambdaFunction:
-    Condition: IsNotSsmEnabled
+    Condition: IsNotSMEnabled
     Type: AWS::Serverless::Function
     Properties:
       Description: Send resource metadata to Coralogix.
@@ -220,6 +240,12 @@ Resources:
             Ref: CollectAliases
           RESOURCE_TTL_MINUTES:
             Ref: ResourceTtlMinutes
+          LAMBDA_FUNCTION_INCLUDE_REGEX_FILTER:
+            Ref: LambdaFunctionIncludeRegexFilter
+          LAMBDA_FUNCTION_EXCLUDE_REGEX_FILTER:
+            Ref: LambdaFunctionExcludeRegexFilter
+          LAMBDA_FUNCTION_TAG_FILTERS:
+            Ref: LambdaFunctionTagFilters
           AWS_RETRY_MODE: adaptive
           AWS_MAX_ATTEMPTS: 10
       Events:
@@ -236,10 +262,16 @@ Resources:
       Policies:
         - Version: "2012-10-17"
           Statement:
-            - Sid: GetLambdaMetadata
+            - Sid: GetEc2Metadata
               Effect: Allow
               Action:
                 - ec2:DescribeInstances
+              Resource: "*"
+        - Version: "2012-10-17"
+          Statement:
+            - Sid: GetLambdaMetadata
+              Effect: Allow
+              Action:
                 - lambda:ListFunctions
                 - lambda:ListVersionsByFunction
                 - lambda:GetFunction
@@ -247,8 +279,15 @@ Resources:
                 - lambda:ListEventSourceMappings
                 - lambda:GetPolicy
               Resource: "*"
-  LambdaFunctionSSM:
-    Condition: IsSsmEnabled
+        - Version: "2012-10-17"
+          Statement:
+            - Sid: GetResourcesByTags
+              Effect: Allow
+              Action:
+                - tag:GetResources
+              Resource: "*"
+  LambdaFunctionSM:
+    Condition: IsSMEnabled
     Type: AWS::Serverless::Function
     Properties:
       Description: Send resource metadata to Coralogix.
@@ -282,6 +321,12 @@ Resources:
             Ref: CollectAliases
           RESOURCE_TTL_MINUTES:
             Ref: ResourceTtlMinutes
+          LAMBDA_FUNCTION_INCLUDE_REGEX_FILTER:
+            Ref: LambdaFunctionIncludeRegexFilter
+          LAMBDA_FUNCTION_EXCLUDE_REGEX_FILTER:
+            Ref: LambdaFunctionExcludeRegexFilter
+          LAMBDA_FUNCTION_TAG_FILTERS:
+            Ref: LambdaFunctionTagFilters
           AWS_RETRY_MODE: adaptive
           AWS_MAX_ATTEMPTS: 10
           SECRET_NAME: !If
@@ -302,16 +347,29 @@ Resources:
       Policies:
         - Version: "2012-10-17"
           Statement:
-            - Sid: GetLambdaMetadata
+            - Sid: GetEc2Metadata
               Effect: Allow
               Action:
                 - ec2:DescribeInstances
+              Resource: "*"
+        - Version: "2012-10-17"
+          Statement:
+            - Sid: GetLambdaMetadata
+              Effect: Allow
+              Action:
                 - lambda:ListFunctions
                 - lambda:ListVersionsByFunction
                 - lambda:GetFunction
                 - lambda:ListAliases
                 - lambda:ListEventSourceMappings
                 - lambda:GetPolicy
+              Resource: "*"
+        - Version: "2012-10-17"
+          Statement:
+            - Sid: GetResourcesByTags
+              Effect: Allow
+              Action:
+                - tag:GetResources
               Resource: "*"
         - SecretsManagerReadWrite
   PrivateKeySecret:
@@ -321,7 +379,7 @@ Resources:
       Description: Coralogix Send Your Data key Secret
       Name: !Sub
         - 'lambda/coralogix/${AWS::Region}/${function}'
-        - function: !Ref LambdaFunctionSSM
+        - function: !Ref LambdaFunctionSM
       SecretString: !Ref ApiKey
   LambdaFunctionNotificationSubscription:
     Type: AWS::SNS::Subscription
@@ -331,6 +389,6 @@ Resources:
       Endpoint:
         Ref: NotificationEmail
       TopicArn: !If
-        - IsSsmEnabled
-        - !Ref LambdaFunctionSSM.DestinationTopic
+        - IsSMEnabled
+        - !Ref LambdaFunctionSM.DestinationTopic
         - !Ref LambdaFunction.DestinationTopic
