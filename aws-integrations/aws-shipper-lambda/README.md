@@ -48,7 +48,8 @@ Log into your AWS account and deploy the CloudFormation Stack with the button be
 
 ### Terraform
 
-Link To coralogix Module (Work in Progress)
+If you need to deploy using Terraform, you can use Coralogix Module located in:
+https://github.com/coralogix/terraform-coralogix-aws/tree/master/modules/coralogix-aws-shipper
 
 ## Paramaters 
 
@@ -112,4 +113,7 @@ Link To coralogix Module (Work in Progress)
 To use privatelink please forllow the instruction in this [link](https://coralogix.com/docs/coralogix-amazon-web-services-aws-privatelink-endpoints/)
 
 ## Troubleshooting
-TBD
+
+- Look out for TimeOut Errors "Task timed out after", if you see them, please increase lambda timeout from Configuration -> General Configuration
+- Look out for out of Memory logs "Task out of Memory" , if you see them, please increase lambda max memory from Configuration -> General Configuration
+- To add more verbosity to Lambda logs, you can set RUST_LOG to DEBUG. Remamber to change it back to INFO once troubleshooting is done.
