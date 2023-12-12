@@ -239,6 +239,9 @@ Mappings:
     Custom:
       Domain: ""
 Conditions:
+  BlockPatternNotSet: !Equals [!Ref BlockingPattern, '']
+  CSVDelimiterUse: !Equals [!Ref IntegrationType, 'S3Csv']
+  NewlinePatternNotSet: !Equals [!Ref NewlinePattern, '']
   IsSNSIntegration: !Equals [!Ref IntegrationType, 'Sns']
   IsNotificationEnabled: !Not [!Equals [!Ref NotificationEmail, '']]
   IsCustomDomain: !Equals [!Ref CoralogixRegion, Custom]
@@ -362,12 +365,21 @@ Globals:
           - !Ref ApiKey
         APP_NAME: !Ref ApplicationName
         SUB_NAME: !Ref SubsystemName
-        NEWLINE_PATTERN: !Ref NewlinePattern
-        BLOCKING_PATTERN: !Ref BlockingPattern
         SAMPLING: !Ref SamplingRate
         INTEGRATION_TYPE: !Ref IntegrationType
         RUST_LOG: !Ref LogLevel
-        CSV_DELIMITER: !Ref CSVDelimiter
+        NEWLINE_PATTERN: !If
+          - NewlinePatternNotSet
+          - !Ref AWS::NoValue
+          - !Ref NewlinePattern
+        BLOCKING_PATTERN: !If
+          - BlockPatternNotSet
+          - !Ref AWS::NoValue
+          - !Ref BlockingPattern
+        CSV_DELIMITER: !If
+          - CSVDelimiterUse
+          - !Ref CSVDelimiter
+          - !Ref AWS::NoValue
 Resources:
   Secret:
     Type: 'AWS::SecretsManager::Secret'
