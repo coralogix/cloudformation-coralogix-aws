@@ -22,7 +22,7 @@ Metadata:
       - cloudtrail
       - vpc
     HomePageUrl: https://coralogix.com
-    SemanticVersion: 0.0.1
+    SemanticVersion: 0.0.2
     SourceCodeUrl: https://github.com/coralogix/coralogix-aws-shipper
   AWS::CloudFormation::Interface:
     ParameterGroups:
@@ -120,13 +120,13 @@ Parameters:
     Default: 1
   LogLevel:
     Type: String
-    Description: 'Log level for the Lambda function. Can be one of: INFO, WARNING, ERROR, DEBUG'
+    Description: 'Log level for the Lambda function. Can be one of: INFO, WARN, ERROR, DEBUG'
     AllowedValues:
       - "INFO"
-      - "WARNING"
+      - "WARN"
       - "ERROR"
       - "DEBUG"
-    Default: "INFO"
+    Default: "WARM"
   S3BucketName:
     Type: String
     Description: |
