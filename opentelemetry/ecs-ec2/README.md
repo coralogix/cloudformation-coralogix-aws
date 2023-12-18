@@ -39,7 +39,8 @@ This template can be used to deploy an ECS Service and Task Definition for runni
 aws cloudformation deploy --template-file template.yaml --stack-name <stack_name> \
     --region <region> \
     --parameter-overrides \
-        ApplicationName=<application name> \
+        DefaultApplicationName=<application name> \
+        CDOTImageVersion=<image tag> \
         ClusterName=<ecs cluster name> \
         PrivateKey=<your-private-key> \
         CoralogixRegion=<coralogix-region>
@@ -51,7 +52,7 @@ aws cloudformation deploy --template-file template.yaml --stack-name <stack_name
 aws cloudformation deploy --template-file cfn_template.yaml --stack-name <stack_name> \
     --region <region> \
     --parameter-overrides \
-        ApplicationName=<application name> \
+        DefaultApplicationName=<application name> \
         ClusterName=<ecs cluster name> \
         CDOTImageVersion=<image tag> \
         PrivateKey=<your-private-key> \
