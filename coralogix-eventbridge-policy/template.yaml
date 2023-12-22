@@ -1,0 +1,71 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: The module will create a policy on a given EventBridge Event Bus so that Coralogix can send data to it.
+Parameters:
+  EventBusArn:
+    Type: String
+    Description: The ARN corresponding to the Event Bus that will receive events via the PutEvents method.
+    AllowedPattern: '^arn:aws[\w-]*:events:[a-z]{2}-[a-z]+-[\w-]+:[0-9]{12}:event-bus\/[\.\-_A-Za-z0-9]+^$'
+    MaxLength: 2048
+  CustomCoralogixArn:
+    Type: String
+    Description: >-
+      In case you want to use a custom coralogix arn enter the aws account id
+      that you want to use.
+    Default: ''
+Conditions:
+  IsRegionUs2: !Equals
+    - Ref: 'AWS::Region'
+    - us-west-2
+  CustomArn: !Not
+    - !Equals
+      - Ref: CustomCoralogixArn
+      - ''
+  IsValidRegion: !Or
+    - !Equals
+      - !Ref 'AWS::Region'
+      - eu-west-1
+    - !Equals
+      - !Ref 'AWS::Region'
+      - eu-north-1
+    - !Equals
+      - !Ref 'AWS::Region'
+      - ap-southeast-1
+    - !Equals
+      - !Ref 'AWS::Region'
+      - ap-south-1
+    - !Equals
+      - !Ref 'AWS::Region'
+      - us-east-2
+    - !Equals
+      - !Ref 'AWS::Region'
+      - us-west-2
+Resources:
+  EventBusPolicy:
+    Type: 'AWS::Events::EventBusPolicy'
+    Properties:
+      StatementId: CoralogixSendEvents
+      Statement:
+        Effect: Allow
+        Action: 'events:PutEvents'
+        Principal:
+          AWS: !Sub
+            - 'arn:aws:iam::${aws_account_id}:root'
+            - aws_account_id: !If
+                - CustomArn
+                - !Ref CustomCoralogixArn
+                - !If
+                  - IsRegionUs2
+                  - '739076534691'
+                  - '625240141681'
+        Resource:
+          - !Sub EventBusArn
+    Metadata:
+      'AWS::CloudFormation::Designer':
+        id: f72703ca-d31a-46dc-aab3-cf733d46cd89
+Outputs:
+  RegionValidation:
+    Description: Region Validation
+    Value: !If
+      - IsValidRegion
+      - Region is valid
+      - !Sub 'Region ${AWS::Region} is not valid'
