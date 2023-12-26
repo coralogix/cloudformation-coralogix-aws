@@ -1,0 +1,41 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: The module will create a policy on a given EventBridge Event Bus so that Coralogix can send data to it.
+Parameters:
+  EventBusArn:
+    Type: String
+    Description: The ARN corresponding to the Event Bus that will receive events via the PutEvents method.
+    AllowedPattern: '^arn:aws[\w-]*:events:[a-z]{2}-[a-z]+-[\w-]+:[0-9]{12}:event-bus\/[\.\-_A-Za-z0-9]+$'
+    MaxLength: 2048
+  CustomCoralogixArn:
+    Type: String
+    Description: >-
+      In case you want to use a custom coralogix arn enter the aws account id
+      that you want to use.
+    Default: ''
+Conditions:
+  CustomArn: !Not
+    - !Equals
+      - Ref: CustomCoralogixArn
+      - ''
+Resources:
+  EventBusPolicy:
+    Type: 'AWS::Events::EventBusPolicy'
+    Properties:
+      StatementId:
+        !Sub 
+          - "CoralogixSendEvents-${UUID}"
+          - UUID: !Select [2, !Split ['/', !Ref "AWS::StackId"]]
+      EventBusName: 
+        !Select [1, !Split ['/', !Ref EventBusArn]]
+      Statement:
+        Effect: Allow
+        Action: 'events:PutEvents'
+        Principal:
+          AWS: !Sub
+            - 'arn:aws:iam::${aws_account_id}:root'
+            - aws_account_id: !If
+                - CustomArn
+                - !Ref CustomCoralogixArn
+                - '625240141681'
+        Resource:
+          - !Sub ${EventBusArn}
