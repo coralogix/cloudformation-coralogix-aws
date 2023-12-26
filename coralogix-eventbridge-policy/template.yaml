@@ -8,14 +8,14 @@ Parameters:
     MaxLength: 2048
   CoralogixRegion:
     Type: String
-    Description: The Coralogix region, possible options are [Europe, Europe2, India, Singapore, US, US2, Custom]
+    Description: The Coralogix region, possible options are [US1, US2, EU1, EU2, AP1, AP2, Custom]
     AllowedValues:
-      - Europe
-      - Europe2
-      - India
-      - Singapore
-      - US
+      - US1
       - US2
+      - EU1
+      - EU2
+      - AP1
+      - AP2
       - Custom
   CustomCoralogixAccount:
     Type: String
