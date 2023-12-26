@@ -8,7 +8,7 @@ Parameters:
     MaxLength: 2048
   CoralogixRegion:
     Type: String
-    Description: The Coralogix location region, possible options are [Europe, Europe2, India, Singapore, US, US2]
+    Description: The Coralogix region, possible options are [Europe, Europe2, India, Singapore, US, US2, Custom]
     AllowedValues:
       - Europe
       - Europe2
@@ -25,7 +25,7 @@ Conditions:
   IsRegionUs2: !Equals
     - Ref: CoralogixRegion
     - US2
-  CustomAccount: !Not
+  IsCustomAccount: !Not
     - !Equals
       - Ref: CustomCoralogixAccount
       - ''
@@ -46,7 +46,7 @@ Resources:
           AWS: !Sub
             - 'arn:aws:iam::${aws_account_id}:root'
             - aws_account_id: !If
-                - CustomAccount
+                - IsCustomAccount
                 - !Ref CustomCoralogixAccount
                 - !If
                   - IsRegionUs2
