@@ -1,0 +1,56 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: The module will create a policy on a given EventBridge Event Bus so that Coralogix can send data to it.
+Parameters:
+  EventBusArn:
+    Type: String
+    Description: The ARN corresponding to the Event Bus that will receive events via the PutEvents method.
+    AllowedPattern: '^arn:aws[\w-]*:events:[a-z]{2}-[a-z]+-[\w-]+:[0-9]{12}:event-bus\/[\.\-_A-Za-z0-9]+$'
+    MaxLength: 2048
+  CoralogixRegion:
+    Type: String
+    Description: The Coralogix region, possible options are [US1, US2, EU1, EU2, AP1, AP2, Custom]
+    AllowedValues:
+      - US1
+      - US2
+      - EU1
+      - EU2
+      - AP1
+      - AP2
+      - Custom
+  CustomCoralogixAccount:
+    Type: String
+    Description: In case you want to use a custom coralogix account, enter the aws account id that you want to use.
+    Default: ''
+Conditions:
+  IsRegionUs2: !Equals
+    - Ref: CoralogixRegion
+    - US2
+  IsCustomAccount: !Not
+    - !Equals
+      - Ref: CustomCoralogixAccount
+      - ''
+Resources:
+  EventBusPolicy:
+    Type: 'AWS::Events::EventBusPolicy'
+    Properties:
+      StatementId:
+        !Sub 
+          - "CoralogixSendEvents-${UUID}"
+          - UUID: !Select [2, !Split ['/', !Ref "AWS::StackId"]]
+      EventBusName: 
+        !Select [1, !Split ['/', !Ref EventBusArn]]
+      Statement:
+        Effect: Allow
+        Action: 'events:PutEvents'
+        Principal:
+          AWS: !Sub
+            - 'arn:aws:iam::${aws_account_id}:root'
+            - aws_account_id: !If
+                - IsCustomAccount
+                - !Ref CustomCoralogixAccount
+                - !If
+                  - IsRegionUs2
+                  - '739076534691'
+                  - '625240141681'
+        Resource:
+          - !Sub ${EventBusArn}
