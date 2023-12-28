@@ -63,7 +63,7 @@ else
 fi
 echo "
       # Parameters to track
-      stackName: !Ref \"AWS::StackName\"
+      IntegrationName: !Ref \"AWS::StackName\"
       SubsystemName: !Ref SubsystemName
       ApplicationName: !Ref ApplicationName" >> $file
 
