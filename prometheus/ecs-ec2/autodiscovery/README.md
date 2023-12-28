@@ -24,7 +24,7 @@ In order for a Prometheus target container to be detected by the Cloudwatch Agen
 | ExecutionRoleName   | Enter the CloudWatch Agent ECS execution role name                                                                | String | `ECSDiscoveryCWAgentExecutionRoleName` |          |
 | CoralogixRegion     | The Coralogix location region                                                                                     | String | `Europe`                               | ✔️        |
 | CoralogixPrivateKey | The Coralogix Private Key                                                                                         | String | `NoEcho: true`                         | ✔️        |
-| ImageTag            | The Coralogix Otel Collector image tag.<br>see [here](coralogixrepo/coralogix-otel-collector) for available tags: | String |                                        |          |
+| ImageTag            | The Coralogix Otel Collector image tag.<br>see [here](coralogixrepo/coralogix-otel-collector) for available tags: | String |                                        | ✔️        |
 
 ##### Open Telemetry Collector Configuration
 
