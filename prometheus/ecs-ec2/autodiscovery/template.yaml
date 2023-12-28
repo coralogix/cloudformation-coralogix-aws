@@ -45,10 +45,11 @@ Parameters:
     Description: The Coralogix Private Key
     NoEcho: true
   
-  Image:
+  ImageTag:
     Type: String
-    Description: Open Telemetry Collector Image
-    Default: coralogixrepo/otel-coralogix-ecs-ec2:latest
+    Description: |
+      The coralogix-otel-collector image tag.
+      see https://hub.docker.com/r/otel/opentelemetry-collector-contrib/tags for available tags
 
 Conditions:
   CreateRoles:
@@ -231,7 +232,7 @@ Resources:
 
       ContainerDefinitions:
         - Name: opentelemetry-agent-prometheus
-          Image: !Ref Image
+          Image: !Sub 'coralogixrepo/coralogix-otel-collector:${ImageTag}'
           Essential: true
 
           MountPoints:
