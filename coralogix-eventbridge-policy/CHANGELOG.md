@@ -2,6 +2,9 @@
 
 ## coralogix-eventbridge-policy
 
+### 0.0.3 / 03.01.2023
+* [update] Fix description.
+
 ### 0.0.2 / 03.01.2023
 * [update] Update to take into account roles and policies.
 
