@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: 2010-09-09
-Description: The module will create a policy on a given EventBridge Event Bus so that Coralogix can send data to it.
+Description: The module will create a role with an inline policy to allow Coralogix to send events to an EventBridge event bus.
 Parameters:
   EventBusArn:
     Type: String
