@@ -63,12 +63,12 @@ else
 fi
 echo "
       # Parameters to track
-      IntegrationNameField: !Ref \"AWS::StackName\"
-      SubsystemField: !Ref SubsystemName
-      ApplicationNameField: !Ref ApplicationName" >> $file
+      IntegrationName: !Ref \"AWS::StackName\"
+      SubsystemName: !Ref SubsystemName
+      ApplicationName: !Ref ApplicationName" >> $file
 
 while IFS= read -r parameter; do
   if [[ $parameter != "ApiKey" ]] && [[ $parameter != "IntegrationId" ]] && [[ $parameter != "ApplicationName" ]] && [[ $parameter != "SubsystemName" ]]; then
-    echo "      ${parameter}Field: !Ref $parameter" >> $file
+    echo "      ${parameter}: !Ref $parameter" >> $file
   fi
 done <<< "$parameters"
