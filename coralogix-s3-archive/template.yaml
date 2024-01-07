@@ -87,6 +87,20 @@ Conditions:
       - !Condition IsSameBucketName
     - !Condition IsMetricsBucketNameEmpty
     - !Condition IsValidRegion
+Mappings:
+  CoralogixRegionMap:
+    eu-west-1:
+      RoleRegion: eu1
+    eu-north-1:
+      RoleRegion: eu2
+    ap-southeast-1:
+      RoleRegion: ap1
+    ap-south-1:
+      RoleRegion: ap2
+    us-east-2:
+      RoleRegion: us1
+    us-west-2:
+      RoleRegion: us2
 Resources:
   LogsS3Bucket:
     Type: AWS::S3::Bucket
@@ -127,7 +141,7 @@ Resources:
             Principal: 
               AWS: !Sub 
                 - 'arn:aws:iam::${aws_account_id}:role/coralogix-archive-${aws_role_region}'
-                - aws_role_region: !Join ["", [!Select [0, !Split ["-", !Ref 'AWS::Region']], !Select [2, !Split ["-", !Ref 'AWS::Region']]]]
+                - aws_role_region: !FindInMap [CoralogixRegionMap, !Ref 'AWS::Region', RoleRegion]
                   aws_account_id: !If
                     - CustomArn
                     - !Ref CustomCoraloigxArn
@@ -181,7 +195,7 @@ Resources:
             Principal: 
               AWS: !Sub 
                 - 'arn:aws:iam::${aws_account_id}:role/coralogix-archive-${aws_role_region}'
-                - aws_role_region: !Join ["", [!Select [0, !Split ["-", !Ref 'AWS::Region']], !Select [2, !Split ["-", !Ref 'AWS::Region']]]]
+                - aws_role_region: !FindInMap [CoralogixRegionMap, !Ref 'AWS::Region', RoleRegion]
                   aws_account_id: !If
                     - CustomArn
                     - !Ref CustomCoraloigxArn
