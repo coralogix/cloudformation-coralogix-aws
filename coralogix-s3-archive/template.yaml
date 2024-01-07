@@ -126,15 +126,16 @@ Resources:
             Effect: 'Allow'
             Principal: 
               AWS: !Sub 
-                  - 'arn:aws:iam::${aws_account_id}:root'
-                  - aws_account_id: !If
-                      - CustomArn
-                      - !Ref CustomCoraloigxArn
-                      - !If
-                        - IsRegionUs2
-                        - "739076534691"
-                        - "625240141681"
-                      
+                - 'arn:aws:iam::${aws_account_id}:role/coralogix-archive-${aws_role_region}'
+                - aws_role_region: !Join ["", [!Select [0, !Split ["-", !Ref 'AWS::Region']], !Select [2, !Split ["-", !Ref 'AWS::Region']]]]
+                  aws_account_id: !If
+                    - CustomArn
+                    - !Ref CustomCoraloigxArn
+                    - !If
+                      - IsRegionUs2
+                      - "739076534691"
+                      - "625240141681"
+   
             Resource:
               - !Sub 'arn:aws:s3:::${LogsBucketName}'
               - !Sub 'arn:aws:s3:::${LogsBucketName}/*'
@@ -179,14 +180,15 @@ Resources:
             Effect: 'Allow'
             Principal: 
               AWS: !Sub 
-                  - 'arn:aws:iam::${aws_account_id}:root'
-                  - aws_account_id: !If
-                      - CustomArn
-                      - !Ref CustomCoraloigxArn
-                      - !If
-                        - IsRegionUs2
-                        - "739076534691"
-                        - "625240141681"
+                - 'arn:aws:iam::${aws_account_id}:role/coralogix-archive-${aws_role_region}'
+                - aws_role_region: !Join ["", [!Select [0, !Split ["-", !Ref 'AWS::Region']], !Select [2, !Split ["-", !Ref 'AWS::Region']]]]
+                  aws_account_id: !If
+                    - CustomArn
+                    - !Ref CustomCoraloigxArn
+                    - !If
+                      - IsRegionUs2
+                      - "739076534691"
+                      - "625240141681"
             Resource:
               - !Sub 'arn:aws:s3:::${MetricsS3Bucket}'
               - !Sub 'arn:aws:s3:::${MetricsS3Bucket}/*'
