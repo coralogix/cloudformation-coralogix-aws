@@ -2,6 +2,9 @@
 
 ## coralogix-eventbridge-policy
 
+### 0.0.4 / 09.01.2023
+* [update] Add role name.
+
 ### 0.0.3 / 03.01.2023
 * [update] Fix description.
 
