@@ -6,6 +6,11 @@ Parameters:
     Description: The ARN corresponding to the Event Bus that will receive events via the PutEvents method.
     AllowedPattern: '^arn:aws[\w-]*:events:[a-z]{2}-[a-z]+-[\w-]+:[0-9]{12}:event-bus\/[\.\-_A-Za-z0-9]+$'
     MaxLength: 2048
+  RoleName:
+    Type: String
+    Description: Don't change it! It needs to match the one that was input on the Coralogix form. Corresponds to the name of the AWS IAM role that will be created.
+    AllowedPattern: '^[a-zA-Z0-9_+=,.@-]+$'
+    MaxLength: 64
   CoralogixRegionAlias:
     Type: String
     Description: The Alias for the Coralogix region, possible options are [us1, us2, eu1, eu2, ap1, ap2, custom]
@@ -41,6 +46,8 @@ Resources:
   CoralogixEventBridgeRole:
     Type: AWS::IAM::Role
     Properties:
+      Description: Role for Coralogix to send events to EventBridge.
+      RoleName: !Ref RoleName
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
