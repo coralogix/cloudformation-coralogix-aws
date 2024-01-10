@@ -20,9 +20,16 @@ jobs:
     env:
       integration_list: "s3,s3-sns,cloudtrail,cloudtrail-sns,cloudwatch-logs,vpc-flow-logs,firehose-logs,firehose-metrics,resource-metadata,aws-shipper-lambda"
     steps:
-      - uses: actions/checkout@v3
+      - name: checkout when trigger is from push
+        uses: actions/checkout@v4
+        if: "${{ inputs.refToBuild == null }}"
         with:
           fetch-depth: 0 
+      - name: checkout when trigger manually
+        uses: actions/checkout@v4
+        if: "${{ inputs.refToBuild != null }}"
+        with:
+          ref: ${{ inputs.refToBuild }}
 
       - name: Create template-directory and changed-integration-file
         run: |
