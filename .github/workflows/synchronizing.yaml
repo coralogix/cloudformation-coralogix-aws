@@ -1,6 +1,12 @@
 name: Sync integration-definitions
 
 on: 
+  workflow_dispatch:
+    inputs:
+      refToBuild:
+        description: 'Branch, tag or commit SHA1'
+        required: true
+        type: string
   push:
     branches: [master, main]
     paths:
