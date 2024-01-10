@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       refToBuild:
-        description: 'Branch, tag or commit SHA1 to build'
+        description: 'Branch, tag or commit SHA1'
         required: true
         type: string
   push:
@@ -17,9 +17,18 @@ jobs:
     name: publish
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v3
+      - name: Checkout when triggered by commit
+        uses: actions/checkout@v4
+        if: "${{ inputs.refToBuild == null }}"
         with:
+          persist-credentials: false
+          fetch-depth: 0
+          
+      - name: checkout when trigger manually
+        uses: actions/checkout@v4
+        if: "${{ inputs.refToBuild != null }}"
+        with:
+          ref: ${{ inputs.refToBuild }}
           persist-credentials: false
           fetch-depth: 0
 
