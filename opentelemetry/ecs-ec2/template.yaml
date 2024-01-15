@@ -170,6 +170,7 @@ Mappings:
         service:
           extensions:
             - health_check
+            - pprof
 
           pipelines:
             logs:
@@ -288,6 +289,7 @@ Mappings:
         service:
           extensions:
             - health_check
+            - pprof
           pipelines:
             logs:
               receivers: 
