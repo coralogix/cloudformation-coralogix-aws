@@ -5,6 +5,9 @@
 <!-- ### version / full date -->
 <!-- * [Update/Bug fix] message that describes the changes that you apply -->
 
+### 0.0.5 / 2024-01-15
+- Added pprof extension to default ecs-ec2 otel configuration
+
 ### 0.0.5 / 2023-10-25
 * Added Healthcheck to default ecs-ec2 configuration
 * Remove default image for otel ecs-ec2 template
