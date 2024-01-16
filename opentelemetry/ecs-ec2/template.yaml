@@ -165,10 +165,12 @@ Mappings:
 
         extensions:
           health_check:
+          pprof:
 
         service:
           extensions:
             - health_check
+            - pprof
 
           pipelines:
             logs:
@@ -282,10 +284,12 @@ Mappings:
           
         extensions:
           health_check:
+          pprof:
 
         service:
           extensions:
             - health_check
+            - pprof
           pipelines:
             logs:
               receivers: 
@@ -378,17 +382,25 @@ Resources:
           Essential: true
 
           PortMappings:
+            # otel grpc endpoint
             - HostPort: 4317
               Protocol: tcp
               ContainerPort: 4317
             
+            # otel http endpoint
             - HostPort: 4318
               Protocol: tcp
               ContainerPort: 4318
 
+            # otel metrics endpoint
             - HostPort: 8888
               Protocol: tcp
               ContainerPort: 8888
+
+            # pprof extension default port
+            - HostPort: 1777
+              Protocol: tcp
+              ContainerPort: 1777
 
           # Privileged required to access certain host metrics
           Privileged: true
