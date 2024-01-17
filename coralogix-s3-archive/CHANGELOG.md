@@ -1,6 +1,6 @@
 # Changelog
 
-## s3-archivea
+## s3-archive
 
 ### 0.0.3 / 17.1.2024
 * [Bug Fix] Changed the role for metrics bucket
