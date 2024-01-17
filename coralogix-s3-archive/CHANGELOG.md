@@ -2,6 +2,9 @@
 
 ## s3-archivea
 
+### 0.0.3 / 17.1.2024
+* [Bug Fix] Changed the role for metrics bucket
+
 ### 0.0.2 / 7.1.2024
 * [update] Update the lambda role premission
 
