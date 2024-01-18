@@ -1,6 +1,8 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 Description: |
+#Created automatically from coralogix/coralogix-aws-shipper
+#Link to the repo: https://github.com/coralogix/coralogix-aws-shipper/tree/master/
   Send logs to Coralogix from AWS, (S3, SNS, Cloudwatch and more)
   This is a beta release, please report any issues to:
   github.com/coralogix/coralogix-aws-shipper/issues
@@ -53,10 +55,6 @@ Metadata:
           default: Cloudwatch configuration
         Parameters:
           - CloudWatchLogGroupName
-      - Label:
-          default: Kinesis configuration
-        Parameters:
-          - KinesisStreamArn
       - Label:
           default: SNS configuration
         Parameters:
