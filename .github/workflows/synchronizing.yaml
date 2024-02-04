@@ -113,14 +113,6 @@ jobs:
 
       - name: apply changes to the files
         run: |
-          # if [[ $(echo "${{ github.event.head_commit.message }}" | grep -oE '[0-9]+') ]]; then
-          #   branch_name=branch-$(echo "${{ github.event.head_commit.message }}" | grep -oE '[0-9]+' | awk '{ printf $0 }')
-          # elif echo "${{ github.event.head_commit.message }}" | grep -q "#"; then
-          #   branch_name=$(echo "${{ github.event.head_commit.message }}" | cut -d '#' -f 2)
-          #   echo "${{ github.event.head_commit.message }}"
-          # else
-          #   branch_name=update_integration-branch
-          # fi
           branch_name="sync-CloudFormation-branch-$(date +"%m-%d-%H-%M")"
           echo $branch_name
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
@@ -173,7 +165,7 @@ jobs:
         run: |
           branch_name=${{env.branch_name}}
           pr_url=""
-          commit_message=${{ github.event.head_commit.message }}
+          commit_message="${{ github.event.head_commit.message }}"
           pr_name="sync from CF" # give the pr a defult name
           last_pr_from_serverless=$(curl -s -H "Authorization: Bearer ${{ secrets.GH_TOKEN }}" \
           "https://api.github.com/repos/coralogix/coralogix-aws-serverless/pulls?state=closed&base=master&sort=updated&direction=desc" \
@@ -182,10 +174,12 @@ jobs:
           "https://api.github.com/repos/coralogix/coralogix-aws-shipper/pulls?state=closed&base=master&sort=updated&direction=desc" \
           | jq -r '.[0].title')
           if [[  $commit_message == $last_pr_from_serverless ]]; then
+            pr_name=$last_pr_from_serverless
             pr_url=$(curl -s -H "Authorization: Bearer ${{ secrets.GH_TOKEN }}" \
             "https://api.github.com/repos/coralogix/coralogix-aws-serverless/pulls?state=closed&base=master&sort=updated&direction=desc" \
             | jq -r '.[0].html_url')
           elif [[ $commit_message == $last_pr_from_shipper ]]; then
+            pr_name=$last_pr_from_shipper
             pr_url=$(curl -s -H "Authorization: Bearer ${{ secrets.GH_TOKEN }}" \
             "https://api.github.com/repos/coralogix/coralogix-aws-shipper/pulls?state=closed&base=master&sort=updated&direction=desc" \
             | jq -r '.[0].html_url')
@@ -193,6 +187,9 @@ jobs:
             pr_name=$(curl -s -H "Authorization: Bearer ${{ secrets.GH_TOKEN }}" \
           "https://api.github.com/repos/coralogix/cloudformation-coralogix-aws/pulls?state=closed&base=master&sort=updated&direction=desc" \
           | jq -r '.[0].title')
+            pr_url=$(curl -s -H "Authorization: Bearer ${{ secrets.GH_TOKEN }}" \
+            "https://api.github.com/repos/coralogix/cloudformation-coralogix-aws/pulls?state=closed&base=master&sort=updated&direction=desc" \
+            | jq -r '.[0].html_url')
           fi
           pr_exists=$(gh pr list --base master --head "${branch_name}" --json number -q '.[].number')
           if [[ -n "$pr_exists" ]]; then
