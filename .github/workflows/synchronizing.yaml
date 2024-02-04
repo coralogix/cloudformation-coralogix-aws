@@ -113,14 +113,15 @@ jobs:
 
       - name: apply changes to the files
         run: |
-          if [[ $(echo "${{ github.event.head_commit.message }}" | grep -oE '[0-9]+') ]]; then
-            branch_name=branch-$(echo "${{ github.event.head_commit.message }}" | grep -oE '[0-9]+' | awk '{ printf $0 }')
-          elif echo "${{ github.event.head_commit.message }}" | grep -q "#"; then
-            branch_name=$(echo "${{ github.event.head_commit.message }}" | cut -d '#' -f 2)
-            echo "${{ github.event.head_commit.message }}"
-          else
-            branch_name=update_integration-branch
-          fi
+          # if [[ $(echo "${{ github.event.head_commit.message }}" | grep -oE '[0-9]+') ]]; then
+          #   branch_name=branch-$(echo "${{ github.event.head_commit.message }}" | grep -oE '[0-9]+' | awk '{ printf $0 }')
+          # elif echo "${{ github.event.head_commit.message }}" | grep -q "#"; then
+          #   branch_name=$(echo "${{ github.event.head_commit.message }}" | cut -d '#' -f 2)
+          #   echo "${{ github.event.head_commit.message }}"
+          # else
+          #   branch_name=update_integration-branch
+          # fi
+          branch_name="sync-CloudFormation-branch-$(date +"%m-%d-%H-%M")"
           echo $branch_name
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
@@ -170,21 +171,34 @@ jobs:
 
       - name: Create pull request
         run: |
-          if [[ $(echo "${{ github.event.head_commit.message }}" | grep -oE '[0-9]+') ]]; then
-            branch_name=branch-$(echo "${{ github.event.head_commit.message }}" | grep -oE '[0-9]+' | awk '{ printf $0 }')
-            Pr_name=$(echo "${{ github.event.head_commit.message }}" | awk '{sub(/ *\(#[0-9]+\)/, ""); print}')
-          elif echo "${{ github.event.head_commit.message }}" | grep -q "#"; then
-            branch_name=$(echo "${{ github.event.head_commit.message }}" | cut -d '#' -f 2)
-            Pr_name=$(echo "${{ github.event.head_commit.message }}" | cut -d '#' -f 1)
-          else
-            branch_name=update_integration-branch
-            Pr_name="${{ github.event.head_commit.message }}"
+          branch_name=${{env.branch_name}}
+          pr_url=""
+          commit_message=${{ github.event.head_commit.message }}
+          pr_name="sync from CF" # give the pr a defult name
+          last_pr_from_serverless=$(curl -s -H "Authorization: Bearer ${{ secrets.GH_TOKEN }}" \
+          "https://api.github.com/repos/coralogix/coralogix-aws-serverless/pulls?state=closed&base=master&sort=updated&direction=desc" \
+          | jq -r '.[0].title')
+          last_pr_from_shipper=$(curl -s -H "Authorization: Bearer ${{ secrets.GH_TOKEN }}" \
+          "https://api.github.com/repos/coralogix/coralogix-aws-shipper/pulls?state=closed&base=master&sort=updated&direction=desc" \
+          | jq -r '.[0].title')
+          if [[  $commit_message == $last_pr_from_serverless ]]; then
+            pr_url=$(curl -s -H "Authorization: Bearer ${{ secrets.GH_TOKEN }}" \
+            "https://api.github.com/repos/coralogix/coralogix-aws-serverless/pulls?state=closed&base=master&sort=updated&direction=desc" \
+            | jq -r '.[0].html_url')
+          elif [[ $commit_message == $last_pr_from_shipper ]]; then
+            pr_url=$(curl -s -H "Authorization: Bearer ${{ secrets.GH_TOKEN }}" \
+            "https://api.github.com/repos/coralogix/coralogix-aws-shipper/pulls?state=closed&base=master&sort=updated&direction=desc" \
+            | jq -r '.[0].html_url')
+          else # get the last pr from CF in case that the trigger to the sync was from CF 
+            pr_name=$(curl -s -H "Authorization: Bearer ${{ secrets.GH_TOKEN }}" \
+          "https://api.github.com/repos/coralogix/cloudformation-coralogix-aws/pulls?state=closed&base=master&sort=updated&direction=desc" \
+          | jq -r '.[0].title')
           fi
           pr_exists=$(gh pr list --base master --head "${branch_name}" --json number -q '.[].number')
           if [[ -n "$pr_exists" ]]; then
             echo "Pull request already exists: #$pr_exists"
           else
-            gh pr create --base master --head "${branch_name}" --title "${Pr_name}" --body "This pull request syncs the changes from the cloudformation repo to this repo."
+            gh pr create --base master --head "${branch_name}" --title "${pr_name}" --body "This pull request syncs the changes from the cloudformation repo to this repo. link to the original PR $pr_url "
           fi
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
