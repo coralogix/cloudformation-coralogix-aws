@@ -1,9 +1,12 @@
-# Coralogix-SNS
-
+# Warning: This Lambda Function will be deprecated on May 1st
+We recommend using [Coralogix AWS Shipper](https://github.com/coralogix/coralogix-aws-shipper/tree/master)
 This template were created automatically from coralogix/coralogix-aws-serverless.
 To make a change in the template go to the link below.
 
 https://github.com/coralogix/coralogix-aws-serverless/tree/master/src/sns
+
+
+# Coralogix-SNS
 
 This application retrieves **SNS** message and sends them to your **Coralogix** account.
 
