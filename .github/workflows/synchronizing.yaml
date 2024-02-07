@@ -132,8 +132,13 @@ jobs:
           while read line; do  
             ./replace_template.sh template-directory/${line}-template.yaml
             template_version=$(cat template-directory/${line}-template.yaml | grep "SemanticVersion" | grep -oE '[^ ]+$')
-            mkdir -p integrations/${line}/v${template_version}
-            mv template-directory/${line}-template.yaml integrations/${line}/v${template_version}/template.yaml
+            if [ "$line" == "aws-shipper-lambda" ];then
+              mkdir -p integrations/shared/aws-shipper/v${template_version}
+              mv template-directory/${line}-template.yaml integrations/shared/aws-shipper/v${template_version}/template.yaml
+            else
+              mkdir -p integrations/${line}/v${template_version}
+              mv template-directory/${line}-template.yaml integrations/${line}/v${template_version}/template.yaml
+            fi
             
             if [ -f integrations/${line}/manifest.yaml ]; then
               echo "  - revision: ${template_version}
