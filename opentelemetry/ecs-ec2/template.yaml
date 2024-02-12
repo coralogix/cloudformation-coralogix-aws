@@ -69,8 +69,9 @@ Parameters:
 
   PrivateKey:
     Type: String
-    Description: "Deprecated. Hard-replaced by \"CoralogixApiKey\". Must be null. Formerly: The Coralogix private key which is used to validate your authenticity."
-    AllowedPattern: "^$" # hard-deprecate.
+    Description: "Deprecated. Do not use. Hard-replaced by \"CoralogixApiKey\". Formerly: The Coralogix private key which is used to validate your authenticity."
+    Default: "DO-NOT-USE"
+    AllowedPattern: "^DO-NOT-USE$" # hard-deprecate.
     NoEcho: true
 
   Metrics:
