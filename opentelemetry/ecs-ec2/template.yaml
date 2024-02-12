@@ -28,12 +28,18 @@ Parameters:
       The amount of memory (in MiB) used by the task.
       Note that you cluster must have sufficient memory available to support the given value.
     Type: Number
-    Default: 256
+    Default: "256"
 
   CoralogixRegion:
       Type: String
-      Description: The Coralogix location region [Europe, Europe2, India, Singapore, US, US2]
+      Description: "The Coralogix location region [EU1|EU2|AP1|AP2|US1|US2]. Deprecated: [Europe, Europe2, India, Singapore, US, US2]"
       AllowedValues:
+        - EU1
+        - EU2
+        - AP1
+        - AP2
+        - US1
+        - US2
         - Europe
         - Europe2
         - India
@@ -44,19 +50,27 @@ Parameters:
   DefaultApplicationName:
     Type: String
     Description: The name of your application
-    MinLength: 1
-    MaxLength: 64
+    MinLength: "1"
+    MaxLength: "64"
 
   DefaultSubsystemName:
     Type: String
     Description: The subsystem name of your application
-    MinLength: 1
-    MaxLength: 64
+    MinLength: "1"
+    MaxLength: "64"
     Default: "default"
+
+  CoralogixApiKey:
+    Type: String
+    Description: "The Send-Your-Data API key for your Coralogix account. See: https://coralogix.com/docs/send-your-data-api-key/"
+    NoEcho: true
+    AllowedPattern: ".+"
+    ConstraintDescription: "API Key required."
 
   PrivateKey:
     Type: String
-    Description: The Coralogix private key which is used to validate your authenticity
+    Description: "Deprecated. Hard-replaced by \"CoralogixApiKey\". Must be null. Formerly: The Coralogix private key which is used to validate your authenticity."
+    AllowedPattern: "^$" # hard-deprecate.
     NoEcho: true
 
   Metrics:
@@ -102,15 +116,13 @@ Mappings:
               - job_name: otel-collector-metrics
                 scrape_interval: 60s
                 static_configs:
-                - targets: ['localhost:8888']
+                - targets: ["localhost:8888"]
 
           filelog:
             start_at: end
             include:
               - /hostfs/var/lib/docker/containers/*/*.log
-
             include_file_path: true
-
             # add log.file.path to resource attributes
             operators:
               - type: move
@@ -138,6 +150,11 @@ Mappings:
                   - set(attributes["aws_ecs_task_family"], attributes["aws.ecs.task.definition.family"])
                   - set(attributes["image_id"], attributes["image.id"])
                   - delete_key(attributes, "image.id")
+
+          batch:
+            send_batch_size: 1024
+            send_batch_max_size: 2048
+            timeout: "1s"
 
           # otel-collector resource detection for collector
           resourcedetection/otel-collector:
@@ -186,6 +203,8 @@ Mappings:
             traces:
               receivers:
                 - otlp
+              processors:
+                - batch
               exporters:
                 - coralogix
 
@@ -194,6 +213,7 @@ Mappings:
                 - prometheus
               processors:
                 - resourcedetection/otel-collector
+                - batch
               exporters:
                 - coralogix
 
@@ -223,9 +243,7 @@ Mappings:
             start_at: end
             include:
               - /hostfs/var/lib/docker/containers/*/*.log
-              
             include_file_path: true
-
             # add log.file.path to resource attributes
             operators:
               - type: move
@@ -258,6 +276,9 @@ Mappings:
                   - delete_key(attributes, "image.id")
 
           batch:
+            send_batch_size: 1024
+            send_batch_max_size: 2048
+            timeout: "1s"
 
           # otel-collector resource detection for collector
           resourcedetection/otel-collector:
@@ -290,6 +311,7 @@ Mappings:
           extensions:
             - health_check
             - pprof
+
           pipelines:
             logs:
               receivers: 
@@ -303,6 +325,7 @@ Mappings:
 
             metrics:
               receivers:
+                - otlp
                 - awsecscontainermetricsd
               processors:
                 - batch
@@ -322,6 +345,7 @@ Mappings:
                 - prometheus
               processors:
                 - resourcedetection/otel-collector
+                - batch
               exporters:
                 - coralogix
 
@@ -332,6 +356,24 @@ Mappings:
 
 
   CoralogixRegionMap:
+    EU1:
+      Endpoint: ingress.coralogix.com:443
+      Domain: coralogix.com
+    EU2:
+      Endpoint: ingress.eu2.coralogix.com:443
+      Domain: eu2.coralogix.com
+    AP1:
+      Endpoint: ingress.coralogix.in:443
+      Domain: coralogix.in
+    AP2:
+      Endpoint: ingress.coralogixsg.com:443
+      Domain: coralogixsg.com
+    US1:
+      Endpoint: ingress.coralogix.us:443
+      Domain: coralogix.us
+    US2:
+      Endpoint: ingress.cx498-aws-us-west-2.coralogix.com:443
+      Domain: cx498.coralogix.com
     Europe:
       Endpoint: ingress.coralogix.com:443
       Domain: coralogix.com
@@ -364,7 +406,7 @@ Resources:
       Volumes:
         - Name: hostfs
           Host:
-            SourcePath: "/"
+            SourcePath: "/var/lib/docker/"
   
         - Name: docker-socket
           Host:
@@ -418,7 +460,7 @@ Resources:
               Value: !FindInMap [CoralogixRegionMap, !Ref CoralogixRegion, Domain]
            
             - Name: PRIVATE_KEY
-              Value: !Ref PrivateKey
+              Value: !Ref CoralogixApiKey
 
             - Name: APP_NAME
               Value: !Ref DefaultApplicationName
@@ -446,7 +488,7 @@ Resources:
       Volumes:
         - Name: hostfs
           Host:
-            SourcePath: "/"
+            SourcePath: "/var/lib/docker/"
   
         - Name: docker-socket
           Host:
@@ -491,7 +533,7 @@ Resources:
               Value: !FindInMap [CoralogixRegionMap, !Ref CoralogixRegion, Domain]
            
             - Name: PRIVATE_KEY
-              Value: !Ref PrivateKey
+              Value: !Ref CoralogixApiKey
 
             - Name: APP_NAME
               Value: !Ref DefaultApplicationName
