@@ -449,7 +449,7 @@ Resources:
 
           MountPoints:
             - SourceVolume: hostfs
-              ContainerPath: "/hostfs"
+              ContainerPath: "/hostfs/var/lib/docker"
               ReadOnly: True
 
             - SourceVolume: docker-socket

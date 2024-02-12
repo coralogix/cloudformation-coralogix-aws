@@ -5,6 +5,9 @@
 <!-- ### version / full date -->
 <!-- * [Update/Bug fix] message that describes the changes that you apply -->
 
+### 0.0.6 / 2024-02-13
+- [update],[otel]: Restrict mount vol scope; enable metrics otlp; enable batch with defaults. Soft-deprecate previous cx region codes for replacements; Hard-deprecate param name `PrivateKey` for `CoralogixApiKey`; Readme content sync with terraform version, formatting.
+
 ### 0.0.5 / 2024-01-15
 - Added pprof extension to default ecs-ec2 otel configuration
 

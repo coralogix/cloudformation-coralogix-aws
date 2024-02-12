@@ -1,13 +1,15 @@
 # Coralogix OpenTelemetry Agent for ECS-EC2. Cloudformation template.
 
-This template can be used to deploy an ECS Service and Task Definition for running the Open Telemetry agent on an ECS Cluster. This deployment is able to collect Logs, Metrics and Traces. The template will deploy a daemonset which runs an instance open telemetry on each node in a cluster.
+This CloudFormation template deploys an ECS Service and Task Definition for running the Open Telemetry agent on an ECS Cluster. This deployment is able to collect Logs, Metrics and Traces. The template will deploy a daemonset which runs an instance open telemetry on each node in a cluster.
 
-### Image
+CloudFormation template to launch the Coralogix Distribution for Open Telemetry ("CDOT") into an existing ECS Cluster. This CDOT deployment is able to collect Logs, Metrics and Traces. CDOT is deployed in the OTEL [Agent deployment](https://opentelemetry.io/docs/collector/deployment/agent/) pattern, as an ECS Daemon Service type, which runs an instance of the Open Telemetry collector agent on each node in a cluster.
 
-This example
-[comment]: <> (Clarification: should the repo be positioned as prod supported code? 'This solution' vs 'This example'? Are we not as a team already supporting this package anyway? What is our actual support posture?)
-[comment]: <> (This is a markdown comment, it should not be rendered)
-uses the coralogixrepo/coralogix-otel-collector image which is a custom distribution of Open Telemetry containing custom components developed by Coralogix. The image is available on [Docker Hub](https://hub.docker.com/r/coralogixrepo/coralogix-otel-collector). The ECS components are described [here](./components.md)
+## Image
+
+<!--
+'solution' vs 'example'. We are as a team already supporting this repo. What should be our actual support posture? If this repo is positioned as "supported" by CX? Then:'This solution', is more accurate than:'This example'.
+-->
+This example uses the coralogixrepo/coralogix-otel-collector image which is a custom distribution of Open Telemetry containing custom components developed by Coralogix. The image is available on [Docker Hub](https://hub.docker.com/r/coralogixrepo/coralogix-otel-collector). The ECS components are described [here](./components.md)
 
 The OTEL collector/agent/daemon image used is the [Coralogix Distribution for Open Telemetry](https://hub.docker.com/r/coralogixrepo/coralogix-otel-collector) Docker Hub image. It is deployed as a [_Daemon_](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/ecs_services.html#service_scheduler_daemon) ECS Task, i.e. one OTEL collector agent container on each EC2 instance (i.e. ECS container instance) across the cluster.
 
@@ -17,27 +19,27 @@ The OTEL agent is deployed as a Daemon ECS Task and connected using [```host``` 
 
 The CDOT OTEL agent also features enhancements specific to ECS integration. These improvements are proprietary to the Coralogix Distribution for Open Telemetry.
 
-**Logs**
+### Logs
 
 The OTEL agent uses a [filelog receiver](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/receiver/filereceiver) to read the docker logs of all containers on the EC2 host. OTLP is also accepted. Coralogix provides the ```awsecscontainermetricsd``` receiver which enables metrics collection of all tasks on the same host. The [coralogix exporter](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/exporter/coralogixexporter) forwards telemetry to your configured Coralogix endpoint.
 
-> Logs are collected from all containers that log to `/var/lib/docker/containers/*/*.log`
-> The container requires privileges to mount the host read-only file path `/var/lib/docker/`.
+Logs are collected from all containers that log to `/var/lib/docker/containers/*/*.log`.
+The container requires privileges to mount the host read-only file path `/var/lib/docker/`.
 
-**Metrics**
+### Metrics
 
-> Metrics are collected from all containers running on the ECS Cluster. The metrics are collected using the [awsecscontainermetricsd](./components.md#awsecscontainermetricsd) receiver.
+Metrics are collected from all containers running on the ECS Cluster. The metrics are collected using the [awsecscontainermetricsd](./components.md#awsecscontainermetricsd) receiver.
 
-**Traces**
+### Traces
 
-> A GRPC(*4317*) and HTTP(*4318*) endpoint is exposed for sending traces to the local OTLP endpoint.
+A GRPC(*4317*) and HTTP(*4318*) endpoint is exposed for sending traces to the local OTLP endpoint.
 
-**Requires:**
+### Requires:
 
 - An existing ECS Cluster
 - [aws-cli]() (*if deploying via CLI*)
 
-### Parameters:
+## Parameters:
 
 | Parameter        | Description                                                                                                                                                                                                                          | Default Value                                                                | Required           |
 |------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------|--------------------|
@@ -52,7 +54,7 @@ The OTEL agent uses a [filelog receiver](https://github.com/open-telemetry/opent
 | Metrics          | Enable/Disable Metrics                                                                                                                                                                                                               | disable                                                                      |                    |
 | OtelConfig       | The Base64 encoded Open Telemetry configuration yaml to use. This parameter allows you to pass your own Open Telemetry configuration. This will be used instead of the embedded configuration if specified.                          |                                                                              |                    |
 
-### Deploy the Cloudformation template:
+## Deploy the Cloudformation template:
 
 ```sh
 aws cloudformation deploy --template-file template.yaml --stack-name <stack_name> \
