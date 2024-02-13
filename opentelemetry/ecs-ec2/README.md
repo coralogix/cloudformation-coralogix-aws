@@ -1,39 +1,60 @@
-### ECS Service and Task Definition
+# Coralogix OpenTelemetry Agent for ECS-EC2. Cloudformation template.
 
-This template can be used to deploy an ECS Service and Task Definition for running the Open Telemetry agent on an ECS Cluster. This deployment is able to collect Logs, Metrics and Traces. The template will deploy a daemonset which runs an instance open telemetry on each node in a cluster.
+This CloudFormation template deploys an ECS Service and Task Definition for running the Open Telemetry agent on an ECS Cluster. This deployment is able to collect Logs, Metrics and Traces. The template will deploy a daemonset which runs an instance open telemetry on each node in a cluster.
 
-**Logs**
+CloudFormation template to launch the Coralogix Distribution for Open Telemetry ("CDOT") into an existing ECS Cluster. This CDOT deployment is able to collect Logs, Metrics and Traces. CDOT is deployed in the OTEL [Agent deployment](https://opentelemetry.io/docs/collector/deployment/agent/) pattern, as an ECS Daemon Service type, which runs an instance of the Open Telemetry collector agent on each node in a cluster.
 
-> Logs are collected from all containers that log to `/var/lib/docker/containers/*/*.log`
+## Image
 
-**Metrics**
+<!--
+'solution' vs 'example'. We are as a team already supporting this repo. What should be our actual support posture? If this repo is positioned as "supported" by CX? Then:'This solution', is more accurate than:'This example'.
+-->
+This example uses the coralogixrepo/coralogix-otel-collector image which is a custom distribution of Open Telemetry containing custom components developed by Coralogix. The image is available on [Docker Hub](https://hub.docker.com/r/coralogixrepo/coralogix-otel-collector). The ECS components are described [here](./components.md)
 
-> Metrics are collected from all containers running on the ECS Cluster. The metrics are collected using the [awsecscontainermetricsd](./components.md#awsecscontainermetricsd) receiver.
+The OTEL collector/agent/daemon image used is the [Coralogix Distribution for Open Telemetry](https://hub.docker.com/r/coralogixrepo/coralogix-otel-collector) Docker Hub image. It is deployed as a [_Daemon_](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/ecs_services.html#service_scheduler_daemon) ECS Task, i.e. one OTEL collector agent container on each EC2 instance (i.e. ECS container instance) across the cluster.
 
-**Traces**
+CDOT extends upon the main [Open Telemetry Collector Contrib](https://github.com/open-telemetry/opentelemetry-collector-contrib) project, adding features specifically to enhance integration with AWS ECS, among other improvements.
 
-> A GRPC(*4317*) and HTTP(*4318*) endpoint is exposed for sending traces to the local OTLP endpoint.
+The OTEL agent is deployed as a Daemon ECS Task and connected using [```host``` network mode](https://docs.aws.amazon.com/AmazonECS/latest/bestpracticesguide/networking-networkmode-host.html). OTEL-instrumented application containers that need to send telemetry to the local OTEL agent can lookup the IP address of the CDOT container [using a number of methods](https://coralogix.com/docs/opentelemetry-using-ecs-ec2/#otel-agent-network-service-discovery), making it easier for Application Tasks using ```awsvpc``` and ```bridge``` network modes to connect with the OTEL agent. OTEL-instrumented application containers should also consider which resource attributes to use as telemetry identifiers.
 
-**Requires:**
+The CDOT OTEL agent also features enhancements specific to ECS integration. These improvements are proprietary to the Coralogix Distribution for Open Telemetry.
+
+### Logs
+
+The OTEL agent uses a [filelog receiver](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/receiver/filereceiver) to read the docker logs of all containers on the EC2 host. OTLP is also accepted. Coralogix provides the ```awsecscontainermetricsd``` receiver which enables metrics collection of all tasks on the same host. The [coralogix exporter](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/exporter/coralogixexporter) forwards telemetry to your configured Coralogix endpoint.
+
+Logs are collected from all containers that log to `/var/lib/docker/containers/*/*.log`.
+The container requires privileges to mount the host read-only file path `/var/lib/docker/`.
+
+### Metrics
+
+Metrics are collected from all containers running on the ECS Cluster. The metrics are collected using the [awsecscontainermetricsd](./components.md#awsecscontainermetricsd) receiver.
+
+### Traces
+
+A GRPC(*4317*) and HTTP(*4318*) endpoint is exposed for sending traces to the local OTLP endpoint.
+
+### Requires:
 
 - An existing ECS Cluster
 - [aws-cli]() (*if deploying via CLI*)
 
-### Parameters:
+## Parameters:
 
 | Parameter        | Description                                                                                                                                                                                                                          | Default Value                                                                | Required           |
 |------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------|--------------------|
 | ClusterName      | The name of an **existing** ECS Cluster                                                                                                                                                                                              |                                                                              | :heavy_check_mark: |
 | CDOTImageVersion | The Coralogix Open Telemetry Collector Image version/tag to use. See available tags [here](https://hub.docker.com/r/coralogixrepo/coralogix-otel-collector/tags)                                                                     |                                                                              |                    |
 | Memory           | The amount of memory to allocate to the Open Telemetry container.<br>*Assigning too much memory can lead to the ECS Service not being deployed. Make sure that values are within the range of what is available on your ECS Cluster* | 256                                                                          |                    |
-| CoralogixRegion  | The region of your Coralogix Account                                                                                                                                                                                                 | *Allowed Values:*<br>- Europe<br>- Europe2<br>- India<br>- Singapore<br>- US | :heavy_check_mark: |
+| CoralogixRegion  | The region of your Coralogix Account                                                                                                                                                                                                 | *Allowed Values:* <br>- EU1<br>- EU2<br>- AP1<br>- AP2<br>- US1<br>- US2   | :heavy_check_mark: |
 | ApplicationName  | You application name                                                                                                                                                                                                                 |                                                                              | :heavy_check_mark: |
 | SubsystemName    | You Subsystem name                                                                                                                                                                                                                   | AWS Account ID                                                               | :heavy_check_mark: |
-| PrivateKey       | Your Coralogix Private Key                                                                                                                                                                                                           |                                                                              | :heavy_check_mark: |
+| CoralogixApiKey | The Send-Your-Data API key for your Coralogix account. See: https://coralogix.com/docs/send-your-data-api-key/ |                                                                              | :heavy_check_mark: |
+| PrivateKey :warning::no_entry:__Deprecated__.:no_entry::warning: | :warning::no_entry:__Deprecated__.:no_entry::warning: Do not use. Hard-replaced by `CoralogixApiKey`. Must be null. Formerly: Your Coralogix Private Key. |                                                                              | :no_entry: |
 | Metrics          | Enable/Disable Metrics                                                                                                                                                                                                               | disable                                                                      |                    |
 | OtelConfig       | The Base64 encoded Open Telemetry configuration yaml to use. This parameter allows you to pass your own Open Telemetry configuration. This will be used instead of the embedded configuration if specified.                          |                                                                              |                    |
 
-### Deploy the Cloudformation template:
+## Deploy the Cloudformation template:
 
 ```sh
 aws cloudformation deploy --template-file template.yaml --stack-name <stack_name> \
@@ -84,10 +105,10 @@ The healthy response should look like this:
 }
 ```
 
-### Image
-
-This example uses the coralogixrepo/coralogix-otel-collector image which is a custom distribution of Open Telemetry containing custom components developed by Coralogix. The image is available on [Docker Hub](https://hub.docker.com/r/coralogixrepo/coralogix-otel-collector). The ECS components are described [here](./components.md)
-
 ### Open Telemetry Collector Metrics
 
 The default Open Telemetry configuration embedded in this cloudformation template exposes metrics about the collector on port `8888` via the path `/metrics`. The metrics are collected using a [prometheus](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/receiver/prometheusreceiver) scrape job.
+
+### Further info
+
+See documentation: [AWS ECS-EC2 using OpenTelemetry](https://coralogix.com/docs/opentelemetry-using-ecs-ec2).
