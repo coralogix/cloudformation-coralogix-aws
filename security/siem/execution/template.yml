@@ -1,0 +1,42 @@
+Parameters:
+  Principal:
+    Type: String
+    Description: The AWS account ID or Role ARN of the principal who will assume the role
+    ConstraintDescription: "Must be a valid AWS account ID or a valid Role ARN"
+
+Resources:
+  CoralogixSIEMExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: Coralogix-SIEM-Execution-Role
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS:
+                Ref: Principal
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: CoralogixSIEMPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: SIEM
+                Resource: ["*"]
+                Effect: Allow
+                Action:
+                  - "s3:GetBucketPublicAccessBlock"
+                  - "s3:GetBucketTagging"
+                  - "ec2:DescribeInstances"
+                  - "dynamodb:ListTagsOfResource"
+                  - "s3:GetBucketAcl"
+                  - "s3:GetEncryptionConfiguration"
+                  - "dynamodb:DescribeTable"
+                  - "rds:DescribeDBInstances"
+                  - "redshift:DescribeClusters"
+                  - "eks:DescribeCluster"
+                  - "eks:ListClusters"
+                  - "ec2:DescribeSubnets"
+                  - "s3:GetBucketLocation"
+                  - "redshift:DescribeClusterParameters"
