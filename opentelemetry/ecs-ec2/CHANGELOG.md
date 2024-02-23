@@ -1,5 +1,8 @@
 # Changelog
 
+### 0.0.7 / 2024-02-23
+- Updated ECS EC2 default Otel configuration to log level warn.
+
 ## opentelemetry ecs-ec2
 <!-- To add a new entry write: -->
 <!-- ### version / full date -->
