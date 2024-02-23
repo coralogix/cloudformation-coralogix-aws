@@ -219,6 +219,8 @@ Mappings:
                 - coralogix
 
           telemetry:
+            logs:
+              level: warn
             metrics:
               address: 0.0.0.0:8888
               level: detailed
@@ -351,6 +353,8 @@ Mappings:
                 - coralogix
 
           telemetry:
+            logs:
+              level: warn
             metrics:
               address: 0.0.0.0:8888
               level: detailed
