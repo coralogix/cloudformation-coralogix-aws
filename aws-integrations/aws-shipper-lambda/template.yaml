@@ -299,6 +299,12 @@ Parameters:
       The security groups associated with your VPC for each Kafka broker
       [Not Required when using MSK]
     Default: ""
+  CpuArch:
+    Type: String
+    AllowedValues:
+      - x86_64
+      - arm64
+    Default: arm64
 Mappings:
   CoralogixRegionMap:
     EU1:
@@ -411,6 +417,10 @@ Conditions:
   UseECRScanWithNotification: !And
     - !Condition UseECRScan
     - !Condition IsNotificationEnabled
+  CpuArchIsx8664:
+    Fn::Equals:
+      - Ref: CpuArch
+      - x86_64
 Rules:
   ValidateCloudWatchLogs:
     RuleCondition: !And
@@ -471,7 +481,7 @@ Globals:
     Handler: bootstrap
     Runtime: provided.al2
     Architectures:
-      - arm64
+      - Ref: CpuArch
     MemorySize: !Ref FunctionMemorySize
     Timeout: !Ref FunctionTimeout
     # EventInvokeConfig: !If
@@ -562,8 +572,13 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri:
-        Bucket: !Sub 'coralogix-serverless-repo-${AWS::Region}'
-        Key: coralogix-aws-shipper.zip
+        Bucket:
+          Fn::Sub: coralogix-aws-shipper-${AWS::Region}
+        Key:
+          Fn::If:
+            - CpuArchIsx8664
+            - coralogix-aws-shipper-x86-64.zip
+            - coralogix-aws-shipper.zip
       EventInvokeConfig:
         DestinationConfig:
           OnFailure:
@@ -650,8 +665,13 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri:
-        Bucket: !Sub 'coralogix-serverless-repo-${AWS::Region}'
-        Key: coralogix-aws-shipper.zip
+        Bucket:
+          Fn::Sub: coralogix-aws-shipper-${AWS::Region}
+        Key:
+          Fn::If:
+            - CpuArchIsx8664
+            - coralogix-aws-shipper-x86-64.zip
+            - coralogix-aws-shipper.zip
       Policies:
         - !If
           - IsSNSIntegration
@@ -724,8 +744,13 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri:
-        Bucket: !Sub 'coralogix-serverless-repo-${AWS::Region}'
-        Key: coralogix-aws-shipper.zip
+        Bucket:
+          Fn::Sub: coralogix-aws-shipper-${AWS::Region}
+        Key:
+          Fn::If:
+            - CpuArchIsx8664
+            - coralogix-aws-shipper-x86-64.zip
+            - coralogix-aws-shipper.zip
       Policies:
         - !If
           - ApiKeyIsArn
@@ -826,8 +851,13 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri:
-        Bucket: !Sub 'coralogix-serverless-repo-${AWS::Region}'
-        Key: coralogix-aws-shipper.zip
+        Bucket:
+          Fn::Sub: coralogix-aws-shipper-${AWS::Region}
+        Key:
+          Fn::If:
+            - CpuArchIsx8664
+            - coralogix-aws-shipper-x86-64.zip
+            - coralogix-aws-shipper.zip
       Policies:
         - !If
           - IsSQSIntegration
@@ -883,8 +913,13 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri:
-        Bucket: !Sub 'coralogix-serverless-repo-${AWS::Region}'
-        Key: coralogix-aws-shipper.zip
+        Bucket:
+          Fn::Sub: coralogix-aws-shipper-${AWS::Region}
+        Key:
+          Fn::If:
+            - CpuArchIsx8664
+            - coralogix-aws-shipper-x86-64.zip
+            - coralogix-aws-shipper.zip
       Policies:
         - !If
           - IsKinesisIntegration
@@ -938,8 +973,13 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri:
-        Bucket: !Sub 'coralogix-serverless-repo-${AWS::Region}'
-        Key: coralogix-aws-shipper.zip
+        Bucket:
+          Fn::Sub: coralogix-aws-shipper-${AWS::Region}
+        Key:
+          Fn::If:
+            - CpuArchIsx8664
+            - coralogix-aws-shipper-x86-64.zip
+            - coralogix-aws-shipper.zip
       Policies:
         - AWSLambdaMSKExecutionRole
         - Statement:
@@ -982,8 +1022,13 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri:
-        Bucket: !Sub 'coralogix-serverless-repo-${AWS::Region}'
-        Key: coralogix-aws-shipper.zip
+        Bucket:
+          Fn::Sub: coralogix-aws-shipper-${AWS::Region}
+        Key:
+          Fn::If:
+            - CpuArchIsx8664
+            - coralogix-aws-shipper-x86-64.zip
+            - coralogix-aws-shipper.zip
       Policies:
         - AWSLambdaMSKExecutionRole
         - Statement:
@@ -1036,8 +1081,13 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri:
-        Bucket: !Sub 'coralogix-serverless-repo-${AWS::Region}'
-        Key: coralogix-aws-shipper.zip
+        Bucket:
+          Fn::Sub: coralogix-aws-shipper-${AWS::Region}
+        Key:
+          Fn::If:
+            - CpuArchIsx8664
+            - coralogix-aws-shipper-x86-64.zip
+            - coralogix-aws-shipper.zip
       Policies:
         - AWSLambdaBasicExecutionRole
         - Statement:
