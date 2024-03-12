@@ -1,8 +1,28 @@
 Parameters:
-  Principal:
+  CoralogixRegionAlias:
     Type: String
-    Description: The AWS account ID or Role ARN of the principal who will assume the role
-    ConstraintDescription: "Must be a valid AWS account ID or a valid Role ARN"
+    Description: The Alias for the Coralogix region, possible options are [us1, us2, eu1, eu2, ap1, ap2, custom]
+    AllowedValues:
+      - us1
+      - us2
+      - eu1
+      - eu2
+      - ap1
+      - ap2
+      - custom
+  CustomCoralogixAccount:
+    Type: String
+    Description: In case you want to use a custom coralogix account, enter the aws account id that you want to use.
+    Default: ''
+
+Conditions:
+  IsRegionUs2: !Equals
+    - Ref: CoralogixRegionAlias
+    - us2
+  IsCustomAccount: !Not
+    - !Equals
+      - Ref: CustomCoralogixAccount
+      - ''
 
 Resources:
   CoralogixSIEMExecutionRole:
@@ -14,8 +34,15 @@ Resources:
         Statement:
           - Effect: Allow
             Principal:
-              AWS:
-                Ref: Principal
+              AWS: !Sub
+                - 'arn:aws:iam::${aws_account_id}:role/siem-service'
+                - aws_account_id: !If
+                    - IsCustomAccount
+                    - !Ref CustomCoralogixAccount
+                    - !If
+                      - IsRegionUs2
+                      - '739076534691'
+                      - '625240141681'
             Action: sts:AssumeRole
       Policies:
         - PolicyName: CoralogixSIEMPolicy
@@ -26,17 +53,24 @@ Resources:
                 Resource: ["*"]
                 Effect: Allow
                 Action:
-                  - "s3:GetBucketPublicAccessBlock"
-                  - "s3:GetBucketTagging"
-                  - "ec2:DescribeInstances"
-                  - "dynamodb:ListTagsOfResource"
-                  - "s3:GetBucketAcl"
-                  - "s3:GetEncryptionConfiguration"
-                  - "dynamodb:DescribeTable"
-                  - "rds:DescribeDBInstances"
-                  - "redshift:DescribeClusters"
-                  - "eks:DescribeCluster"
-                  - "eks:ListClusters"
-                  - "ec2:DescribeSubnets"
-                  - "s3:GetBucketLocation"
-                  - "redshift:DescribeClusterParameters"
+                  - "s3:GetBucketPublicAccessBlock",
+                  - "s3:GetBucketTagging",
+                  - "ec2:DescribeInstances",
+                  - "lambda:ListFunctions",
+                  - "dynamodb:ListTagsOfResource",
+                  - "s3:GetBucketAcl",
+                  - "ecs:DescribeClusters",
+                  - "s3:GetEncryptionConfiguration",
+                  - "s3:ListAllMyBuckets",
+                  - "lambda:ListTags",
+                  - "dynamodb:DescribeTable",
+                  - "rds:DescribeDBInstances",
+                  - "redshift:DescribeClusters",
+                  - "eks:DescribeCluster",
+                  - "ecs:ListContainerInstances",
+                  - "eks:ListClusters",
+                  - "ec2:DescribeSubnets",
+                  - "s3:GetBucketLocation",
+                  - "rds:DescribeDBClusters",
+                  - "redshift:DescribeClusterParameters",
+                  - "ecs:ListClusters"

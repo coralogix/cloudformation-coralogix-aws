@@ -1,21 +1,52 @@
 Parameters:
-  Principal:
+  CoralogixRegionAlias:
     Type: String
-    Description: The AWS account ID of the principal who will assume the role
-    ConstraintDescription: "Must be a valid AWS account ID"
+    Description: The Alias for the Coralogix region, possible options are [us1, us2, eu1, eu2, ap1, ap2, custom]
+    AllowedValues:
+      - us1
+      - us2
+      - eu1
+      - eu2
+      - ap1
+      - ap2
+      - custom
+  CustomCoralogixAccount:
+    Type: String
+    Description: In case you want to use a custom coralogix account, enter the aws account id that you want to use.
+    Default: ''
+  RoleName:
+    Type: String
+    Description: Don't change it! It needs to match the one that was input on the Coralogix form. Corresponds to the name of the AWS IAM role that will be created.
+    AllowedPattern: '^[a-zA-Z0-9_+=,.@-]+$'
+    MaxLength: 64
+Conditions:
+  IsRegionUs2: !Equals
+    - Ref: CoralogixRegionAlias
+    - us2
+  IsCustomAccount: !Not
+    - !Equals
+      - Ref: CustomCoralogixAccount
+      - ''
 
 Resources:
   CoralogixSIEMManagementRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: Coralogix-SIEM-Management-Role
+      RoleName: !Ref RoleName
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
           - Effect: Allow
             Principal:
-              AWS:
-                Ref: Principal
+              AWS: !Sub
+                - 'arn:aws:iam::${aws_account_id}:role/siem-service'
+                - aws_account_id: !If
+                    - IsCustomAccount
+                    - !Ref CustomCoralogixAccount
+                    - !If
+                      - IsRegionUs2
+                      - '739076534691'
+                      - '625240141681'
             Action: sts:AssumeRole
       Policies:
         - PolicyName: CoralogixSIEMManagementRolePolicy
@@ -24,8 +55,5 @@ Resources:
             Statement:
               - Effect: Allow
                 Action:
-                  - organizations:ListAccounts
-                  - iam:CreatePolicy
-                  - iam:DeletePolicy
-                  - iam:AttachRolePolicy
+                  - "organizations:ListAccounts"
                 Resource: "*"
