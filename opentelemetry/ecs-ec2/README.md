@@ -77,7 +77,7 @@ aws cloudformation deploy --template-file cfn_template.yaml --stack-name <stack_
         ClusterName=<ecs cluster name> \
         CDOTImageVersion=<image tag> \
         PrivateKey=<your-private-key> \
-        OTELConfig=$(cat path/to/otelconfig.yaml | base64) \
+        OtelConfig=$(cat path/to/otelconfig.yaml | base64) \
         CoralogixRegion=<coralogix-region>
 ```
 
