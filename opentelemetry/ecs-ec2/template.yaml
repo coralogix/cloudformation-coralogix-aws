@@ -122,7 +122,7 @@ Mappings:
           filelog:
             start_at: end
             include:
-              - /hostfs/var/lib/docker/containers/*/*.log
+              - /hostfs/containers/*/*.log
             include_file_path: true
             # add log.file.path to resource attributes
             operators:
@@ -245,7 +245,7 @@ Mappings:
           filelog:
             start_at: end
             include:
-              - /hostfs/var/lib/docker/containers/*/*.log
+              - /hostfs/containers/*/*.log
             include_file_path: true
             # add log.file.path to resource attributes
             operators:
