@@ -2,6 +2,7 @@
 
 ### 0.0.8 / 2024-03-13
 - Fixed ECS EC2 default Otel configuration filelog receiver include statement to match the new mount scope
+- Fixed ECS EC2 otel mount point config for hostfs
 
 ### 0.0.7 / 2024-02-23
 - Updated ECS EC2 default Otel configuration to log level warn.
