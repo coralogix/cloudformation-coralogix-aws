@@ -1,6 +1,7 @@
 # Changelog
 ### 0.0.9 / 2024-03-15
 - [cds-1099] add recombine operator to default configuration for opentelemetry ecs-ec2 integration
+- reverted previous fix for ECS EC2 default Otel configuration filelog receiver include statement to match the new mount scope
 
 ### 0.0.8 / 2024-03-13
 - Fixed ECS EC2 default Otel configuration filelog receiver include statement to match the new mount scope
