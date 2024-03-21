@@ -121,6 +121,7 @@ Mappings:
 
           filelog:
             start_at: end
+            force_flush_period: 0
             include:
               - /hostfs/var/lib/docker/containers/*/*.log
             include_file_path: true
@@ -261,6 +262,7 @@ Mappings:
 
           filelog:
             start_at: end
+            force_flush_period: 0
             include:
               - /hostfs/var/lib/docker/containers/*/*.log
             include_file_path: true
