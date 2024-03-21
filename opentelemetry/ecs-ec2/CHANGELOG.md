@@ -1,4 +1,8 @@
 # Changelog
+### 0.0.10 / 2024-03-21
+- [cds-1099] set default force_flush_period parameter to 0 for ecs-ec2 otel filelog receiver
+
+
 ### 0.0.9 / 2024-03-15
 - [cds-1099] add recombine operator to default configuration for opentelemetry ecs-ec2 integration
 - reverted previous fix for ECS EC2 default Otel configuration filelog receiver include statement to match the new mount scope
