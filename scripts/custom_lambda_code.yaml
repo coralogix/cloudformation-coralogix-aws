@@ -1,0 +1,61 @@
+
+  SecretRetrievalFunction:
+    Condition: GetSecret
+    Type: AWS::Serverless::Function
+    Properties:
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - 'secretsmanager:GetSecretValue'
+              Resource: !Sub 'arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:*'
+      InlineCode:
+        |
+          import boto3
+          import cfnresponse
+          import os
+
+          def lambda_handler(event, context):
+              try:
+                  if event['RequestType'] == 'Delete':
+                      cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
+                      return
+
+                  # Check if the SECRET_ARN environment variable exists
+                  secret_arn = os.environ.get('SECRET_ARN')
+                  if not secret_arn:
+                      raise ValueError("SECRET_ARN environment variable is not set.")
+
+                  secretsmanager = boto3.client('secretsmanager')
+
+                  # Attempt to retrieve the secret value
+                  secret_value_response = secretsmanager.get_secret_value(SecretId=secret_arn)
+
+                  # Prepare and send success response
+                  responseData = {'SecretValue': secret_value_response['SecretString']}
+                  cfnresponse.send(event, context, cfnresponse.SUCCESS, responseData)
+
+              except Exception as e:
+                  # Prepare error message
+                  errorMessage = f"Error in retrieving secret: {str(e)}"
+                  responseData = {'Error': errorMessage}
+
+                  # Log the error message for CloudWatch Logs visibility
+                  print(errorMessage)
+
+                  # Send failure response to CloudFormation
+                  cfnresponse.send(event, context, cfnresponse.FAILED, responseData)
+
+      Handler: index.lambda_handler
+      Runtime: 'python3.11'
+      Environment:
+        Variables:
+          SECRET_ARN: !If [ StoreAPIKeyInSecretsManager, !Ref Secret, !Ref ApiKey ]
+      Timeout: 10
+
+  SecretRetrievalFunctionTrigger:
+    Condition: GetSecret
+    DependsOn: SecretRetrievalFunction
+    Type: 'Custom::SecretRetrievalFunctionTrigger'
+    Properties:
+      ServiceToken: !GetAtt SecretRetrievalFunction.Arn
