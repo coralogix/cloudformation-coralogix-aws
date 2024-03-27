@@ -78,6 +78,12 @@ jobs:
           name: replace_template
           path: scripts/replace_template.sh
 
+      - name: Upload custom_lambda_code 
+        uses: actions/upload-artifact@v3
+        with:
+          name: custom_lambda_code
+          path: scripts/custom_lambda_code.yaml
+
   create_pr:
     runs-on: ubuntu-latest
     if: "${{ needs.upload_files.outputs.has_file_from_the_list_changed != 'false' }}"
@@ -103,6 +109,12 @@ jobs:
         uses: actions/download-artifact@v3
         with:
           name: replace_template
+          path: ./
+          
+      - name: Download custom_lambda_code file
+        uses: actions/download-artifact@v3
+        with:
+          name: custom_lambda_code
           path: ./
 
       - name: Download changed-integration file
@@ -149,6 +161,7 @@ jobs:
           done < changed-integration.txt
 
           rm replace_template.sh
+          rm custom_lambda_code.yaml
           rm -rf template-directory
           rm changed-integration.txt
           git add .

@@ -11,6 +11,10 @@ fi
 
 yq eval --inplace '.Parameters += {"IntegrationId": {"Type": "String",  "Description": "The integration ID to register."}}' $file
 
+if [[ $file == *"aws-shipper-lambda"* ]]; then
+  cat ./custom_lambda.yaml >> $file
+fi
+
 echo "  # Used as a bridge because CF doesn't allow for conditional depends on clauses.
   NonNotifierResourcesAreReady:
     Type: AWS::CloudFormation::WaitConditionHandle
@@ -30,6 +34,8 @@ while IFS= read -r resource; do
 done <<< "$resources"
 if [[ $file == *"aws-shipper-lambda"* ]]; then
   yq eval --inplace '.Conditions += {"IsApiKeySecretArn": "condition"}' $file
+  yq eval --inplace '.Conditions += {"GetSecret": "condition"}' $file
+  sed -i "s/GetSecret: condition/GetSecret: \!Or [\!Condition StoreAPIKeyInSecretsManager, \!Condition ApiKeyIsArn]/g" $file
   sed -i "s/IsApiKeySecretArn: condition/IsApiKeySecretArn: \!Not [\!Equals [\!Ref ApiKey , \!Select [0,\!Split [\":\" , \!Ref ApiKey]]]]/g" $file
 fi
 
@@ -52,7 +58,7 @@ if [[ $file == *"aws-shipper-lambda"* ]]; then
         - IsCustomDomain
         - !Ref CustomDomain
         - !FindInMap [CoralogixRegionMap, !Ref CoralogixRegion, Domain]
-      CoralogixApiKey: !Ref ApiKey" >> $file
+      CoralogixApiKey: !If [ ApiKeyIsArn, !GetAtt SecretRetrievalFunctionTrigger.SecretValue, !Ref ApiKey ]" >> $file
 else
   echo "
       CoralogixDomain: !If
