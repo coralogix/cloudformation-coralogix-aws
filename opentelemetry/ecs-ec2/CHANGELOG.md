@@ -1,4 +1,7 @@
 # Changelog
+### 0.0.11 / 2024-04-05
+- Remove deprecated PrivateKey Param from ecs-ec2 otel deployment
+
 ### 0.0.10 / 2024-03-21
 - [cds-1099] set default force_flush_period parameter to 0 for ecs-ec2 otel filelog receiver
 
