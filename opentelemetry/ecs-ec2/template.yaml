@@ -67,13 +67,6 @@ Parameters:
     AllowedPattern: ".+"
     ConstraintDescription: "API Key required."
 
-  PrivateKey:
-    Type: String
-    Description: "Deprecated. Do not use. Hard-replaced by \"CoralogixApiKey\". Formerly: The Coralogix private key which is used to validate your authenticity."
-    Default: "DO-NOT-USE"
-    AllowedPattern: "^DO-NOT-USE$" # hard-deprecate.
-    NoEcho: true
-
   Metrics:
     Type: String
     Description: If true, cadivisor will be deployed on each node to collect metrics
