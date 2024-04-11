@@ -1,0 +1,78 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: The module will create a role with an inline policy to allow Coralogix to send events to an EventBridge event bus.
+Parameters:
+  AWSAccount:
+    Type: String
+    Default: EU1
+    Description: The AWS account that you want to deploy the integration in.
+    AllowedValues:
+      - dev
+      - staging
+      - EU1
+      - EU2
+      - AP1
+      - Ap2
+      - US1
+      - US2
+      - CustomEndpoint
+  RoleName:
+    Type: String
+    Description: The name of the role that will be created.
+  CustomeAccountId:
+    Type: String
+    Description: Custom AWS account ID that you want to deploy the integration in.
+    Default: ''
+
+Mappings:
+  AWSAccountId:
+    dev: 
+      ID: 233273809180
+    staging: 
+      ID: 233221153619
+    EU1: 
+      ID: 625240141681
+    EU2: 
+      ID: 625240141681
+    AP1: 
+      ID: 625240141681
+    Ap2: 
+      ID: 625240141681
+    US1: 
+      ID: 625240141681
+    US2: 
+      ID: 739076534691
+    CustomEndpoint:
+      ID: 000000000000
+
+Conditions:
+  IsCustomAccountId: !Not [!Equals [!Ref CustomeAccountId, '']]
+Resources:
+  CoralogixAwsMetricsRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Description: description
+      RoleName: !Ref RoleName
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: !Sub
+                - 'arn:aws:iam::${aws_account_id}:root'
+                - aws_account_id: !If
+                  - IsCustomAccountId
+                  - !Ref CustomeAccountId
+                  - !FindInMap [AWSAccountId, !Ref AWSAccount, 'ID']
+            Action:
+              - sts:AssumeRole
+      Policies:
+        - PolicyName: CoralogixMetricsPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - tag:GetResources
+                  - cloudwatch:GetMetricStatistics
+                  - cloudwatch:ListMetrics
+                Resource: "*"
