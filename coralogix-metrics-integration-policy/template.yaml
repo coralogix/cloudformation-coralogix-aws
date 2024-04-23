@@ -1,4 +1,4 @@
-AWSTemplateFormatVersion: 2010-09-09
+  AWSTemplateFormatVersion: 2010-09-09
 Description: The module will create a role with an inline policy to allow Coralogix to send events to an EventBridge event bus.
 Parameters:
   AWSAccount:
@@ -73,6 +73,7 @@ Resources:
               - Effect: Allow
                 Action:
                   - tag:GetResources
+                  - cloudwatch:GetMetricData
                   - cloudwatch:GetMetricStatistics
                   - cloudwatch:ListMetrics
                 Resource: "*"
