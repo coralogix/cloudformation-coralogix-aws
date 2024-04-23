@@ -305,6 +305,29 @@ Parameters:
       The security groups associated with your VPC for each Kafka broker
       [Not Required when using MSK]
     Default: ""
+  EnableDLQ:
+    Type: String
+    Description: Enable Dead Letter Queue for the Lambda function
+    AllowedValues:
+      - true
+      - false
+    Default: false
+  DLQRetryLimit:
+    Type: Number
+    Description: The maximum number of times to retry the function execution in case of failure
+    MinValue: 0
+    MaxValue: 5
+    Default: 3
+  DLQRetryDelay:
+    Type: Number
+    Description: The delay in seconds between retries
+    MinValue: 0
+    MaxValue: 900
+    Default: 900
+  DLQS3Bucket:
+    Type: String
+    Description: The S3 bucket to store the DLQ failed messages after retry limit is reached
+    Default: ''
   CpuArch:
     Type: String
     AllowedValues:
@@ -328,6 +351,32 @@ Mappings:
     Custom:
       Domain: ""
 Conditions:
+  # DLQ conditions
+  DLQEnabled: !Equals [!Ref EnableDLQ, 'true']
+  DLQEnabledAndUseDefault: !And
+    - !Condition DLQEnabled
+    - !Condition UseDefault
+  DLQEnabledAndUseSNSTopicARN: !And
+    - !Condition DLQEnabled
+    - !Condition UseSNSTopicARN
+  DLQEnabledAndUseSQSTopicARN: !And
+    - !Condition DLQEnabled
+    - !Condition UseSQSTopicARN
+  DLQEnabledAndUseKinesisStreamARN: !And
+    - !Condition DLQEnabled
+    - !Condition UseKinesisStreamARN
+  DLQEnabledAndUseKafkaTopicARN: !And
+    - !Condition DLQEnabled
+    - !Condition UseKafka
+  DLQEnabledAndUseMSK: !And
+    - !Condition DLQEnabled
+    - !Condition UseMSK
+  DLQEnabledAndUseECRScan: !And
+    - !Condition DLQEnabled
+    - !Condition UseECRScan
+  DLQEnabledAndUseCloudwatchLogs: !And
+    - !Condition DLQEnabled
+    - !Condition UseCloudwatchLogs
   IsKafkaIntegration: !Equals [!Ref IntegrationType, 'Kafka']
   BlockPatternNotSet: !Equals [!Ref BlockingPattern, '']
   CSVDelimiterUse: !Equals [!Ref IntegrationType, 'S3Csv']
@@ -429,6 +478,11 @@ Conditions:
       - Ref: CpuArch
       - x86_64
 Rules:
+  ValidateDLQ:
+    RuleCondition: !Equals [!Ref EnableDLQ, 'true']
+    Assertions:
+      - Assert: !Not [!Equals [!Ref DLQS3Bucket, '']]
+        AssertDescription: DLQS3Bucket must be set when EnableDLQ is set to true
   ValidateCloudWatchLogs:
     RuleCondition: !And
       - !Not [!Equals [!Ref CloudWatchLogGroupName, '']]
@@ -554,6 +608,20 @@ Globals:
           - CSVDelimiterUse
           - !Ref CSVDelimiter
           - !Ref AWS::NoValue
+        DLQ_RETRY_LIMIT: !Ref DLQRetryLimit
+        DLQ_ARN: !If
+          - DLQEnabled
+          - !GetAtt DeadLetterQueue.Arn
+          - !Ref AWS::NoValue
+        DLQ_URL:
+          Fn::If:
+            - DLQEnabled
+            - !Ref DeadLetterQueue
+            - !Ref AWS::NoValue
+        DLQ_S3_BUCKET: !If
+          - DLQEnabled
+          - !Ref DLQS3Bucket
+          - !Ref AWS::NoValue
 Resources:
   Secret:
     Type: 'AWS::SecretsManager::Secret'
@@ -575,6 +643,16 @@ Resources:
                 - !Split
                   - ":"
                   - !Ref "AWS::StackId"
+  DeadLetterQueue:
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Condition: DLQEnabled
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: "coralogix-aws-shipper-dlq"
+      DelaySeconds: !Ref DLQRetryDelay
+      MessageRetentionPeriod: 1209600
+      VisibilityTimeout: !Ref FunctionTimeout
   ################################
   # ----- With Defaults -------  #
   ################################
@@ -643,6 +721,7 @@ Resources:
     Properties:
       ServiceToken: !GetAtt [CustomResourceLambdaTriggerFunction, Arn]
       LambdaArn: !GetAtt [LambdaFunctionDefault, Arn]
+      Command: configure_s3_trigger
       Bucket: !Ref S3BucketName
       Suffix: !If
         - S3SuffixIsSet
@@ -668,6 +747,14 @@ Resources:
       Protocol: email
       Endpoint: !Ref NotificationEmail
       TopicArn: !Ref LambdaFunctionDefault.DestinationTopic
+  LambdaFunctionDefaultDLQ:
+    Condition: DLQEnabledAndUseDefault
+    Type: Custom::LambdaTrigger
+    Properties:
+      ServiceToken: !GetAtt [CustomResourceLambdaTriggerFunction, Arn]
+      LambdaArn: !GetAtt ['LambdaFunctionDefault', Arn]
+      DLQArn: !GetAtt ['DeadLetterQueue', Arn]
+      Command: configure_dlq
   ################################
   # ----- With SNS TopiC ------- #
   ################################
@@ -747,6 +834,14 @@ Resources:
       Protocol: email
       Endpoint: !Ref NotificationEmail
       TopicArn: !Ref LambdaFunctionWithSNSTopic.DestinationTopic
+  LambdaFunctionWithSNSTopicDLQ:
+    Condition: DLQEnabledAndUseSNSTopicARN
+    Type: Custom::LambdaTrigger
+    Properties:
+      ServiceToken: !GetAtt [CustomResourceLambdaTriggerFunction, Arn]
+      LambdaArn: !GetAtt ['LambdaFunctionWithSNSTopic', Arn]
+      DLQArn: !GetAtt ['DeadLetterQueue', Arn]
+      Command: configure_dlq
   ################################
   # ----- With Cloudwatch -----  #
   ################################
@@ -845,6 +940,7 @@ Resources:
       ServiceToken: !GetAtt [CustomResourceLambdaTriggerFunction, Arn]
       LambdaArn: !GetAtt ['LambdaFunctionCloudwatchLogs', Arn]
       CloudwatchGroup: !Ref CloudWatchLogGroupName
+      Command: configure_cloudwatch_trigger
   # LambdaFunctionInvokePermissionCloudwatchLogs:
   #   Type: AWS::Lambda::Permission
   #   Condition: UseCloudwatchLogs
@@ -854,7 +950,14 @@ Resources:
   #     Principal: logs.amazonaws.com
   #     SourceAccount: !Ref AWS::AccountId
   #     SourceArn: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:*:*"
-
+  LambdaFunctionCloudwatchLogsDLQ:
+    Condition: DLQEnabledAndUseCloudwatchLogs
+    Type: Custom::LambdaTrigger
+    Properties:
+      ServiceToken: !GetAtt [CustomResourceLambdaTriggerFunction, Arn]
+      LambdaArn: !GetAtt ['LambdaFunctionCloudwatchLogs', Arn]
+      DLQArn: !GetAtt ['DeadLetterQueue', Arn]
+      Command: configure_dlq
   ################################
   # ----- With SQS TopiC ------- #
   ################################
@@ -917,6 +1020,14 @@ Resources:
       Protocol: email
       Endpoint: !Ref NotificationEmail
       TopicArn: !Ref LambdaFunctionWithSQSTopic.DestinationTopic
+  LambdaFunctionWithSQSTopicDLQ:
+    Condition: DLQEnabledAndUseSQSTopicARN
+    Type: Custom::LambdaTrigger
+    Properties:
+      ServiceToken: !GetAtt [CustomResourceLambdaTriggerFunction, Arn]
+      LambdaArn: !GetAtt ['LambdaFunctionWithSQSTopic', Arn]
+      DLQArn: !GetAtt ['DeadLetterQueue', Arn]
+      Command: configure_dlq
   ################################
   # ----- With Kinesis TopiC ------- #
   ################################
@@ -977,6 +1088,14 @@ Resources:
       Protocol: email
       Endpoint: !Ref NotificationEmail
       TopicArn: !Ref LambdaFunctionWithKinesisTopic.DestinationTopic
+  LambdaFunctionWithKinesisTopicDLQ:
+    Condition: DLQEnabledAndUseKinesisStreamARN
+    Type: Custom::LambdaTrigger
+    Properties:
+      ServiceToken: !GetAtt [CustomResourceLambdaTriggerFunction, Arn]
+      LambdaArn: !GetAtt ['LambdaFunctionWithKinesisTopic', Arn]
+      DLQArn: !GetAtt ['DeadLetterQueue', Arn]
+      Command: configure_dlq
   ################################
   # ----- With MSK TopiC ------- #
   ################################
@@ -1015,7 +1134,6 @@ Resources:
   LambdaTriggerMskTopic:
     Condition: UseMSK
     Type: Custom::LambdaTrigger
-    DependsOn: LambdaFunctionWithMSK
     Properties:
       ServiceToken: !GetAtt [CustomResourceLambdaTriggerFunction, Arn]
       LambdaName: !GetAtt ['LambdaFunctionWithMSK', Arn]
@@ -1036,6 +1154,14 @@ Resources:
       Protocol: email
       Endpoint: !Ref NotificationEmail
       TopicArn: !Ref LambdaFunctionWithMSK.DestinationTopic
+  LambdaFunctionWithMSKDLQ:
+    Condition: DLQEnabledAndUseMSK
+    Type: Custom::LambdaTrigger
+    Properties:
+      ServiceToken: !GetAtt [CustomResourceLambdaTriggerFunction, Arn]
+      LambdaArn: !GetAtt ['LambdaFunctionWithMSK', Arn]
+      DLQArn: !GetAtt ['DeadLetterQueue', Arn]
+      Command: configure_dlq
   ##################################
   # ----- With Kafka TopiC ------- #
   ##################################
@@ -1088,6 +1214,7 @@ Resources:
       StartingPosition: LATEST
       SecurityGroupIds: !Ref KafkaSecurityGroups
       SubnetIds: !Ref KafkaSubnets
+      Command: configure_kafka_trigger
   LambdaFunctionNotificationSubscriptionWithKafkaTopic:
     Type: AWS::SNS::Subscription
     Condition: UseKatkaTopicARNWithNotification
@@ -1095,6 +1222,14 @@ Resources:
       Protocol: email
       Endpoint: !Ref NotificationEmail
       TopicArn: !Ref LambdaFunctionWithKafka.DestinationTopic
+  LambdaFunctionWithKafkaDLQ:
+    Condition: DLQEnabledAndUseKafkaTopicARN
+    Type: Custom::LambdaTrigger
+    Properties:
+      ServiceToken: !GetAtt [CustomResourceLambdaTriggerFunction, Arn]
+      LambdaArn: !GetAtt ['LambdaFunctionWithKafka', Arn]
+      DLQArn: !GetAtt ['DeadLetterQueue', Arn]
+      Command: configure_dlq
       ##################################
       # ----- With ECR Scan Image -----#
       ##################################
@@ -1163,6 +1298,14 @@ Resources:
       Protocol: email
       Endpoint: !Ref NotificationEmail
       TopicArn: !Ref LambdaFunctionWithECRScan.DestinationTopic
+  LambdaFunctionWithECRScanDLQ:
+    Condition: DLQEnabledAndUseECRScan
+    Type: Custom::LambdaTrigger
+    Properties:
+      ServiceToken: !GetAtt [CustomResourceLambdaTriggerFunction, Arn]
+      LambdaArn: !GetAtt ['LambdaFunctionWithECRScan', Arn]
+      DLQArn: !GetAtt ['DeadLetterQueue', Arn]
+      Command: configure_dlq
   ################################ 
   # ----- Custom Resource -----  #
   ################################
@@ -1180,9 +1323,21 @@ Resources:
               - !Ref LambdaSubnetID
           - Ref: AWS::NoValue
       Handler: index.lambda_handler
-      Runtime: python3.11
+      Runtime: python3.12
       Timeout: 50
       Policies:
+        - Statement:
+            - Sid: IAMAccess
+              Effect: Allow
+              Action:
+                - iam:*
+              Resource: "*"
+        - Statement:
+            - Sid: SQSAccess
+              Effect: Allow
+              Action:
+                - sqs:*
+              Resource: "*"
         - Statement:
             - Sid: LambdaAccess
               Effect: Allow
@@ -1203,193 +1358,4 @@ Resources:
                 - "logs:DeleteSubscriptionFilter"
                 - "logs:DescribeSubscriptionFilters"
               Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:*:*"
-      InlineCode: !If
-        - UseCloudwatchLogs
-        - "import json\nimport boto3\nimport cfnresponse\nimport time\nprint(\"Loading function\")\n\ndef lambda_handler(event, context):\n    print(\"Received event:\", json.dumps(event, indent=2))\n    try:        \n        lambda_arn = event['ResourceProperties']['LambdaArn']\n        lambda_client = boto3.client('lambda')\n        region = context.invoked_function_arn.split(\":\")[3]\n        account_id = context.invoked_function_arn.split(\":\")[4]\n        StringlogGroupName = event['ResourceProperties']['CloudwatchGroup']\n        logGroupName = StringlogGroupName.split(',')\n        cloudwatch_logs = boto3.client('logs')\n        if event['RequestType'] in ['Update', 'Delete']:\n          for log_group in logGroupName:\n            response = cloudwatch_logs.describe_subscription_filters(logGroupName=log_group)\n            for filter in response['subscriptionFilters']:\n                if filter['filterName'] == 'coralogix-aws-shipper-cloudwatch-trigger':\n                    cloudwatch_logs.delete_subscription_filter(\n                        filterName='coralogix-aws-shipper-cloudwatch-trigger',\n                        logGroupName=log_group\n                    )\n                    response = lambda_client.remove_permission(\n                        FunctionName=lambda_arn,\n                        StatementId=f\"allow-trigger-from-{log_group}\"\n                    )\n        if event['RequestType'] in ['Create', 'Update']:\n            for log_group in logGroupName:\n                cloudwatch_logs = boto3.client('logs')\n                response = cloudwatch_logs.describe_subscription_filters(\n                  logGroupName=log_group,\n                  filterNamePrefix='coralogix-aws-shipper-cloudwatch-trigger'\n                )\n                if not response.get(\"subscriptionFilters\") or response.get(\"subscriptionFilters\")[0].get(\"destinationArn\") != lambda_arn:\n                    response = lambda_client.add_permission(\n                      FunctionName=lambda_arn,\n                      StatementId=f'allow-trigger-from-{log_group}',\n                      Action='lambda:InvokeFunction',\n                      Principal='logs.amazonaws.com',\n                      SourceArn=f'arn:aws:logs:{region}:{account_id}:log-group:{log_group}:*',\n                    )\n                time.sleep(1)\n                cloudwatch_logs.put_subscription_filter(\n                    destinationArn=event['ResourceProperties']['LambdaArn'],\n                    filterName='coralogix-aws-shipper-cloudwatch-trigger',\n                    filterPattern='',\n                    logGroupName=log_group\n                )\n\n\n        responseStatus = cfnresponse.SUCCESS\n        print(event['RequestType'], \"request completed....\")\n    except Exception as e:\n        print(\"Failed to process:\", e)\n        responseStatus = cfnresponse.FAILED\n    finally:\n        print(\"Sending response to custom resource\")\n        cfnresponse.send(\n            event,\n            context,\n            responseStatus,\n            {},\n            event.get('PhysicalResourceId', context.aws_request_id)\n        )\n"
-        - !If
-          - UseMSK
-          - "import json\nimport boto3\nimport cfnresponse\n\nprint(\"Loading function\")\n\ndef lambda_handler(event, context):\n    print(\"Received event:\", json.dumps(event, indent=2))\n    try:        \n        lambda_name = event['ResourceProperties']['LambdaName']\n        msk_cluster_arn = event['ResourceProperties']['MSKClusterArn']\n        lambda_client = boto3.client('lambda')\n        if event['RequestType'] in ['Create', 'Update']:\n            TopicsListString = event['ResourceProperties']['TopicsList']\n            TopicsList = TopicsListString.split(',')\n            for topic in TopicsList:\n                response = lambda_client.create_event_source_mapping(\n                    EventSourceArn=msk_cluster_arn,\n                    FunctionName=lambda_name,\n                    Topics=[\n                        topic\n                    ],\n                    StartingPosition='LATEST',\n                    BatchSize=100,\n                )\n        responseStatus = cfnresponse.SUCCESS\n        print(event['RequestType'], \"request completed....\")\n    except Exception as e:\n        print(\"Failed to process:\", e)\n        responseStatus = cfnresponse.FAILED\n    finally:\n        print(\"Sending response to custom resource\")\n        cfnresponse.send(\n            event,\n            context,\n            responseStatus,\n            {},\n            event.get('PhysicalResourceId', context.aws_request_id)\n        )\n"
-          - !If
-            - IsKafkaIntegration
-            - |
-              #!/usr/bin/python
-              # -*- coding: utf-8 -*-
-              import json, time, boto3
-              from urllib import request, parse, error
-
-              class CFNResponse:
-                  '''
-                  CFNResponse class, temporary class used to handle cloudformation responses
-                  as currently lambda has an issue importing cfnresponse module.
-                  '''
-                  SUCCESS = "SUCCESS"
-                  FAILED = "FAILED"
-
-                  def __init__(self, event, context):
-                      self.event = event
-                      self.context = context
-                      self.response_url = event['ResponseURL']
-
-                  def send(self, status, response_data, physical_resource_id=None, no_echo=False, reason=None):
-                      response_body = {
-                          'Status': status,
-                          'Reason': reason or "See the details in CloudWatch Log Stream: {}".format(self.context.log_stream_name),
-                          'PhysicalResourceId': physical_resource_id or self.context.log_stream_name,
-                          'StackId': self.event['StackId'],
-                          'RequestId': self.event['RequestId'],
-                          'LogicalResourceId': self.event['LogicalResourceId'],
-                          'NoEcho': no_echo,
-                          'Data': response_data
-                      }
-                      json_response_body = json.dumps(response_body).encode('utf-8')
-                      headers = {
-                          'content-type': '',
-                          'content-length': str(len(json_response_body))
-                      }
-                      try:
-                          req = request.Request(self.response_url, data=json_response_body, headers=headers, method='PUT')
-                          with request.urlopen(req) as response:
-                              print("Status code:", response.getcode())
-                              print("Response:", response.read().decode('utf-8'))
-                      except error.HTTPError as e:
-                          print("HTTPError:", e.reason)
-                          print("Status code:", e.code)
-                      except error.URLError as e:
-                          print("URLError:", e.reason)
-
-              client = boto3.client("lambda")
-
-              def delete_event_source_mappings(function_name):
-                  mappings = client.list_event_source_mappings(
-                      FunctionName=function_name,
-                  )["EventSourceMappings"]
-                  for mapping in mappings:
-                      # disable mapping
-                      if mapping["State"] == "Enabled":
-                          client.update_event_source_mapping(
-                              UUID=mapping["UUID"],
-                              FunctionName=function_name,
-                              Enabled=False
-                          )
-                      time.sleep(10) # wait for mapping to be disabled
-                      client.delete_event_source_mapping(UUID=mapping["UUID"])
-
-              def lambda_handler(event, context):
-                  print("Received event:", json.dumps(event, indent=2))
-                  cfn = CFNResponse(event, context)
-                  responseStatus = CFNResponse.SUCCESS
-                  physicalResourceId = event.get("PhysicalResourceId")
-                  function_name = event["ResourceProperties"]["Function"]
-                  try:
-                      print("Request Type:", event["RequestType"])
-                      if event["RequestType"] in ["Create", "Update"]:
-                          if event["RequestType"] == "Update":
-                              print('Update event detected, deleting previous mapping(s)')
-                              delete_event_source_mappings(function_name)
-                          response = client.create_event_source_mapping(
-                              FunctionName=event["ResourceProperties"]["Function"],
-                              BatchSize=int(event["ResourceProperties"]["BatchSize"]),
-                              StartingPosition=event["ResourceProperties"]["StartingPosition"],
-                              Topics=[
-                                  event["ResourceProperties"]["Topic"]
-                              ],
-                              SelfManagedEventSource={
-                                  "Endpoints": {
-                                      "KAFKA_BOOTSTRAP_SERVERS": event["ResourceProperties"]["Brokers"]
-                                  }
-                              },
-                              SourceAccessConfigurations=list([
-                                  {
-                                      "Type": "VPC_SUBNET",
-                                      "URI": "subnet:" + subnetId
-                                  } for subnetId in event["ResourceProperties"]["SubnetIds"]
-                              ]) + list([
-                                  {
-                                      "Type": "VPC_SECURITY_GROUP",
-                                      "URI": "security_group:" + securityGroupId
-                                  } for securityGroupId in event["ResourceProperties"]["SecurityGroupIds"]
-                              ])
-                          )
-                          physicalResourceId = response["UUID"]
-                          print(f"EventSourceMapping successfully created: {physicalResourceId}")
-                      elif event["RequestType"] == "Delete":
-                          delete_event_source_mappings(function_name)
-                          print("EventSourceMapping successfully deleted")
-                  except Exception as exc:
-                      print("Failed to process:", exc)
-                      responseStatus = CFNResponse.FAILED
-                  finally:
-                      cfn.send(responseStatus, {}, physical_resource_id=physicalResourceId)
-            - |
-              #!/usr/bin/python
-              # -*- coding: utf-8 -*-
-
-              import json
-              import boto3
-              import cfnresponse
-
-              print("Loading function")
-              s3 = boto3.client('s3')
-
-              def lambda_handler(event, context):
-                  print("Received event:", json.dumps(event, indent=2))
-                  bucket = event['ResourceProperties']['Bucket']
-                  print(f"processing bucket {bucket}")
-                  try:
-                      print("Request Type:", event['RequestType'])
-                      BucketNotificationConfiguration = s3.get_bucket_notification_configuration(
-                          Bucket=bucket
-                      )
-                      BucketNotificationConfiguration.pop('ResponseMetadata')
-                      BucketNotificationConfiguration.setdefault('LambdaFunctionConfigurations', [])
-
-                      if event['RequestType'] in ['Update', 'Delete']:
-                          BucketNotificationConfiguration['LambdaFunctionConfigurations'] = list(
-                              filter(
-                                  lambda configuration: configuration.get('Id') != event['PhysicalResourceId'],
-                                  BucketNotificationConfiguration['LambdaFunctionConfigurations']
-                              )
-                          )
-                      if event['RequestType'] in ['Create', 'Update']:
-                          BucketNotificationConfiguration['LambdaFunctionConfigurations'].append({
-                              'Id': event.get('PhysicalResourceId', context.aws_request_id),
-                              'LambdaFunctionArn': event['ResourceProperties']['LambdaArn'],
-                              'Filter': {
-                                  'Key': {
-                                      'FilterRules': [
-                                          {
-                                              'Name': 'prefix',
-                                              'Value': event['ResourceProperties'].get('Prefix', '')
-                                          },
-                                          {
-                                              'Name': 'suffix',
-                                              'Value': event['ResourceProperties'].get('Suffix', '')
-                                          },
-                                      ]
-                                  }
-                              },
-                              'Events': [
-                                  's3:ObjectCreated:*'
-                              ]
-                          })
-                      if len(BucketNotificationConfiguration['LambdaFunctionConfigurations']) == 0:
-                          BucketNotificationConfiguration.pop('LambdaFunctionConfigurations')
-                      print(f'nofication configuration: {BucketNotificationConfiguration}')
-                      s3.put_bucket_notification_configuration(
-                          Bucket=bucket,
-                          NotificationConfiguration=BucketNotificationConfiguration
-                      )
-                      responseStatus = cfnresponse.SUCCESS
-                      print(event['RequestType'], "request completed....")
-                  except Exception as e:
-                      print("Failed to process:", e)
-                      responseStatus = cfnresponse.FAILED
-                  finally:
-                      print("Sending response to custom resource")
-                      cfnresponse.send(
-                          event,
-                          context,
-                          responseStatus,
-                          {},
-                          event.get('PhysicalResourceId', context.aws_request_id)
-                      )
+      InlineCode: "import json\nimport boto3\n# import cfnresponse\nimport json, time, boto3, time\nfrom urllib import request, parse, error\n\ndef add_inline_policy(lambda_arn: str, policy_name: str, policy_document: dict):\n    try:\n        iam = boto3.client('iam')\n        aws_lambda = boto3.client('lambda')\n        \n        resp = aws_lambda.get_function_configuration(FunctionName=lambda_arn)\n        role_arn = resp['Role']\n        role_name = role_arn.split('/')[-1]\n        \n        print(f'creating policy for {lambda_arn}...')\n        policy_resp = iam.create_policy(\n            PolicyName=policy_name.replace('-', '_'),\n            PolicyDocument=json.dumps(policy_document),\n            Description=f'policy generated by CustomResource for {lambda_arn}',\n        )\n        \n        print(f'attaching {policy_name} for {lambda_arn} to role {role_name}...')\n        role_attach_response = iam.attach_role_policy(\n            RoleName=role_name,\n            PolicyArn=policy_resp['Policy']['Arn']\n        )\n        \n        time.sleep(30) # wait for policy to attach\n        print(f'policy atttachment result: {role_attach_response}')\n    except Exception as e:\n        print(f'add_inline_policy function failed: {e}')\n        raise e\n\n\nclass CFNResponse:\n    '''\n    CFNResponse class, temporary class used to handle cloudformation responses\n    as currently lambda has an issue importing cfnresponse module.\n    '''\n    SUCCESS = \"SUCCESS\"\n    FAILED = \"FAILED\"\n\n    def __init__(self, event, context):\n        self.event = event\n        self.context = context\n        self.response_url = event['ResponseURL']\n\n    def send(self, status, response_data={}, physical_resource_id=None, no_echo=False, reason=None):\n        response_body = {\n            'Status': status,\n            'Reason': reason or \"See the details in CloudWatch Log Stream: {}\".format(self.context.log_stream_name),\n            'PhysicalResourceId': physical_resource_id or self.context.log_stream_name,\n            'StackId': self.event['StackId'],\n            'RequestId': self.event['RequestId'],\n            'LogicalResourceId': self.event['LogicalResourceId'],\n            'NoEcho': no_echo,\n            'Data': response_data\n        }\n        json_response_body = json.dumps(response_body).encode('utf-8')\n        headers = {\n            'content-type': '',\n            'content-length': str(len(json_response_body))\n        }\n        try:\n            req = request.Request(self.response_url, data=json_response_body, headers=headers, method='PUT')\n            with request.urlopen(req) as response:\n                print(\"Status code:\", response.getcode())\n                print(\"Response:\", response.read().decode('utf-8'))\n        except error.HTTPError as e:\n            print(\"HTTPError:\", e.reason)\n            print(\"Status code:\", e.code)\n        except error.URLError as e:\n            print(\"URLError:\", e.reason)\n\n\nclass ConfigureS3Trigger:\n    '''\n    ConfigureS3Trigger class used to configure S3 Trigger implementation\n    '''\n    \n    def __init__(self, event, context, cfn):\n        self.context = context\n        self.event = event\n        self.cfn = cfn\n        self.cfn.SUCCESS \n        self.s3 = boto3.client('s3')\n        \n    def handle(self):\n        responseStatus = self.cfn.SUCCESS\n        try:\n            print(\"Request Type:\", self.event['RequestType'])\n            bucket = self.event['ResourceProperties']['Bucket']\n            BucketNotificationConfiguration = self.s3.get_bucket_notification_configuration(\n                Bucket=bucket\n            )\n            BucketNotificationConfiguration.pop('ResponseMetadata')\n            BucketNotificationConfiguration.setdefault('LambdaFunctionConfigurations', [])\n\n            if self.event['RequestType'] in ['Update', 'Delete']:\n                BucketNotificationConfiguration['LambdaFunctionConfigurations'] = list(\n                    filter(\n                        lambda configuration: configuration.get('Id') != self.event['PhysicalResourceId'],\n                        BucketNotificationConfiguration['LambdaFunctionConfigurations']\n                    )\n                )\n            if self.event['RequestType'] in ['Create', 'Update']:\n                BucketNotificationConfiguration['LambdaFunctionConfigurations'].append({\n                    'Id': self.event.get('PhysicalResourceId', self.context.aws_request_id),\n                    'LambdaFunctionArn': self.event['ResourceProperties']['LambdaArn'],\n                    'Filter': {\n                        'Key': {\n                            'FilterRules': [\n                                {\n                                    'Name': 'prefix',\n                                    'Value': self.event['ResourceProperties'].get('Prefix', '')\n                                },\n                                {\n                                    'Name': 'suffix',\n                                    'Value': self.event['ResourceProperties'].get('Suffix', '')\n                                },\n                            ]\n                        }\n                    },\n                    'Events': [\n                        's3:ObjectCreated:*'\n                    ]\n                })\n            if len(BucketNotificationConfiguration['LambdaFunctionConfigurations']) == 0:\n                BucketNotificationConfiguration.pop('LambdaFunctionConfigurations')\n            print(f'nofication configuration: {BucketNotificationConfiguration}')\n            self.s3.put_bucket_notification_configuration(\n                Bucket=bucket,\n                NotificationConfiguration=BucketNotificationConfiguration\n            )\n            responseStatus = self.cfn.SUCCESS\n            print(self.event['RequestType'], \"request completed....\")\n        except Exception as e:\n            print(\"Failed to process:\", e)\n            responseStatus = self.cfn.FAILED\n        finally:\n            print(\"Sending response to custom resource\")\n            self.cfn.send(\n                responseStatus,\n                physical_resource_id=self.event.get('PhysicalResourceId', self.context.aws_request_id)  \n            )\n            \n        \nclass ConfigureKafkaTrigger:\n    '''\n    ConfigureKafkaTrigger \n    ''' \n    \n    def __init__(self, event, context, cfn):\n        self.cfn = cfn\n        self.event = event\n        self.context = context\n        self.aws_lambda = boto3.client(\"lambda\")\n  \n    def delete_event_source_mappings(self, function_name):\n        mappings = self.aws_lambda.list_event_source_mappings(\n            FunctionName=function_name,\n        )[\"EventSourceMappings\"]\n        for mapping in mappings:\n            # disable mapping\n            if mapping[\"State\"] == \"Enabled\":\n                self.aws_lambda.update_event_source_mapping(\n                    UUID=mapping[\"UUID\"],\n                    FunctionName=function_name,\n                    Enabled=False\n                )\n            time.sleep(10) # wait for mapping to be disabled\n            self.aws_lambda.delete_event_source_mapping(UUID=mapping[\"UUID\"])\n    \n    def handle(self):\n        if self.event['ResourceProperties']['Command'] == 'configure_msk_trigger':\n            self.handle_msk()\n            return\n        self.handle_kafka()\n    \n    def handle_msk(self):\n        try:        \n            lambda_name = self.event['ResourceProperties']['LambdaName']\n            msk_cluster_arn = self.event['ResourceProperties']['MSKClusterArn']\n            if self.event['RequestType'] in ['Create', 'Update']:\n                TopicsListString = self.event['ResourceProperties']['TopicsList']\n                TopicsList = TopicsListString.split(',')\n                for topic in TopicsList:\n                    response = self.aws_lambda.create_event_source_mapping(\n                        EventSourceArn=msk_cluster_arn,\n                        FunctionName=lambda_name,\n                        Topics=[\n                            topic\n                        ],\n                        StartingPosition='LATEST',\n                        BatchSize=100,\n                    )\n            responseStatus = self.cfn.SUCCESS\n            print(self.event['RequestType'], \"request completed....\")\n        except Exception as exc:\n            print(\"Failed to process:\", exc)\n            responseStatus = self.cfn.FAILED\n        finally:\n            self.cfn.send(\n                responseStatus,\n                physical_resource_id=self.event.get('PhysicalResourceId', self.context.aws_request_id)\n            )\n  \n    def handle_kafka(self):\n        responseStatus = self.cfn.SUCCESS\n        physicalResourceId = self.event.get(\"PhysicalResourceId\")\n        function_name = self.event[\"ResourceProperties\"][\"Function\"]\n        try:\n            print(\"Request Type:\", self.event[\"RequestType\"])\n            if self.event[\"RequestType\"] in [\"Create\", \"Update\"]:\n                if self.event[\"RequestType\"] == \"Update\":\n                    print('Update event detected, deleting previous mapping(s)')\n                    self.delete_event_source_mappings(function_name)\n                response = self.aws_lambda.create_event_source_mapping(\n                    FunctionName=self.event[\"ResourceProperties\"][\"Function\"],\n                    BatchSize=int(self.event[\"ResourceProperties\"][\"BatchSize\"]),\n                    StartingPosition=self.event[\"ResourceProperties\"][\"StartingPosition\"],\n                    Topics=[\n                        self.event[\"ResourceProperties\"][\"Topic\"]\n                    ],\n                    SelfManagedEventSource={\n                        \"Endpoints\": {\n                            \"KAFKA_BOOTSTRAP_SERVERS\": self.event[\"ResourceProperties\"][\"Brokers\"]\n                        }\n                    },\n                    SourceAccessConfigurations=list([\n                        {\n                            \"Type\": \"VPC_SUBNET\",\n                            \"URI\": \"subnet:\" + subnetId\n                        } for subnetId in self.event[\"ResourceProperties\"][\"SubnetIds\"]\n                    ]) + list([\n                        {\n                            \"Type\": \"VPC_SECURITY_GROUP\",\n                            \"URI\": \"security_group:\" + securityGroupId\n                        } for securityGroupId in self.event[\"ResourceProperties\"][\"SecurityGroupIds\"]\n                    ])\n                )\n                physicalResourceId = response[\"UUID\"]\n                print(f\"EventSourceMapping successfully created: {physicalResourceId}\")\n            elif self.event[\"RequestType\"] == \"Delete\":\n                self.delete_event_source_mappings(function_name)\n                print(\"EventSourceMapping successfully deleted\")\n        except Exception as exc:\n            print(\"Failed to process:\", exc)\n            responseStatus = self.cfn.FAILED\n        finally:\n            self.cfn.send(responseStatus, physical_resource_id=physicalResourceId)      \n\n\nclass ConfigureCloudwatchTrigger:\n    '''\n    CloudwatchTrigger\n    '''\n    \n    def __init__(self, event, context, cfn):\n        self.event = event\n        self.context = context\n        self.cfn = cfn\n        self.aws_lambda = boto3.client(\"lambda\")\n        self.cloudwatch_logs = boto3.client('logs')\n\n\n    def handle(self):\n        try:        \n            lambda_arn = self.event['ResourceProperties']['LambdaArn']\n            region = self.context.invoked_function_arn.split(\":\")[3]\n            account_id = self.context.invoked_function_arn.split(\":\")[4]\n            StringlogGroupName = self.event['ResourceProperties']['CloudwatchGroup']\n            logGroupName = StringlogGroupName.split(',')\n            if self.event['RequestType'] in ['Update', 'Delete']:\n                for log_group in logGroupName:\n                    response = self.cloudwatch_logs.describe_subscription_filters(logGroupName=log_group)\n                    for filter in response['subscriptionFilters']:\n                        if filter['filterName'] == 'coralogix-aws-shipper-cloudwatch-trigger':\n                            self.cloudwatch_logs.delete_subscription_filter(\n                                filterName='coralogix-aws-shipper-cloudwatch-trigger',\n                                logGroupName=log_group\n                            )\n                            response = self.aws_lambda.remove_permission(\n                                FunctionName=lambda_arn,\n                                StatementId=f\"allow-trigger-from-{log_group}\"\n                            )\n            if self.event['RequestType'] in ['Create', 'Update']:\n                for log_group in logGroupName:\n                    response = self.cloudwatch_logs.describe_subscription_filters(\n                        logGroupName=log_group,\n                        filterNamePrefix='coralogix-aws-shipper-cloudwatch-trigger'\n                    )\n                    if not response.get(\"subscriptionFilters\") or response.get(\"subscriptionFilters\")[0].get(\"destinationArn\") != lambda_arn:\n                        response = self.aws_lambda.add_permission(\n                            FunctionName=lambda_arn,\n                            StatementId=f'allow-trigger-from-{log_group}',\n                            Action='lambda:InvokeFunction',\n                            Principal='logs.amazonaws.com',\n                            SourceArn=f'arn:aws:logs:{region}:{account_id}:log-group:{log_group}:*',\n                        )\n                    time.sleep(1)\n                    self.cloudwatch_logs.put_subscription_filter(\n                        destinationArn=self.event['ResourceProperties']['LambdaArn'],\n                        filterName='coralogix-aws-shipper-cloudwatch-trigger',\n                        filterPattern='',\n                        logGroupName=log_group\n                    )\n\n\n            responseStatus = self.cfn.SUCCESS\n            print(self.event['RequestType'], \"request completed....\")\n        except Exception as e:\n            print(\"Failed to process:\", e)\n            responseStatus = self.cfn.FAILED\n        finally:\n            print(\"Sending response to custom resource\")\n            self.cfn.send(\n                responseStatus,\n                physical_resource_id=self.event.get('PhysicalResourceId', self.context.aws_request_id)\n            )\n\n\nclass ConfigureDLQ:\n    '''\n    ConfigureDLQ        \n    '''\n    \n    def __init__(self, event, context, cfn):\n        self.event = event\n        self.context = context\n        self.cfn = cfn\n        self.aws_lambda = boto3.client(\"lambda\")\n\n    def handle(self):\n        try:\n            lambda_arn = self.event['ResourceProperties']['LambdaArn']\n            if self.event['RequestType'] in ['Create', 'Update']:\n                # Add inline policy to allow lambda to send to sqs\n                lambda_name = lambda_arn.split(':')[-1]\n                policy_name = f'{lambda_name}_sqs_send_policy'\n                policy_document = {\n                    \"Version\": \"2012-10-17\",\n                    \"Statement\": [\n                        {\n                            \"Effect\": \"Allow\",\n                            \"Action\": [\n                                \"sqs:SendMessage\",\n                                \"sqs:ReceiveMessage\",\n                                \"sqs:DeleteMessage\",\n                                \"sqs:GetQueueAttributes\"\n                            ],\n                            \"Resource\": self.event['ResourceProperties']['DLQArn']\n                        },\n                        {\n                            \"Effect\": \"Allow\",\n                            \"Action\": [\n                                \"s3:PutObject\",\n                                \"s3:PutObjectAcl\",\n                                \"s3:AbortMultipartUpload\",\n                                \"s3:DeleteObject\",\n                                \"s3:PutObjectTagging\",\n                                \"s3:PutObjectVersionTagging\"\n                            ],\n                            \"Resource\": \"*\"\n                        }\n                    ]\n                }\n                \n                add_inline_policy(lambda_arn, policy_name, policy_document)\n                \n                self.aws_lambda.update_function_configuration(\n                    FunctionName=lambda_arn,\n                    DeadLetterConfig={\n                        'TargetArn': self.event['ResourceProperties']['DLQArn']\n                    },\n                )\n                \n                # Create event source mapping\n                self.aws_lambda.create_event_source_mapping(\n                    EventSourceArn=self.event['ResourceProperties']['DLQArn'],\n                    FunctionName=lambda_arn,\n                    Enabled=True,\n                    BatchSize=1,\n                )\n            responseStatus = self.cfn.SUCCESS\n            print(self.event['RequestType'], \"request completed....\")\n        except Exception as e:\n            print(\"Failed to process:\", e)\n            responseStatus = self.cfn.FAILED\n        finally:\n            print(\"Sending response to custom resource\")\n            self.cfn.send(\n                responseStatus,\n                physical_resource_id=self.event.get('PhysicalResourceId', self.context.aws_request_id)\n            )   \n\ndef lambda_handler(event, context):\n    print(\"Received event:\", json.dumps(event))\n    cfn = CFNResponse(event, context)\n    # identify the command to run\n    command = event['ResourceProperties']['Command']\n    \n    match command:\n        case 'configure_s3_trigger':\n            ConfigureS3Trigger(event, context, cfn).handle()\n            \n        case 'configure_kafka_trigger' | 'configure_msk_trigger':\n            ConfigureKafkaTrigger(event, context, cfn).handle()\n            \n        case 'configure_cloudwatch_trigger':\n            ConfigureCloudwatchTrigger(event, context, cfn).handle()\n            \n        case 'configure_dlq':\n            ConfigureDLQ(event, context, cfn).handle()\n    \n        case _:\n            raise ValueError(f\"invalid or unsupported custom resource command: {command}\")\n    \n    return"
