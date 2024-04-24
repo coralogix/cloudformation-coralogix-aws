@@ -50,7 +50,6 @@ A GRPC(*4317*) and HTTP(*4318*) endpoint is exposed for sending traces to the lo
 | ApplicationName  | You application name                                                                                                                                                                                                                 |                                                                              | :heavy_check_mark: |
 | SubsystemName    | You Subsystem name                                                                                                                                                                                                                   | AWS Account ID                                                               | :heavy_check_mark: |
 | CoralogixApiKey | The Send-Your-Data API key for your Coralogix account. See: https://coralogix.com/docs/send-your-data-api-key/ |                                                                              | :heavy_check_mark: |
-| PrivateKey :warning::no_entry:__Deprecated__.:no_entry::warning: | :warning::no_entry:__Deprecated__.:no_entry::warning: Do not use. Hard-replaced by `CoralogixApiKey`. Must be null. Formerly: Your Coralogix Private Key. |                                                                              | :no_entry: |
 | Metrics          | Enable/Disable Metrics                                                                                                                                                                                                               | disable                                                                      |                    |
 | OtelConfig       | The Base64 encoded Open Telemetry configuration yaml to use. This parameter allows you to pass your own Open Telemetry configuration. This will be used instead of the embedded configuration if specified.                          |                                                                              |                    |
 
@@ -63,7 +62,7 @@ aws cloudformation deploy --template-file template.yaml --stack-name <stack_name
         DefaultApplicationName=<application name> \
         CDOTImageVersion=<image tag> \
         ClusterName=<ecs cluster name> \
-        PrivateKey=<your-private-key> \
+        CoralogixApiKey=<your-private-key> \
         CoralogixRegion=<coralogix-region>
 ```
 
@@ -76,7 +75,7 @@ aws cloudformation deploy --template-file cfn_template.yaml --stack-name <stack_
         DefaultApplicationName=<application name> \
         ClusterName=<ecs cluster name> \
         CDOTImageVersion=<image tag> \
-        PrivateKey=<your-private-key> \
+        CoralogixApiKey=<your-private-key> \
         OtelConfig=$(cat path/to/otelconfig.yaml | base64) \
         CoralogixRegion=<coralogix-region>
 ```
