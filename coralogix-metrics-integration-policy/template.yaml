@@ -73,6 +73,7 @@ Resources:
               - Effect: Allow
                 Action:
                   - tag:GetResources
+                  - cloudwatch:GetMetricData
                   - cloudwatch:GetMetricStatistics
                   - cloudwatch:ListMetrics
                 Resource: "*"
