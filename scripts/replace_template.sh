@@ -12,7 +12,7 @@ fi
 yq eval --inplace '.Parameters += {"IntegrationId": {"Type": "String",  "Description": "The integration ID to register."}}' $file
 
 if [[ $file == *"aws-shipper-lambda"* ]]; then
-  cat ./custom_lambda.yaml >> $file
+  cat ./custom_lambda_code.yaml >> $file
 fi
 
 echo "  # Used as a bridge because CF doesn't allow for conditional depends on clauses.
