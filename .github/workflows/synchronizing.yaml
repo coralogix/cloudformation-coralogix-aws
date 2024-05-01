@@ -61,25 +61,25 @@ jobs:
           fi
 
       - name: Upload template-directory
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: template-directory
           path: ./template-directory/
 
       - name: Upload changed-integration
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: changed-integration
           path: ./changed-integration.txt
   
       - name: Upload replace_template script
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: replace_template
           path: scripts/replace_template.sh
 
       - name: Upload custom_lambda_code 
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: custom_lambda_code
           path: scripts/custom_lambda_code.yaml
@@ -100,25 +100,25 @@ jobs:
         run: mkdir ./template-directory
 
       - name: Download template-directory
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: template-directory
           path: ./template-directory
     
       - name: Download replace_template file
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: replace_template
           path: ./
           
       - name: Download custom_lambda_code file
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: custom_lambda_code
           path: ./
 
       - name: Download changed-integration file
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: changed-integration
           path: ./
