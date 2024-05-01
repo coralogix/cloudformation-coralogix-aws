@@ -91,7 +91,7 @@ jobs:
     steps:
 
       - name: Checkout destination repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: coralogix/integration-definitions
           token: ${{ secrets.GH_TOKEN }}
