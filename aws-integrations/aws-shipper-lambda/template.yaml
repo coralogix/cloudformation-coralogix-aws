@@ -551,7 +551,6 @@ Globals:
     #   - DestinationConfig:
     #       OnFailure:
     #         Type: SNS
-
     VpcConfig: !If
       - UseVpcConfig
       - SecurityGroupIds:
