@@ -37,11 +37,11 @@ Parameters:
     Default: 1
   IntegrationTypeMetrics:
     Type: String
-    Description: "The integration type of the firehose delivery stream [CloudWatch_Metrics_OpenTelemetry070, CloudWatch_Metrics_OpenTelemetry070_WithAggregations] - default: CloudWatch_Metrics_OpenTelemetry070"
+    Description: "The integration type of the firehose delivery stream [CloudWatch_Metrics_OpenTelemetry070, CloudWatch_Metrics_OpenTelemetry070_WithAggregations] - default: CloudWatch_Metrics_OpenTelemetry070_WithAggregations"
     AllowedValues:
       - CloudWatch_Metrics_OpenTelemetry070
       - CloudWatch_Metrics_OpenTelemetry070_WithAggregations
-    Default: CloudWatch_Metrics_OpenTelemetry070
+    Default: CloudWatch_Metrics_OpenTelemetry070_WithAggregations
   OutputFormat:
     Type: String
     Description: "The output format of the cloudwatch metric stream [opentelemetry0.7, json] - default: opentelemetry0.7."
@@ -86,7 +86,7 @@ Parameters:
     Default: 'true'
 
 Metadata:
-  SemanticVersion: 0.0.4
+  SemanticVersion: 0.0.5
   AWS::CloudFormation::Interface: 
     ParameterGroups: 
       - Label: 
