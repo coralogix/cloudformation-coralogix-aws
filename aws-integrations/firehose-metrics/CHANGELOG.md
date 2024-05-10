@@ -34,3 +34,6 @@
 
 ### 0.0.4 / 7 Dec 2023
 * [Update] Remove CloudWatch_Metrics_JSON metrics integrationType option
+
+### 0.0.5 / 7 May 2024
+* [Update] default CloudWatch_Metrics_OpenTelemetry070_WithAggregations metrics integrationType option
