@@ -2,6 +2,14 @@
 # This code will take a template file and change it according to the requirements in the integration-definitions repo
 
 file=$1
+
+file_contine_output=false
+if grep -q "Outputs" "$file"; then
+    yq 'with_entries(select(.key | test("Outputs")))' $file >> outputs.yaml
+    yq eval --inplace 'del(.Outputs)' $file >> outputs.yaml
+    file_contine_output=true
+fi
+
 if grep -q "ParameterGroups" "$file"; then
     yq eval --inplace '.Metadata."AWS::CloudFormation::Interface".ParameterGroups[0].Parameters += "IntegrationId"' -i $file
 fi
@@ -62,7 +70,7 @@ if [[ $file == *"aws-shipper-lambda"* ]]; then
 else
   echo "
       CoralogixDomain: !If
-        - IsRegionCustomUrlEmpty
+        - IsCustomDomain
         - !Ref CustomDomain
         - !FindInMap [ CoralogixRegionMap, !Ref CoralogixRegion, LogUrl ]
       CoralogixApiKey: !Ref ApiKey" >> $file
@@ -78,3 +86,8 @@ while IFS= read -r parameter; do
     echo "      ${parameter}: !Ref $parameter" >> $file
   fi
 done <<< "$parameters"
+
+if $file_contine_output;then
+    cat outputs.yaml >> $file
+    rm outputs.yaml
+fi
