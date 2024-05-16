@@ -1,4 +1,7 @@
 # Changelog
+### 0.0.12 / 2024-05-16
+- Added validation using operator route to default otel config for ecs-ec2 config
+
 ### 0.0.11 / 2024-04-05
 - Remove deprecated PrivateKey Param from ecs-ec2 otel deployment
 
