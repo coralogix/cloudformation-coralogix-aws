@@ -2,6 +2,14 @@
 # This code will take a template file and change it according to the requirements in the integration-definitions repo
 
 file=$1
+
+file_contine_output=false
+if grep -q "Outputs" "$file"; then
+    yq 'with_entries(select(.key | test("Outputs")))' $file >> outputs.yaml
+    yq eval --inplace 'del(.Outputs)' $file >> outputs.yaml
+    file_contine_output=true
+fi
+
 if grep -q "ParameterGroups" "$file"; then
     yq eval --inplace '.Metadata."AWS::CloudFormation::Interface".ParameterGroups[0].Parameters += "IntegrationId"' -i $file
 fi
@@ -59,22 +67,42 @@ if [[ $file == *"aws-shipper-lambda"* ]]; then
         - !Ref CustomDomain
         - !FindInMap [CoralogixRegionMap, !Ref CoralogixRegion, Domain]
       CoralogixApiKey: !If [ ApiKeyIsArn, !GetAtt SecretRetrievalFunctionTrigger.SecretValue, !Ref ApiKey ]" >> $file
-else
   echo "
-      CoralogixDomain: !If
-        - IsRegionCustomUrlEmpty
-        - !Ref CustomDomain
-        - !FindInMap [ CoralogixRegionMap, !Ref CoralogixRegion, LogUrl ]
-      CoralogixApiKey: !Ref ApiKey" >> $file
-fi
-echo "
       # Parameters to track
       IntegrationName: !Ref \"AWS::StackName\"
       SubsystemName: !Ref SubsystemName
       ApplicationName: !Ref ApplicationName" >> $file
+elif [[ $file == *"firehose"* ]]; then
+  echo "
+      CoralogixDomain: !If
+        - IsCustomDomain
+        - !Ref CustomDomain
+        - !FindInMap [ CoralogixRegionMap, !Ref CoralogixRegion, LogUrl ]
+      CoralogixApiKey: !Ref ApiKey" >> $file
+  echo "
+      # Parameters to track
+      IntegrationName: !Ref \"AWS::StackName\"
+      SubsystemName: !Ref SubsystemName
+      ApplicationName: !Ref ApplicationName" >> $file
+elif [[ $file == *"resource-metadata"* ]]; then
+  echo "
+      CoralogixDomain: !If
+        - IsRegionCustomUrlEmpty
+        - !Ref CustomDomain
+        - !FindInMap [ CoralogixRegionMap, !Ref CoralogixRegion, MetadataUrl ]
+      CoralogixApiKey: !Ref ApiKey" >> $file
+  echo "
+      # Parameters to track
+      IntegrationName: !Ref \"AWS::StackName\"" >> $file
+fi
 
 while IFS= read -r parameter; do
   if [[ $parameter != "ApiKey" ]] && [[ $parameter != "IntegrationId" ]] && [[ $parameter != "ApplicationName" ]] && [[ $parameter != "SubsystemName" ]] && [[ $parameter != "KafkaBrokers" ]] && [[ $parameter != "KafkaSubnets" ]] && [[ $parameter != "KafkaSecurityGroups" ]]; then
     echo "      ${parameter}: !Ref $parameter" >> $file
   fi
 done <<< "$parameters"
+
+if $file_contine_output;then
+    cat outputs.yaml >> $file
+    rm outputs.yaml
+fi
