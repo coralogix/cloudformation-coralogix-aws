@@ -2,6 +2,11 @@
 
 ## s3-archive
 
+### 0.0.4 / 19.5.2024
+* [update] 
+ - Add delete permissions to the buckets rule
+ - replaced ap1 with ap2 in the mapping
+
 ### 0.0.3 / 17.1.2024
 * [Bug Fix] Changed the role for metrics bucket
 
