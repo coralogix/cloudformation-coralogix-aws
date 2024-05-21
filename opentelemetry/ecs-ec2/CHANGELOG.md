@@ -1,4 +1,7 @@
 # Changelog
+### 0.0.13 / 2024-05-21
+- Update US2 URL
+
 ### 0.0.12 / 2024-05-16
 - Added validation using operator route to default otel config for ecs-ec2 config
 

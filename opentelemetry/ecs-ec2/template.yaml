@@ -45,7 +45,6 @@ Parameters:
         - India
         - Singapore
         - US
-        - US2
 
   DefaultApplicationName:
     Type: String
@@ -427,7 +426,7 @@ Mappings:
       Endpoint: ingress.coralogix.us:443
       Domain: coralogix.us
     US2:
-      Endpoint: ingress.cx498-aws-us-west-2.coralogix.com:443
+      Endpoint: ingress.cx498.coralogix.com:443
       Domain: cx498.coralogix.com
     Europe:
       Endpoint: ingress.coralogix.com:443
@@ -444,9 +443,6 @@ Mappings:
     US:
       Endpoint: ingress.coralogix.us:443
       Domain: coralogix.us
-    US2:
-      Endpoint: ingress.cx498-aws-us-west-2.coralogix.com:443
-      Domain: cx498.coralogix.com
 
 
 Resources:
