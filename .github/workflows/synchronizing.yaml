@@ -192,12 +192,12 @@ jobs:
           last_pr_from_shipper=$(curl -s -H "Authorization: Bearer ${{ secrets.GH_TOKEN }}" \
           "https://api.github.com/repos/coralogix/coralogix-aws-shipper/pulls?state=closed&base=master&sort=updated&direction=desc" \
           | jq -r '.[0].title')
-          if [[  "${{ env.LAST_COMMIT_MESSAGE }}" == $last_pr_from_serverless ]]; then
+          if [[  "${{ env.LAST_COMMIT_MESSAGE }}" == "$last_pr_from_serverless" ]]; then
             pr_name=$last_pr_from_serverless
             pr_url=$(curl -s -H "Authorization: Bearer ${{ secrets.GH_TOKEN }}" \
             "https://api.github.com/repos/coralogix/coralogix-aws-serverless/pulls?state=closed&base=master&sort=updated&direction=desc" \
             | jq -r '.[0].html_url')
-          elif [[ "${{ env.LAST_COMMIT_MESSAGE }}" == $last_pr_from_shipper ]]; then
+          elif [[ "${{ env.LAST_COMMIT_MESSAGE }}" == "$last_pr_from_shipper" ]]; then
             pr_name=$last_pr_from_shipper
             pr_url=$(curl -s -H "Authorization: Bearer ${{ secrets.GH_TOKEN }}" \
             "https://api.github.com/repos/coralogix/coralogix-aws-shipper/pulls?state=closed&base=master&sort=updated&direction=desc" \
