@@ -1,4 +1,7 @@
 # Changelog
+### 0.0.14 / 2024-06-09
+- Added config flag to ecs-ec2 task definition
+
 ### 0.0.13 / 2024-05-21
 - Update US2 URL
 
