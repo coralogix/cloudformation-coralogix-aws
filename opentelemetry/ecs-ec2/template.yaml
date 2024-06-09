@@ -467,6 +467,7 @@ Resources:
         - Name: coralogix-otel-agent
           Cpu: 0
           Memory: !Ref Memory
+          Command: ["--config", "env:OTEL_CONFIG"]
           Image: !If
             - UseImage
             - !Ref Image
@@ -549,6 +550,7 @@ Resources:
         - Name: coralogix-otel-agent
           Cpu: 0
           Memory: !Ref Memory
+          Command: ["--config", "env:OTEL_CONFIG"]
           Image: !If
             - UseImage
             - !Ref Image
