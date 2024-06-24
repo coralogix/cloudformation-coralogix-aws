@@ -18,7 +18,7 @@ Parameters:
   RoleName:
     Type: String
     Description: The name of the role that will be created.
-  CustomeAccountId:
+  CustomAccountId:
     Type: String
     Description: Custom AWS account ID that you want to deploy the integration in.
     Default: ''
