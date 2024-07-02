@@ -76,4 +76,13 @@ Resources:
                   - cloudwatch:GetMetricData
                   - cloudwatch:GetMetricStatistics
                   - cloudwatch:ListMetrics
+                  - apigateway:GET
+                  - autoscaling:DescribeAutoScalingGroups
+                  - aps:ListWorkspaces
+                  - dms:DescribeReplicationInstances
+                  - dms:DescribeReplicationTasks
+                  - ec2:DescribeTransitGatewayAttachments
+                  - ec2:DescribeSpotFleetRequests
+                  - storagegateway:ListGateways
+                  - storagegateway:ListTagsForResource
                 Resource: "*"
