@@ -6,9 +6,9 @@ Logs are collected using a sidecar deployment of [aws-for-fluent-bit](https://gi
 Details of this integration can be found [here](https://github.com/coralogix/telemetry-shippers/tree/master/logs/fluent-bit/ecs-fargate)
 
 ## ECS Fargate Traces and Metrics
-Traces and Metrics are collected using the [AWS Distribution for OpenTelemetry (ADOT) collector](https://github.com/aws-observability/aws-otel-collector)
+Traces and Metrics are collected using Opentelemetry Collector Contrib.
 
-Details of this integration can be found [here](https://github.com/coralogix/telemetry-shippers/tree/master/otel-agent/ecs-fargate)
+Details of this integration can be found [here](https://github.com/coralogix/telemetry-shippers/blob/master/otel-ecs-fargate/README.md)
 
 ## Example Cloudformation Template
 

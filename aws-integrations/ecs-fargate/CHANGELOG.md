@@ -5,8 +5,10 @@
 <!-- ### version / full date -->
 <!-- * [Update/Bug fix] message that describes the changes that you apply -->
 
-### 0.0.2 / 2023-11-23
+### 0.0.3 / 2024-06-26
+* [CHANGE] Migrate from ADOT to OTEL Collector Contrib
 
+### 0.0.2 / 2023-11-23
 * [CHANGE] Update the coralogix API
   
 ### 0.0.1 / 16 Aug 2023
