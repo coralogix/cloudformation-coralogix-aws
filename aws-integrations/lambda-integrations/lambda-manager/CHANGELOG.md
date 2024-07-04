@@ -2,6 +2,18 @@
 
 ## lambda-manager
 
+## 2.0.4  / 1-07-2024
+### 🧰 Bug fixes 🧰
+- Add config to boto3, so the lambda could handle ThrottlingException, update error handling in the lambda.
+
+## 2.0.3  / 26-06-2024
+### 💡 Enhancements 💡
+- Add a new parameter LogGroupPermissionPreFix, when defined the lambda will not create permission for each log group, but 1 permission for the prefix defined in the parameter.
+
+## 2.0.2  / 24-06-2024
+### 💡 Enhancements 💡
+- Update the lambda to trigger on creation if ScanOldLogGroups is set to true
+
 ## 2.0.1  / 04-2-2024
 ### 💡 Enhancements 💡
 - Update lambda code so it will not require the allow all policy
