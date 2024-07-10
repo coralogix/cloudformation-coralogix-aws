@@ -1,6 +1,9 @@
 AWSTemplateFormatVersion: 2010-09-09
 Description: The module will create a role with an inline policy to allow Coralogix to send events to an EventBridge event bus.
 Parameters:
+  ExternalId:
+    Description: "ExternalId for sts:AssumeRole"
+    Type: "String"
   AWSAccount:
     Type: String
     Default: EU1
@@ -18,7 +21,7 @@ Parameters:
   RoleName:
     Type: String
     Description: The name of the role that will be created.
-  CustomeAccountId:
+  CustomerAccountId:
     Type: String
     Description: Custom AWS account ID that you want to deploy the integration in.
     Default: ""
@@ -27,33 +30,33 @@ Mappings:
   AWSAccountId:
     dev:
       ID: 233273809180
-      ROLE_NAME: coralogix-ingestion-dev1
+      RoleSuffix: dev01
     staging:
       ID: 233221153619
-      ROLE_NAME: coralogix-ingestion-stg1
+      RoleSuffix: stg1
     EU1:
       ID: 625240141681
-      ROLE_NAME: coralogix-ingestion-eu1
+      RoleSuffix: eu1
     EU2:
       ID: 625240141681
-      ROLE_NAME: coralogix-ingestion-eu2
+      RoleSuffix: eu2
     AP1:
       ID: 625240141681
-      ROLE_NAME: coralogix-ingestion-ap1
+      RoleSuffix: ap1
     Ap2:
       ID: 625240141681
-      ROLE_NAME: coralogix-ingestion-ap2
+      RoleSuffix: ap2
     US1:
       ID: 625240141681
-      ROLE_NAME: coralogix-ingestion-us1
+      RoleSuffix: us1
     US2:
       ID: 739076534691
-      ROLE_NAME: coralogix-ingestion-us2
+      RoleSuffix: us2
     CustomEndpoint:
       ID: 000000000000
-
+      RoleSuffix: custom
 Conditions:
-  IsCustomAccountId: !Not [!Equals [!Ref CustomeAccountId, ""]]
+  IsCustomAccountId: !Not [!Equals [!Ref CustomerAccountId, ""]]
 Resources:
   CoralogixAwsMetricsRole:
     Type: AWS::IAM::Role
@@ -66,15 +69,12 @@ Resources:
           - Effect: Allow
             Principal:
               AWS: !Sub
-                - "arn:aws:iam::${aws_account_id}:role/${role_name}"
+                - "arn:aws:iam::${aws_account_id}:role/coralogix-ingestion-${role_suffix}"
                 - aws_account_id: !If
                     - IsCustomAccountId
-                    - !Ref CustomeAccountId
+                    - !Ref CustomerAccountId
                     - !FindInMap [AWSAccountId, !Ref AWSAccount, "ID"]
-                - role_name: !If
-                    - IsCustomAccountId
-                    - !Ref CustomeAccountId
-                    - !FindInMap [AWSAccountId, !Ref AWSAccount, "ROLE_NAME"]
+                - role_suffix: !FindInMap [AWSAccountId, !Ref AWSAccount, "RoleSuffix"]
             Action:
               - sts:AssumeRole
       Policies:
@@ -98,3 +98,6 @@ Resources:
                   - storagegateway:ListGateways
                   - storagegateway:ListTagsForResource
                 Resource: "*"
+                Condition:
+                  StringEquals:
+                    sts:ExternalId: !Ref ExternalId
