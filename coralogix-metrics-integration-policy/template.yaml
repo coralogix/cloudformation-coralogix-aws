@@ -21,31 +21,39 @@ Parameters:
   CustomeAccountId:
     Type: String
     Description: Custom AWS account ID that you want to deploy the integration in.
-    Default: ''
+    Default: ""
 
 Mappings:
   AWSAccountId:
-    dev: 
+    dev:
       ID: 233273809180
-    staging: 
+      ROLE_NAME: coralogix-ingestion-dev1
+    staging:
       ID: 233221153619
-    EU1: 
+      ROLE_NAME: coralogix-ingestion-stg1
+    EU1:
       ID: 625240141681
-    EU2: 
+      ROLE_NAME: coralogix-ingestion-eu1
+    EU2:
       ID: 625240141681
-    AP1: 
+      ROLE_NAME: coralogix-ingestion-eu2
+    AP1:
       ID: 625240141681
-    Ap2: 
+      ROLE_NAME: coralogix-ingestion-ap1
+    Ap2:
       ID: 625240141681
-    US1: 
+      ROLE_NAME: coralogix-ingestion-ap2
+    US1:
       ID: 625240141681
-    US2: 
+      ROLE_NAME: coralogix-ingestion-us1
+    US2:
       ID: 739076534691
+      ROLE_NAME: coralogix-ingestion-us2
     CustomEndpoint:
       ID: 000000000000
 
 Conditions:
-  IsCustomAccountId: !Not [!Equals [!Ref CustomeAccountId, '']]
+  IsCustomAccountId: !Not [!Equals [!Ref CustomeAccountId, ""]]
 Resources:
   CoralogixAwsMetricsRole:
     Type: AWS::IAM::Role
@@ -58,11 +66,15 @@ Resources:
           - Effect: Allow
             Principal:
               AWS: !Sub
-                - 'arn:aws:iam::${aws_account_id}:root'
+                - "arn:aws:iam::${aws_account_id}:role/${role_name}"
                 - aws_account_id: !If
-                  - IsCustomAccountId
-                  - !Ref CustomeAccountId
-                  - !FindInMap [AWSAccountId, !Ref AWSAccount, 'ID']
+                    - IsCustomAccountId
+                    - !Ref CustomeAccountId
+                    - !FindInMap [AWSAccountId, !Ref AWSAccount, "ID"]
+                - role_name: !If
+                    - IsCustomAccountId
+                    - !Ref CustomeAccountId
+                    - !FindInMap [AWSAccountId, !Ref AWSAccount, "ROLE_NAME"]
             Action:
               - sts:AssumeRole
       Policies:
