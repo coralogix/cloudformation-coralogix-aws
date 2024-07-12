@@ -74,9 +74,12 @@ Resources:
                     - IsCustomAccountId
                     - !Ref CustomerAccountId
                     - !FindInMap [AWSAccountId, !Ref AWSAccount, "ID"]
-                - role_suffix: !FindInMap [AWSAccountId, !Ref AWSAccount, "RoleSuffix"]
+                  role_suffix: !FindInMap [AWSAccountId, !Ref AWSAccount, "RoleSuffix"]
             Action:
               - sts:AssumeRole
+            Condition:
+              StringEquals:
+                sts:ExternalId: !Ref ExternalId
       Policies:
         - PolicyName: CoralogixMetricsPolicy
           PolicyDocument:
@@ -98,6 +101,3 @@ Resources:
                   - storagegateway:ListGateways
                   - storagegateway:ListTagsForResource
                 Resource: "*"
-                Condition:
-                  StringEquals:
-                    sts:ExternalId: !Ref ExternalId
