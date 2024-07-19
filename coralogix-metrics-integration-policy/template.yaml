@@ -27,7 +27,7 @@ Parameters:
     Default: ""
 
 Mappings:
-  AWSAccountId:
+  CoralogixEnvironment:
     dev:
       ID: 233273809180
       RoleSuffix: dev01
@@ -73,8 +73,8 @@ Resources:
                 - aws_account_id: !If
                     - IsCustomAccountId
                     - !Ref CustomerAccountId
-                    - !FindInMap [AWSAccountId, !Ref AWSAccount, "ID"]
-                  role_suffix: !FindInMap [AWSAccountId, !Ref AWSAccount, "RoleSuffix"]
+                    - !FindInMap [CoralogixEnvironment, !Ref AWSAccount, "ID"]
+                  role_suffix: !FindInMap [CoralogixEnvironment, !Ref AWSAccount, "RoleSuffix"]
             Action:
               - sts:AssumeRole
             Condition:
