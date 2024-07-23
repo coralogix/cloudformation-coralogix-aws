@@ -24,7 +24,7 @@ Metadata:
       - kinesis
       - cloudfront
     HomePageUrl: https://coralogix.com
-    SemanticVersion: 1.0.9
+    SemanticVersion: 1.0.10
     SourceCodeUrl: https://github.com/coralogix/coralogix-aws-shipper
   AWS::CloudFormation::Interface:
     ParameterGroups:
@@ -166,7 +166,7 @@ Parameters:
     Description: |
       The name of the AWS S3 bucket to watch
     AllowedPattern: '^[0-9A-Za-z\.\-_]*(?<!\.)$'
-    Default: ""
+    Default: "none"
     MaxLength: 63
   CSVDelimiter:
     Type: String
@@ -204,19 +204,23 @@ Parameters:
   SNSTopicArn:
     Type: String
     Description: The ARN for the SNS topic that contains the SNS subscription responsible for retrieving logs from Amazon S3
-    Default: ''
+    # placeholder value to avoid cfn-lint issues
+    Default: 'arn:aws:sns:us-east-1:123456789012:placeholder'
   SQSTopicArn:
     Type: String
     Description: The ARN for the SQS topic that contains the SQS subscription responsible for retrieving logs from Amazon S3
-    Default: ''
+    # placeholder value to avoid cfn-lint issues
+    Default: 'arn:aws:sqs:us-east-1:123456789012:placeholder'
   SQSIntegrationTopicArn:
     Type: String
     Description: The ARN of SQS topic to subscribe to retrieving messages
-    Default: ''
+    # placeholder value to avoid cfn-lint issues
+    Default: 'arn:aws:sqs:us-east-1:123456789012:placeholder'
   SNSIntegrationTopicArn:
     Type: String
     Description: The ARN of SNS topic to subscribe to retrieving messages
-    Default: ''
+    # placeholder value to avoid cfn-lint issues
+    Default: 'arn:aws:sns:us-east-1:123456789012:placeholder'
   KinesisStreamArn:
     Type: String
     Description: The ARN of Kinesis stream to subscribe to retrieving messages
@@ -332,7 +336,8 @@ Parameters:
   DLQS3Bucket:
     Type: String
     Description: The S3 bucket to store the DLQ failed messages after retry limit is reached
-    Default: ''
+    # placeholder value to avoid cfn-lint issues
+    Default: 'none'
   CpuArch:
     Type: String
     AllowedValues:
@@ -358,30 +363,6 @@ Mappings:
 Conditions:
   # DLQ conditions
   DLQEnabled: !Equals [!Ref EnableDLQ, 'true']
-  DLQEnabledAndUseDefault: !And
-    - !Condition DLQEnabled
-    - !Condition UseDefault
-  DLQEnabledAndUseSNSTopicARN: !And
-    - !Condition DLQEnabled
-    - !Condition UseSNSTopicARN
-  DLQEnabledAndUseSQSTopicARN: !And
-    - !Condition DLQEnabled
-    - !Condition UseSQSTopicARN
-  DLQEnabledAndUseKinesisStreamARN: !And
-    - !Condition DLQEnabled
-    - !Condition UseKinesisStreamARN
-  DLQEnabledAndUseKafkaTopicARN: !And
-    - !Condition DLQEnabled
-    - !Condition UseKafka
-  DLQEnabledAndUseMSK: !And
-    - !Condition DLQEnabled
-    - !Condition UseMSK
-  DLQEnabledAndUseECRScan: !And
-    - !Condition DLQEnabled
-    - !Condition UseECRScan
-  DLQEnabledAndUseCloudwatchLogs: !And
-    - !Condition DLQEnabled
-    - !Condition UseCloudwatchLogs
   IsKafkaIntegration: !Equals [!Ref IntegrationType, 'Kafka']
   BlockPatternNotSet: !Equals [!Ref BlockingPattern, '']
   CSVDelimiterUse: !Equals [!Ref IntegrationType, 'S3Csv']
@@ -398,11 +379,6 @@ Conditions:
   S3SuffixIsSet: !Not [!Equals [!Ref S3KeySuffix, '']]
   IsApiKeyNotArn: !Equals [!Ref ApiKey, !Select [0, !Split [":", !Ref ApiKey]]]
   ApiKeyIsArn: !Not [!Condition IsApiKeyNotArn]
-  UseCloudwatchLogsWithSecretPolicy: !And
-    - !Condition UseCloudwatchLogs
-    - !Or
-      - !Condition StoreAPIKeyInSecretsManager
-      - !Condition ApiKeyIsArn
   UseAWSDefaultPrefix: !Or
     - !Equals [!Ref IntegrationType, 'VpcFlow']
     - !Equals [!Ref IntegrationType, 'CloudTrail']
@@ -412,72 +388,23 @@ Conditions:
     - !Equals [!Ref StoreAPIKeyInSecretsManager, 'true']
     - !Condition IsApiKeyNotArn
   IsPrivateLink: !Equals [!Ref UsePrivateLink, 'true']
-  UseSQSTopicARN:
-    Fn::Or:
-      - !And
-        - !Not [!Equals [!Ref SQSTopicArn, '']]
-        - !Equals [!Ref CloudWatchLogGroupName, '']
-      - !And
-        - !Not [!Equals [!Ref SQSIntegrationTopicArn, '']]
-        - !Equals [!Ref CloudWatchLogGroupName, '']
+  SNSIsSet: !Or
+    - !Not [!Equals [!Ref SNSTopicArn, 'arn:aws:sns:us-east-1:123456789012:placeholder']]
+    - !Not [!Equals [!Ref SNSIntegrationTopicArn, 'arn:aws:sns:us-east-1:123456789012:placeholder']]
+  SQSIsSet: !Or
+    - !Not [!Equals [!Ref SQSTopicArn, 'arn:aws:sqs:us-east-1:123456789012:placeholder']]
+    - !Not [!Equals [!Ref SQSIntegrationTopicArn, 'arn:aws:sqs:us-east-1:123456789012:placeholder']]
   UseKinesisStreamARN: !And
     - !Not [!Equals [!Ref KinesisStreamArn, '']]
     - !Equals [!Ref CloudWatchLogGroupName, '']
-  UseSNSTopicARN:
-    Fn::Or:
-      - !And
-        - !Not [!Equals [!Ref SNSTopicArn, '']]
-        - !Equals [!Ref CloudWatchLogGroupName, '']
-      - !And
-        - !Not [!Equals [!Ref SNSIntegrationTopicArn, '']]
-        - !Equals [!Ref CloudWatchLogGroupName, '']
   UseVpcConfig: !And
     - !Not [!Equals [!Ref LambdaSubnetID, '']]
     - !Not [!Equals [!Ref LambdaSecurityGroupID, '']]
-  UseCloudwatchLogs: !And
-    - !Not [!Equals [!Ref CloudWatchLogGroupName, '']]
-    - !Not [!Condition UseSNSTopicARN]
-  UseDefault: !And
-    - !Not [!Condition UseCloudwatchLogs]
-    - !Not [!Condition UseSNSTopicARN]
-    - !Not [!Condition UseSQSTopicARN]
-    - !Not [!Condition UseKinesisStreamARN]
-    - !Not [!Condition UseMSK]
-    - !Not [!Condition UseKafka]
-    - !Not [!Condition UseECRScan]
-  UseDefaultWithNotification: !And
-    - !Condition UseDefault
-    - !Condition IsNotificationEnabled
-  UseCloudwatchLogsWithNotification: !And
-    - !Condition UseCloudwatchLogs
-    - !Condition IsNotificationEnabled
-  UseKinesisTopicARNWithNotification: !And
-    - !Condition UseKinesisStreamARN
-    - !Condition IsNotificationEnabled
-  UseSQSTopicARNWithNotification: !And
-    - !Condition UseSQSTopicARN
-    - !Condition IsNotificationEnabled
-  UseSNSTopicARNWithNotification: !And
-    - !Condition UseSNSTopicARN
-    - !Condition IsNotificationEnabled
   UseMSK: !And
     - !Not [!Equals [!Ref MSKClusterArn, '']]
     - !Not [!Equals [!Ref KafkaTopic, '']]
     - !Equals [!Ref IntegrationType, 'MSK']
-  UseKafka: !And
-    - !Not [!Equals [!Ref KafkaTopic, '']]
-    - !Equals [!Ref MSKClusterArn, '']
-    - !Equals [!Ref IntegrationType, 'Kafka']
-  UseMSKWithNotification: !And
-    - !Condition UseMSK
-    - !Condition IsNotificationEnabled
-  UseKatkaTopicARNWithNotification: !And
-    - !Condition IsKafkaIntegration
-    - !Condition IsNotificationEnabled
-    - !Condition UseKafka
-  UseECRScanWithNotification: !And
-    - !Condition UseECRScan
-    - !Condition IsNotificationEnabled
+  S3BucketNameIsSet: !Not [!Equals [!Ref S3BucketName, 'none']]
   CpuArchIsx8664:
     Fn::Equals:
       - Ref: CpuArch
@@ -486,42 +413,20 @@ Rules:
   ValidateDLQ:
     RuleCondition: !Equals [!Ref EnableDLQ, 'true']
     Assertions:
-      - Assert: !Not [!Equals [!Ref DLQS3Bucket, '']]
+      - Assert: !Not [!Equals [!Ref DLQS3Bucket, 'none']]
         AssertDescription: DLQS3Bucket must be set when EnableDLQ is set to true
   ValidateCloudWatchLogs:
-    RuleCondition: !And
-      - !Not [!Equals [!Ref CloudWatchLogGroupName, '']]
-      - !Equals [!Ref SNSTopicArn, '']
-      - !Equals [!Ref SQSTopicArn, '']
-      - !Equals [!Ref KinesisStreamArn, '']
+    RuleCondition: !Not [!Equals [!Ref CloudWatchLogGroupName, '']]
     Assertions:
       - Assert: !Not [!Equals [!Ref CloudWatchLogGroupName, '']]
         AssertDescription: CloudWatchLogGroupName must be set when IntegrationType is set to cloudwatch
-      - Assert: !Equals [!Ref S3BucketName, '']
+      - Assert: !Equals [!Ref S3BucketName, 'none']
         AssertDescription: S3Bucket parameter must be empty when IntegrationType is set to cloudwatch
   ValidateCustomDomain:
     RuleCondition: !Equals [!Ref CoralogixRegion, Custom]
     Assertions:
       - Assert: !Not [!Equals [!Ref CustomDomain, '']]
         AssertDescription: CustomDomain must be set when CoralogixRegion is set to Custom
-  ValidateSQSTopicArnParam:
-    RuleCondition: !And
-      - !Not [!Equals [!Ref SQSTopicArn, '']]
-      - !Equals [!Ref CloudWatchLogGroupName, '']
-    Assertions:
-      - Assert: !And
-          - !Equals [!Ref S3KeyPrefix, '']
-          - !Equals [!Ref S3KeySuffix, '']
-        AssertDescription: S3Prefix and S3Suffix must be empty when SQSTopicArn is set
-  ValidateSNSTopicArnParam:
-    RuleCondition: !And
-      - !Not [!Equals [!Ref SNSTopicArn, '']]
-      - !Equals [!Ref CloudWatchLogGroupName, '']
-    Assertions:
-      - Assert: !And
-          - !Equals [!Ref S3KeyPrefix, '']
-          - !Equals [!Ref S3KeySuffix, '']
-        AssertDescription: S3Prefix and S3Suffix must be empty when SNSTopicArn is set
   ValidatePrivateLinkConfig:
     RuleCondition: !Equals [!Ref UsePrivateLink, 'true']
     Assertions:
@@ -529,6 +434,15 @@ Rules:
           - !Not [!Equals [!Ref LambdaSubnetID, '']]
           - !Not [!Equals [!Ref LambdaSecurityGroupID, '']]
         AssertDescription: Subnet ID and Security Group ID must be set when UsePrivateLink is set to true
+  ValidationS3Integrations:
+    RuleCondition: !Or
+      - !Equals [!Ref IntegrationType, 'S3']
+      - !Equals [!Ref IntegrationType, 'CloudTrail']
+      - !Equals [!Ref IntegrationType, 'VpcFlow']
+      - !Equals [!Ref IntegrationType, 'S3Csv']
+    Assertions:
+      - Assert: !Not [!Equals [!Ref S3BucketName, 'none']]
+        AssertDescription: S3BucketName must be set when IntegrationType is set to S3, CloudTrail, VpcFlow or S3Csv
   ValidateKafkaIntegrationParams:
     RuleCondition: !Equals [!Ref IntegrationType, 'Kafka']
     Assertions:
@@ -541,92 +455,16 @@ Rules:
         AssertDescription: MSKClusterArn must be set when IntegrationType is set to MSK
       - Assert: !Not [!Equals [!Ref KafkaTopic, '']]
         AssertDescription: KafkaTopic must be set when IntegrationType is set to MSK
-Globals:
-  Function:
-    Description: Send logs to Coralogix.
-    Handler: bootstrap
-    Runtime: provided.al2023
-    Architectures:
-      - Ref: CpuArch
-    MemorySize: !Ref FunctionMemorySize
-    Timeout: !Ref FunctionTimeout
-    # EventInvokeConfig: !If
-    #   - IsNotificationEnabled
-    #   - !Ref AWS::NoValue
-    #   - DestinationConfig:
-    #       OnFailure:
-    #         Type: SNS
-
-    VpcConfig: !If
-      - UseVpcConfig
-      - SecurityGroupIds:
-          - !Ref LambdaSecurityGroupID
-        SubnetIds:
-          - !Ref LambdaSubnetID
-      - !Ref AWS::NoValue
-    Environment:
-      Variables:
-        CORALOGIX_ENDPOINT: !If
-          - IsCustomDomain
-          - !If
-            - IsPrivateLink
-            - !Sub
-              - https://ingress.private.${domain}
-              - domain: !Ref CustomDomain
-            - !Sub
-              - https://ingress.${domain}
-              - domain: !Ref CustomDomain
-          - !If
-            - IsPrivateLink
-            - !Sub
-              - https://ingress.private.${domain}
-              - domain: !FindInMap [CoralogixRegionMap, !Ref CoralogixRegion, Domain]
-            - !Sub
-              - https://ingress.${domain}
-              - domain: !FindInMap [CoralogixRegionMap, !Ref CoralogixRegion, Domain]
-        CORALOGIX_API_KEY: !If
-          - StoreAPIKeyInSecretsManager
-          - !Ref Secret
-          - !Ref ApiKey
-        APP_NAME: !Ref ApplicationName
-        SUB_NAME: !Ref SubsystemName
-        SAMPLING: !Ref SamplingRate
-        INTEGRATION_TYPE: !Ref IntegrationType
-        RUST_LOG: !Ref LogLevel
-        ADD_METADATA: !If
-          - AddMetadataNotSet
-          - !Ref AWS::NoValue
-          - !Ref AddMetadata
-        CUSTOM_METADATA: !If
-          - CustomMetadataNotSet
-          - !Ref AWS::NoValue
-          - !Ref CustomMetadata
-        NEWLINE_PATTERN: !If
-          - NewlinePatternNotSet
-          - !Ref AWS::NoValue
-          - !Ref NewlinePattern
-        BLOCKING_PATTERN: !If
-          - BlockPatternNotSet
-          - !Ref AWS::NoValue
-          - !Ref BlockingPattern
-        CSV_DELIMITER: !If
-          - CSVDelimiterUse
-          - !Ref CSVDelimiter
-          - !Ref AWS::NoValue
-        DLQ_RETRY_LIMIT: !Ref DLQRetryLimit
-        DLQ_ARN: !If
-          - DLQEnabled
-          - !GetAtt DeadLetterQueue.Arn
-          - !Ref AWS::NoValue
-        DLQ_URL:
-          Fn::If:
-            - DLQEnabled
-            - !Ref DeadLetterQueue
-            - !Ref AWS::NoValue
-        DLQ_S3_BUCKET: !If
-          - DLQEnabled
-          - !Ref DLQS3Bucket
-          - !Ref AWS::NoValue
+  ValidateSNSIntegrationParams:
+    RuleCondition: !Equals [!Ref IntegrationType, 'Sns']
+    Assertions:
+      - Assert: !Not [!Equals [!Ref SNSIntegrationTopicArn, 'arn:aws:sns:us-east-1:123456789012:placeholder']]
+        AssertDescription: SNSIntegrationTopicArn must be set when IntegrationType is set to Sns
+  ValidateSQSIntegrationParams:
+    RuleCondition: !Equals [!Ref IntegrationType, 'Sqs']
+    Assertions:
+      - Assert: !Not [!Equals [!Ref SQSIntegrationTopicArn, 'arn:aws:sqs:us-east-1:123456789012:placeholder']]
+        AssertDescription: SQSIntegrationTopicArn must be set when IntegrationType is set to Sqs
 Resources:
   Secret:
     Type: 'AWS::SecretsManager::Secret'
@@ -648,635 +486,436 @@ Resources:
                 - !Split
                   - ":"
                   - !Ref "AWS::StackId"
-  DeadLetterQueue:
+  LambdaFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      SamResourceId: LambdaFunction
+    Properties:
+      Description: Send logs to Coralogix.
+      Handler: bootstrap
+      Runtime: provided.al2023
+      Architectures:
+        - Ref: CpuArch
+      MemorySize: !Ref FunctionMemorySize
+      Timeout: !Ref FunctionTimeout
+      CodeUri:
+        Bucket:
+          Fn::Sub: coralogix-serverless-repo-${AWS::Region}
+        Key:
+          Fn::If:
+            - CpuArchIsx8664
+            - coralogix-aws-shipper-x86-64.zip
+            - coralogix-aws-shipper.zip
+      Policies:
+        - !If
+          - S3BucketNameIsSet
+          - S3ReadPolicy:
+              BucketName: !Ref S3BucketName
+          - !Ref AWS::NoValue
+        - !If
+          # if SQS topic ARN is set, add policy
+          - SQSIsSet
+          - SQSPollerPolicy:
+              QueueName: !Select
+                - 5
+                - !Split
+                  - ":"
+                  - !If
+                    - IsSQSIntegration
+                    - !Ref SQSIntegrationTopicArn
+                    - !Ref SQSTopicArn
+          - !Ref AWS::NoValue
+        - !If
+          # if kafka/msk integration is set, add policy
+          - IsKafkaIntegration
+          - Statement:
+              - Effect: Allow
+                Action:
+                  - 'ec2:CreateNetworkInterface'
+                  - 'ec2:DescribeNetworkInterfaces'
+                  - 'ec2:DescribeVpcs'
+                  - 'ec2:DeleteNetworkInterface'
+                  - 'ec2:DescribeSubnets'
+                  - 'ec2:DescribeSecurityGroups'
+                Resource: '*'
+          - !Ref AWS::NoValue
+        - !If
+          # if kinesis integration is set, add policy
+          - IsKinesisIntegration
+          - KinesisStreamReadPolicy:
+              StreamName: !Select [1, !Split ["/", !Select [5, !Split [":", !Ref KinesisStreamArn]]]]
+          - !Ref AWS::NoValue
+        - !If
+          # if msk integration is set, add policy
+          - UseMSK
+          - Statement:
+              - Effect: Allow
+                Action:
+                  - 'kafka:DescribeCluster'
+                  - 'kafka:GetBootstrapBrokers'
+                  - 'kafka:DescribeClusterV2'
+                  - 'ec2:DescribeSecurityGroups'
+                Resource: !Ref MSKClusterArn
+              - Effect: Allow
+                Action:
+                  - 'ec2:CreateNetworkInterface'
+                  - 'ec2:DescribeNetworkInterfaces'
+                  - 'ec2:DescribeVpcs'
+                  - 'ec2:DeleteNetworkInterface'
+                  - 'ec2:DescribeSubnets'
+                  - 'ec2:DescribeSecurityGroups'
+                Resource: '*'
+          - !Ref AWS::NoValue
+        - !If
+          - ApiKeyIsArn
+          - Statement:
+              - Effect: Allow
+                Action:
+                  - 'secretsmanager:GetSecretValue'
+                Resource: !Ref ApiKey
+          - !If
+            - StoreAPIKeyInSecretsManager
+            - Statement:
+                - Effect: Allow
+                  Action:
+                    - 'secretsmanager:GetSecretValue'
+                  Resource: !Ref Secret
+            # Note, this is a hack to get around the fact that you can't have a condition on a policy
+            # If the Apikey is not an ARn or we are not storing the key in secrets manager, then we don't need access
+            # to secrets manager
+            - Statement:
+                - Effect: Deny
+                  Action:
+                    - 'secretsmanager:GetSecretValue'
+                  Resource: '*'
+        - !If
+          # if ecrscan is enabled, add policy
+          - UseECRScan
+          - Statement:
+              - Effect: Allow
+                Action:
+                  - 'ecr:DescribeImageScanFindings'
+                Resource: !Sub 'arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/*'
+              - Effect: Allow
+                Action:
+                  - 'events:PutEvents'
+                Resource: "*"
+          - !Ref AWS::NoValue
+        - !If
+          # if dlq is enabled, add policy
+          - DLQEnabled
+          - Statement:
+              - Effect: Allow
+                Action:
+                  - 'sqs:SendMessage'
+                  - 'sqs:GetQueueAttributes'
+                  - 'sqs:GetQueueUrl'
+                  - 'sqs:ReceiveMessage'
+                  - 'sqs:DeleteMessage'
+                Resource: !GetAtt DeadLetterQueue.Arn
+              - Effect: Allow
+                Action:
+                  - 's3:PutObject'
+                  - 's3:PutObjectAcl'
+                  - 's3:AbortMultipartUpload'
+                  - 's3:DeleteObject'
+                  - 's3:PutObjectTagging'
+                  - 's3:PutObjectVersionTagging'
+                Resource:
+                  - !Sub arn:aws:s3:::${DLQS3Bucket}
+                  - !Sub arn:aws:s3:::${DLQS3Bucket}/*
+          - !Ref AWS::NoValue
+      VpcConfig: !If
+        - UseVpcConfig
+        - SecurityGroupIds:
+            - !Ref LambdaSecurityGroupID
+          SubnetIds:
+            - !Ref LambdaSubnetID
+        - !Ref AWS::NoValue
+      # EventInvokeConfig is place here by default
+      # however, the  notification subscription will
+      # only take place if the UseSNSTopicARN condition is met
+      EventInvokeConfig:
+        DestinationConfig:
+          OnFailure:
+            Type: SNS
+      Environment:
+        Variables:
+          CORALOGIX_ENDPOINT: !If
+            - IsCustomDomain
+            - !If
+              - IsPrivateLink
+              - !Sub
+                - https://ingress.private.${domain}
+                - domain: !Ref CustomDomain
+              - !Sub
+                - https://ingress.${domain}
+                - domain: !Ref CustomDomain
+            - !If
+              - IsPrivateLink
+              - !Sub
+                - https://ingress.private.${domain}
+                - domain: !FindInMap [CoralogixRegionMap, !Ref CoralogixRegion, Domain]
+              - !Sub
+                - https://ingress.${domain}
+                - domain: !FindInMap [CoralogixRegionMap, !Ref CoralogixRegion, Domain]
+          CORALOGIX_API_KEY: !If
+            - StoreAPIKeyInSecretsManager
+            - !Ref Secret
+            - !Ref ApiKey
+          APP_NAME: !Ref ApplicationName
+          SUB_NAME: !Ref SubsystemName
+          SAMPLING: !Ref SamplingRate
+          INTEGRATION_TYPE: !Ref IntegrationType
+          RUST_LOG: !Ref LogLevel
+          ADD_METADATA: !If
+            - AddMetadataNotSet
+            - !Ref AWS::NoValue
+            - !Ref AddMetadata
+          CUSTOM_METADATA: !If
+            - CustomMetadataNotSet
+            - !Ref AWS::NoValue
+            - !Ref CustomMetadata
+          NEWLINE_PATTERN: !If
+            - NewlinePatternNotSet
+            - !Ref AWS::NoValue
+            - !Ref NewlinePattern
+          BLOCKING_PATTERN: !If
+            - BlockPatternNotSet
+            - !Ref AWS::NoValue
+            - !Ref BlockingPattern
+          CSV_DELIMITER: !If
+            - CSVDelimiterUse
+            - !Ref CSVDelimiter
+            - !Ref AWS::NoValue
+          DLQ_RETRY_LIMIT: !Ref DLQRetryLimit
+          DLQ_ARN: !If
+            - DLQEnabled
+            - !GetAtt DeadLetterQueue.Arn
+            - !Ref AWS::NoValue
+          DLQ_URL:
+            Fn::If:
+              - DLQEnabled
+              - !Ref DeadLetterQueue
+              - !Ref AWS::NoValue
+          DLQ_S3_BUCKET: !If
+            - DLQEnabled
+            - !Ref DLQS3Bucket
+            - !Ref AWS::NoValue
+  SNSNotificationSubscription:
+    Type: AWS::SNS::Subscription
+    Condition: IsNotificationEnabled
+    Properties:
+      Protocol: email
+      Endpoint: !Ref NotificationEmail
+      TopicArn: !Ref LambdaFunction.DestinationTopic
+  ConfigureLambda:
+    Type: Custom::ConfigureLambda
+    Properties:
+      ServiceToken: !GetAtt CustomResourceFunction.Arn
+      LambdaArn: !GetAtt LambdaFunction.Arn
+      DLQ:
+        EnableDLQ: !Ref EnableDLQ
+        RetryLimit: !Ref DLQRetryLimit
+        RetryDelay: !Ref DLQRetryDelay
+        DLQArn: !If
+          - DLQEnabled
+          - !GetAtt DeadLetterQueue.Arn
+          - !Ref AWS::NoValue
+        DLQS3Bucket: !If
+          - DLQEnabled
+          - !Ref DLQS3Bucket
+          - !Ref AWS::NoValue
+        DLQ_URL: !If
+          - DLQEnabled
+          - !Ref DeadLetterQueue
+          - !Ref AWS::NoValue
+      Parameters:
+        CoralogixRegion: !Ref CoralogixRegion
+        CustomDomain: !Ref CustomDomain
+        ApiKey: !If
+          - StoreAPIKeyInSecretsManager
+          - !Ref Secret
+          - !Ref ApiKey
+        ApplicationName: !Ref ApplicationName
+        SubsystemName: !Ref SubsystemName
+        AddMetadata: !Ref AddMetadata
+        CustomMetadata: !Ref CustomMetadata
+        NewlinePattern: !Ref NewlinePattern
+        BlockingPattern: !Ref BlockingPattern
+        SamplingRate: !Ref SamplingRate
+        LogLevel: !Ref LogLevel
+        S3BucketName: !Ref S3BucketName
+        CSVDelimiter: !Ref CSVDelimiter
+        FunctionMemorySize: !Ref FunctionMemorySize
+        FunctionTimeout: !Ref FunctionTimeout
+        SNSTopicArn: !Ref SNSTopicArn
+        SQSTopicArn: !Ref SQSTopicArn
+        SQSIntegrationTopicArn: !Ref SQSIntegrationTopicArn
+        SNSIntegrationTopicArn: !Ref SNSIntegrationTopicArn
+        KinesisStreamArn: !Ref KinesisStreamArn
+        IntegrationType: !Ref IntegrationType
+        CloudWatchLogGroupName: !Ref CloudWatchLogGroupName
+        CloudWatchLogGroupPrefix: !Ref CloudWatchLogGroupPrefix
+        LambdaLogRetention: !Ref LambdaLogRetention
+        NotificationEmail: !Ref NotificationEmail
+        StoreAPIKeyInSecretsManager: !Ref StoreAPIKeyInSecretsManager
+        LambdaSubnetID: !Ref LambdaSubnetID
+        LambdaSecurityGroupID: !Ref LambdaSecurityGroupID
+        UsePrivateLink: !Ref UsePrivateLink
+        MSKClusterArn: !Ref MSKClusterArn
+        KafkaTopic: !Ref KafkaTopic
+        KafkaBatchSize: !Ref KafkaBatchSize
+        KafkaBrokers: !Ref KafkaBrokers
+        KafkaSubnets: !Ref KafkaSubnets
+        KafkaSecurityGroups: !Ref KafkaSecurityGroups
+        S3KeyPrefix: !If
+          - S3KeyPrefixIsSet
+          - !Ref S3KeyPrefix
+          - !If
+            - UseAWSDefaultPrefix
+            - 'AWSLogs/'
+            - ''
+        S3KeySuffix: !If
+          - S3SuffixIsSet
+          - !Ref S3KeySuffix
+          - !If
+            - UseAWSDefaultCloudTrailSuffix
+            - '.json.gz'
+            - !If
+              - UseAWSDefaultVpcFlowSuffix
+              - '.log.gz'
+              - ""
+        CoralogixEndpoint: !If
+          - IsCustomDomain
+          - !If
+            - IsPrivateLink
+            - !Sub
+              - https://ingress.private.${domain}
+              - domain: !Ref CustomDomain
+            - !Sub
+              - https://ingress.${domain}
+              - domain: !Ref CustomDomain
+          - !If
+            - IsPrivateLink
+            - !Sub
+              - https://ingress.private.${domain}
+              - domain: !FindInMap
+                  - CoralogixRegionMap
+                  - !Ref CoralogixRegion
+                  - Domain
+            - !Sub
+              - https://ingress.${domain}
+              - domain: !FindInMap
+                  - CoralogixRegionMap
+                  - !Ref CoralogixRegion
+                  - Domain
+        CoralogixAPIKey: !If
+          - StoreAPIKeyInSecretsManager
+          - !Ref Secret
+          - !Ref ApiKey
+    Metadata:
+      SamResourceId: ConfigureLambda
+  LambdaLogGroup:
     DeletionPolicy: Retain
     UpdateReplacePolicy: Retain
+    Type: 'AWS::Logs::LogGroup'
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${LambdaFunction}'
+      RetentionInDays: !Ref LambdaLogRetention
+      ##################################
+      # ------------ DLQ --------------#
+      ##################################
+  DeadLetterQueue:
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
     Condition: DLQEnabled
     Type: AWS::SQS::Queue
     Properties:
-      QueueName: "coralogix-aws-shipper-dlq"
+      QueueName: !Sub coralogix-aws-shipper-dlq-${AWS::StackName}
       DelaySeconds: !Ref DLQRetryDelay
       MessageRetentionPeriod: 1209600
       VisibilityTimeout: !Ref FunctionTimeout
-  ################################
-  # ----- With Defaults -------  #
-  ################################
-  LambdaFunctionDefault:
-    Condition: UseDefault
-    Type: AWS::Serverless::Function
-    Properties:
-      CodeUri:
-        Bucket:
-          Fn::Sub: coralogix-serverless-repo-${AWS::Region}
-        Key:
-          Fn::If:
-            - CpuArchIsx8664
-            - coralogix-aws-shipper-x86-64.zip
-            - coralogix-aws-shipper.zip
-      EventInvokeConfig:
-        DestinationConfig:
-          OnFailure:
-            Type: SNS
-      Policies:
-        - S3ReadPolicy:
-            BucketName: !Ref S3BucketName
-        - !If
-          - ApiKeyIsArn
-          - Statement:
-              - Effect: Allow
-                Action:
-                  - 'secretsmanager:GetSecretValue'
-                Resource: !Ref ApiKey
-          - !If
-            - StoreAPIKeyInSecretsManager
-            - Statement:
-                - Effect: Allow
-                  Action:
-                    - 'secretsmanager:GetSecretValue'
-                  Resource: !Ref Secret
-            # Note, this is a hack to get around the fact that you can't have a condition on a policy
-            # If the Apikey is not an ARn or we are not storing the key in secrets manager, then we don't need access
-            # to secrets manager
-            - Statement:
-                - Effect: Deny
-                  Action:
-                    - 'secretsmanager:GetSecretValue'
-                  Resource: '*'
-  LambdaLogGroupDefault:
-    Condition: UseDefault
-    DeletionPolicy: Retain
-    UpdateReplacePolicy: Retain
-    Type: 'AWS::Logs::LogGroup'
-    Properties:
-      LogGroupName: !Sub '/aws/lambda/${LambdaFunctionDefault}'
-      RetentionInDays: !Ref LambdaLogRetention
-  LambdaFunctionInvokePermissionDefault:
-    Type: AWS::Lambda::Permission
-    Condition: UseDefault
-    Properties:
-      FunctionName: !GetAtt [LambdaFunctionDefault, Arn]
-      Action: lambda:InvokeFunction
-      Principal: s3.amazonaws.com
-      SourceAccount: !Ref AWS::AccountId
-      SourceArn: !Sub "arn:aws:s3:::${S3BucketName}"
-  LambdaTriggerDefault:
-    Condition: UseDefault
-    Type: Custom::LambdaTrigger
-    DependsOn: LambdaFunctionInvokePermissionDefault
-    Properties:
-      ServiceToken: !GetAtt [CustomResourceLambdaTriggerFunction, Arn]
-      LambdaArn: !GetAtt [LambdaFunctionDefault, Arn]
-      Command: configure_s3_trigger
-      Bucket: !Ref S3BucketName
-      Suffix: !If
-        - S3SuffixIsSet
-        - !Ref S3KeySuffix
-        - !If
-          - UseAWSDefaultCloudTrailSuffix
-          - '.json.gz'
-          - !If
-            - UseAWSDefaultVpcFlowSuffix
-            - '.log.gz'
-            - ""
-      Prefix: !If
-        - S3KeyPrefixIsSet
-        - !Ref S3KeyPrefix
-        - !If
-          - UseAWSDefaultPrefix
-          - 'AWSLogs/'
-          - ''
-  LambdaFunctionNotificationSubscriptionDefault:
-    Condition: UseDefaultWithNotification
-    Type: AWS::SNS::Subscription
-    Properties:
-      Protocol: email
-      Endpoint: !Ref NotificationEmail
-      TopicArn: !Ref LambdaFunctionDefault.DestinationTopic
-  LambdaFunctionDefaultDLQ:
-    Condition: DLQEnabledAndUseDefault
-    Type: Custom::LambdaTrigger
-    Properties:
-      ServiceToken: !GetAtt [CustomResourceLambdaTriggerFunction, Arn]
-      LambdaArn: !GetAtt ['LambdaFunctionDefault', Arn]
-      DLQArn: !GetAtt ['DeadLetterQueue', Arn]
-      Command: configure_dlq
-  ################################
-  # ----- With SNS TopiC ------- #
-  ################################
-  LambdaFunctionWithSNSTopic:
-    Condition: UseSNSTopicARN
-    Type: AWS::Serverless::Function
-    Properties:
-      CodeUri:
-        Bucket:
-          Fn::Sub: coralogix-serverless-repo-${AWS::Region}
-        Key:
-          Fn::If:
-            - CpuArchIsx8664
-            - coralogix-aws-shipper-x86-64.zip
-            - coralogix-aws-shipper.zip
-      Policies:
-        - !If
-          - IsSNSIntegration
-          - !Ref AWS::NoValue
-          - S3ReadPolicy:
-              BucketName: !Ref S3BucketName
-        - !If
-          - ApiKeyIsArn
-          - Statement:
-              - Effect: Allow
-                Action:
-                  - 'secretsmanager:GetSecretValue'
-                Resource: !Ref ApiKey
-          - !If
-            - StoreAPIKeyInSecretsManager
-            - Statement:
-                - Effect: Allow
-                  Action:
-                    - 'secretsmanager:GetSecretValue'
-                  Resource: !Ref Secret
-            # Note, this is a hack to get around the fact that you can't have a condition on a policy
-            # If the Apikey is not an ARn or we are not storing the key in secrets manager, then we don't need access
-            # to secrets manager
-            - Statement:
-                - Effect: Deny
-                  Action:
-                    - 'secretsmanager:GetSecretValue'
-                  Resource: '*'
-      EventInvokeConfig:
-        DestinationConfig:
-          OnFailure:
-            Type: SNS
-      Events:
-        SNSEvent:
-          Type: SNS
-          Properties:
-            Topic: !If
-              - IsSNSIntegration
-              - !Ref SNSIntegrationTopicArn
-              - !Ref SNSTopicArn
-  LambdaLogGroupWithSNSTopic:
-    Condition: UseSNSTopicARN
-    DeletionPolicy: Retain
-    UpdateReplacePolicy: Retain
-    Type: 'AWS::Logs::LogGroup'
-    Properties:
-      LogGroupName: !Sub '/aws/lambda/${LambdaFunctionWithSNSTopic}'
-      RetentionInDays: !Ref LambdaLogRetention
-  LambdaFunctionInvokePermissionWithSNSTopic:
-    Type: AWS::Lambda::Permission
-    Condition: UseSNSTopicARN
-    Properties:
-      FunctionName: !GetAtt [LambdaFunctionWithSNSTopic, Arn]
-      Action: lambda:InvokeFunction
-      Principal: s3.amazonaws.com
-      SourceAccount: !Ref AWS::AccountId
-      SourceArn: !Sub "arn:aws:s3:::${S3BucketName}"
-  LambdaFunctionNotificationSubscriptionWithSNSTopic:
-    Type: AWS::SNS::Subscription
-    Condition: UseSNSTopicARNWithNotification
-    Properties:
-      Protocol: email
-      Endpoint: !Ref NotificationEmail
-      TopicArn: !Ref LambdaFunctionWithSNSTopic.DestinationTopic
-  LambdaFunctionWithSNSTopicDLQ:
-    Condition: DLQEnabledAndUseSNSTopicARN
-    Type: Custom::LambdaTrigger
-    Properties:
-      ServiceToken: !GetAtt [CustomResourceLambdaTriggerFunction, Arn]
-      LambdaArn: !GetAtt ['LambdaFunctionWithSNSTopic', Arn]
-      DLQArn: !GetAtt ['DeadLetterQueue', Arn]
-      Command: configure_dlq
-  ################################
-  # ----- With Cloudwatch -----  #
-  ################################
-  LambdaFunctionCloudwatchLogs:
-    Condition: UseCloudwatchLogs
-    Type: AWS::Serverless::Function
-    Properties:
-      CodeUri:
-        Bucket:
-          Fn::Sub: coralogix-serverless-repo-${AWS::Region}
-        Key:
-          Fn::If:
-            - CpuArchIsx8664
-            - coralogix-aws-shipper-x86-64.zip
-            - coralogix-aws-shipper.zip
-      Policies:
-        - !If
-          - ApiKeyIsArn
-          - Statement:
-              - Effect: Allow
-                Action:
-                  - 'secretsmanager:GetSecretValue'
-                Resource: !Ref ApiKey
-          - !If
-            - StoreAPIKeyInSecretsManager
-            - Statement:
-                - Effect: Allow
-                  Action:
-                    - 'secretsmanager:GetSecretValue'
-                  Resource: !Ref Secret
-            # Note, this is a hack to get around the fact that you can't have a condition on a policy
-            # If the Apikey is not an ARn or we are not storing the key in secrets manager, then we don't need access
-            # to secrets manager
-            - Statement:
-                - Effect: Deny
-                  Action:
-                    - 'secretsmanager:GetSecretValue'
-                  Resource: '*'
-                  # - !If
-                  #   - ApiKeyIsArn
-                  #   - Statement:
-                  #       - Effect: Allow
-                  #         Action:
-                  #           - 'secretsmanager:GetSecretValue'
-                  #         Resource: !Ref ApiKey
-                  #   - !If
-                  #     - StoreAPIKeyInSecretsManager
-                  #     - Statement:
-                  #         - Effect: Allow
-                  #           Action:
-                  #             - 'secretsmanager:GetSecretValue'
-                  #           Resource: !Ref Secret
-                  #     - !Ref AWS::NoValue
-      EventInvokeConfig:
-        DestinationConfig:
-          OnFailure:
-            Type: SNS
-  LambdaFunctionCloudwatchLogsPolicies:
-    Condition: UseCloudwatchLogsWithSecretPolicy
-    Type: "AWS::IAM::ManagedPolicy"
-    Properties:
-      Path: "/"
-      PolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Action:
-              - "secretsmanager:GetSecretValue"
-            Resource: !If
-              - ApiKeyIsArn
-              - !Ref ApiKey
-              - !If
-                - StoreAPIKeyInSecretsManager
-                - !Ref Secret
-                - !Ref AWS::NoValue
-  LambdaLogGroupCloudwatchLogs:
-    Condition: UseCloudwatchLogs
-    DeletionPolicy: Retain
-    UpdateReplacePolicy: Retain
-    Type: 'AWS::Logs::LogGroup'
-    Properties:
-      LogGroupName: !Sub '/aws/lambda/${LambdaFunctionCloudwatchLogs}'
-      RetentionInDays: !Ref LambdaLogRetention
-  LambdaFunctionNotificationSubscriptionCloudwatchLogs:
-    Type: AWS::SNS::Subscription
-    Condition: UseCloudwatchLogsWithNotification
-    Properties:
-      Protocol: email
-      Endpoint: !Ref NotificationEmail
-      TopicArn: !Sub LambdaFunctionCloudwatchLogs.DestinationTopic
-  LambdaTriggerCloudwatchLogs:
-    Condition: UseCloudwatchLogs
-    Type: Custom::LambdaTrigger
-    # DependsOn: LambdaFunctionInvokePermissionCloudwatchLogs
-    Properties:
-      ServiceToken: !GetAtt [CustomResourceLambdaTriggerFunction, Arn]
-      LambdaArn: !GetAtt ['LambdaFunctionCloudwatchLogs', Arn]
-      CloudwatchGroup: !Ref CloudWatchLogGroupName
-      CloudwatchPrefix: !Ref CloudWatchLogGroupPrefix
-      Command: configure_cloudwatch_trigger
-  # LambdaFunctionInvokePermissionCloudwatchLogs:
-  #   Type: AWS::Lambda::Permission
-  #   Condition: UseCloudwatchLogs
-  #   Properties:
-  #     FunctionName: !GetAtt [ 'LambdaFunctionCloudwatchLogs', Arn ]
-  #     Action: lambda:InvokeFunction
-  #     Principal: logs.amazonaws.com
-  #     SourceAccount: !Ref AWS::AccountId
-  #     SourceArn: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:*:*"
-  LambdaFunctionCloudwatchLogsDLQ:
-    Condition: DLQEnabledAndUseCloudwatchLogs
-    Type: Custom::LambdaTrigger
-    Properties:
-      ServiceToken: !GetAtt [CustomResourceLambdaTriggerFunction, Arn]
-      LambdaArn: !GetAtt ['LambdaFunctionCloudwatchLogs', Arn]
-      DLQArn: !GetAtt ['DeadLetterQueue', Arn]
-      Command: configure_dlq
-  ################################
-  # ----- With SQS TopiC ------- #
-  ################################
-  LambdaFunctionWithSQSTopic:
-    Condition: UseSQSTopicARN
-    Type: AWS::Serverless::Function
-    Properties:
-      CodeUri:
-        Bucket:
-          Fn::Sub: coralogix-serverless-repo-${AWS::Region}
-        Key:
-          Fn::If:
-            - CpuArchIsx8664
-            - coralogix-aws-shipper-x86-64.zip
-            - coralogix-aws-shipper.zip
-      Policies:
-        - !If
-          - IsSQSIntegration
-          - !Ref AWS::NoValue
-          - S3ReadPolicy:
-              BucketName: !Ref S3BucketName
-        - Statement:
-            - Effect: Allow
-              Action:
-                - 'secretsmanager:GetSecretValue'
-              Resource: !Sub 'arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:*'
-      EventInvokeConfig:
-        DestinationConfig:
-          OnFailure:
-            Type: SNS
-      Events:
-        SQSEvent:
-          Type: SQS
-          Properties:
-            Queue: !If
-              - IsSQSIntegration
-              - !Ref SQSIntegrationTopicArn
-              - !Ref SQSTopicArn
-  LambdaLogGroupWithSQSTopic:
-    Condition: UseSQSTopicARN
-    DeletionPolicy: Retain
-    UpdateReplacePolicy: Retain
-    Type: 'AWS::Logs::LogGroup'
-    Properties:
-      LogGroupName: !Sub '/aws/lambda/${LambdaFunctionWithSQSTopic}'
-      RetentionInDays: !Ref LambdaLogRetention
-  LambdaFunctionInvokePermissionWithSQSTopic:
-    Type: AWS::Lambda::Permission
-    Condition: UseSQSTopicARN
-    Properties:
-      FunctionName: !GetAtt [LambdaFunctionWithSQSTopic, Arn]
-      Action: lambda:InvokeFunction
-      Principal: s3.amazonaws.com
-      SourceAccount: !Ref AWS::AccountId
-      SourceArn: !Sub "arn:aws:s3:::${S3BucketName}"
-  LambdaFunctionNotificationSubscriptionWithSQSTopic:
-    Type: AWS::SNS::Subscription
-    Condition: UseSQSTopicARNWithNotification
-    Properties:
-      Protocol: email
-      Endpoint: !Ref NotificationEmail
-      TopicArn: !Ref LambdaFunctionWithSQSTopic.DestinationTopic
-  LambdaFunctionWithSQSTopicDLQ:
-    Condition: DLQEnabledAndUseSQSTopicARN
-    Type: Custom::LambdaTrigger
-    Properties:
-      ServiceToken: !GetAtt [CustomResourceLambdaTriggerFunction, Arn]
-      LambdaArn: !GetAtt ['LambdaFunctionWithSQSTopic', Arn]
-      DLQArn: !GetAtt ['DeadLetterQueue', Arn]
-      Command: configure_dlq
-  ################################
-  # ----- With Kinesis TopiC ------- #
-  ################################
-  LambdaFunctionWithKinesisTopic:
+      ##################################
+      # ---------- Kinesis ------------#
+      ##################################
+  KinesisEventSourceMapping:
     Condition: UseKinesisStreamARN
-    Type: AWS::Serverless::Function
+    Type: AWS::Lambda::EventSourceMapping
     Properties:
-      CodeUri:
-        Bucket:
-          Fn::Sub: coralogix-serverless-repo-${AWS::Region}
-        Key:
-          Fn::If:
-            - CpuArchIsx8664
-            - coralogix-aws-shipper-x86-64.zip
-            - coralogix-aws-shipper.zip
-      Policies:
-        - !If
-          - IsKinesisIntegration
-          - !Ref AWS::NoValue
-          - S3ReadPolicy:
-              BucketName: !Ref S3BucketName
-        - Statement:
-            - Effect: Allow
-              Action:
-                - 'secretsmanager:GetSecretValue'
-              Resource: !Sub 'arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:*'
-      EventInvokeConfig:
-        DestinationConfig:
-          OnFailure:
-            Type: SNS
-      Events:
-        KinesisEvent:
-          Type: Kinesis
-          Properties:
-            StartingPosition: LATEST
-            Stream: !Ref KinesisStreamArn
-  LambdaLogGroupWithKinesisTopic:
-    Condition: UseKinesisStreamARN
-    DeletionPolicy: Retain
-    UpdateReplacePolicy: Retain
-    Type: 'AWS::Logs::LogGroup'
-    Properties:
-      LogGroupName: !Sub '/aws/lambda/${LambdaFunctionWithKinesisTopic}'
-      RetentionInDays: !Ref LambdaLogRetention
-  LambdaFunctionInvokePermissionWithKinesisTopic:
-    Type: AWS::Lambda::Permission
-    Condition: UseKinesisStreamARN
-    Properties:
-      FunctionName: !GetAtt [LambdaFunctionWithKinesisTopic, Arn]
-      Action: lambda:InvokeFunction
-      Principal: s3.amazonaws.com
-      SourceAccount: !Ref AWS::AccountId
-      SourceArn: !Sub "arn:aws:s3:::${S3BucketName}"
-  LambdaFunctionNotificationSubscriptionWithKinesisTopic:
-    Type: AWS::SNS::Subscription
-    Condition: UseKinesisTopicARNWithNotification
-    Properties:
-      Protocol: email
-      Endpoint: !Ref NotificationEmail
-      TopicArn: !Ref LambdaFunctionWithKinesisTopic.DestinationTopic
-  LambdaFunctionWithKinesisTopicDLQ:
-    Condition: DLQEnabledAndUseKinesisStreamARN
-    Type: Custom::LambdaTrigger
-    Properties:
-      ServiceToken: !GetAtt [CustomResourceLambdaTriggerFunction, Arn]
-      LambdaArn: !GetAtt ['LambdaFunctionWithKinesisTopic', Arn]
-      DLQArn: !GetAtt ['DeadLetterQueue', Arn]
-      Command: configure_dlq
-  ################################
-  # ----- With MSK TopiC ------- #
-  ################################
-  LambdaFunctionWithMSK:
-    Condition: UseMSK
-    Type: AWS::Serverless::Function
-    Properties:
-      CodeUri:
-        Bucket:
-          Fn::Sub: coralogix-serverless-repo-${AWS::Region}
-        Key:
-          Fn::If:
-            - CpuArchIsx8664
-            - coralogix-aws-shipper-x86-64.zip
-            - coralogix-aws-shipper.zip
-      Policies:
-        - AWSLambdaMSKExecutionRole
-        - Statement:
-            - Effect: Allow
-              Action:
-                - 'secretsmanager:GetSecretValue'
-              Resource: !Sub 'arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:*'
-      EventInvokeConfig:
-        DestinationConfig:
-          OnFailure:
-            Type: SNS
-            # Events:
-            #   MSKEvent:
-            #     Type: MSK
-            #     Properties:
-            #       Stream: !Ref MSKClusterArn
-            #       StartingPosition: LATEST
-  #       Topics: 
-  #         - !Ref KafkaTopic
-
-  LambdaTriggerMskTopic:
-    Condition: UseMSK
-    Type: Custom::LambdaTrigger
-    Properties:
-      ServiceToken: !GetAtt [CustomResourceLambdaTriggerFunction, Arn]
-      LambdaName: !GetAtt ['LambdaFunctionWithMSK', Arn]
-      MSKClusterArn: !Ref MSKClusterArn
-      TopicsList: !Ref KafkaTopic
-      Command: configure_msk_trigger
-  LambdaLogGroupMSK:
-    Condition: UseMSK
-    DeletionPolicy: Retain
-    UpdateReplacePolicy: Retain
-    Type: 'AWS::Logs::LogGroup'
-    Properties:
-      LogGroupName: !Sub '/aws/lambda/${LambdaFunctionWithMSK}'
-      RetentionInDays: !Ref LambdaLogRetention
-  LambdaFunctionNotificationSubscriptionMSK:
-    Condition: UseMSKWithNotification
-    Type: AWS::SNS::Subscription
-    Properties:
-      Protocol: email
-      Endpoint: !Ref NotificationEmail
-      TopicArn: !Ref LambdaFunctionWithMSK.DestinationTopic
-  LambdaFunctionWithMSKDLQ:
-    Condition: DLQEnabledAndUseMSK
-    Type: Custom::LambdaTrigger
-    Properties:
-      ServiceToken: !GetAtt [CustomResourceLambdaTriggerFunction, Arn]
-      LambdaArn: !GetAtt ['LambdaFunctionWithMSK', Arn]
-      DLQArn: !GetAtt ['DeadLetterQueue', Arn]
-      Command: configure_dlq
-  ##################################
-  # ----- With Kafka TopiC ------- #
-  ##################################
-  LambdaFunctionWithKafka:
-    Condition: UseKafka
-    Type: AWS::Serverless::Function
-    Properties:
-      CodeUri:
-        Bucket:
-          Fn::Sub: coralogix-serverless-repo-${AWS::Region}
-        Key:
-          Fn::If:
-            - CpuArchIsx8664
-            - coralogix-aws-shipper-x86-64.zip
-            - coralogix-aws-shipper.zip
-      Policies:
-        - AWSLambdaMSKExecutionRole
-        - Statement:
-            - Effect: Allow
-              Action:
-                - 'secretsmanager:GetSecretValue'
-              Resource: !Sub 'arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:*'
-        - Statement:
-            - Sid: VPCAccessPolicy
-              Effect: Allow
-              Action:
-                - ec2:CreateNetworkInterface
-                - ec2:DescribeNetworkInterfaces
-                - ec2:DeleteNetworkInterface
-                - ec2:DescribeVpcs
-                - ec2:DescribeSubnets
-                - ec2:DescribeSecurityGroups
-              Resource: "*"
-      EventInvokeConfig:
-        DestinationConfig:
-          OnFailure:
-            Type: SNS
-  LambdaTrigger:
-    Type: Custom::KafkaTrigger
-    Condition: UseKafka
-    Properties:
-      ServiceToken:
-        Fn::GetAtt:
-          - CustomResourceLambdaTriggerFunction
-          - Arn
-      Brokers: !Ref KafkaBrokers
-      Topic: !Ref KafkaTopic
-      Function: !GetAtt LambdaFunctionWithKafka.Arn
-      BatchSize: !Ref KafkaBatchSize
+      BatchSize: 100
+      EventSourceArn: !Ref KinesisStreamArn
+      FunctionName: !GetAtt LambdaFunction.Arn
       StartingPosition: LATEST
-      SecurityGroupIds: !Ref KafkaSecurityGroups
-      SubnetIds: !Ref KafkaSubnets
-      Command: configure_kafka_trigger
-  LambdaFunctionNotificationSubscriptionWithKafkaTopic:
+      ##################################
+      # ------------ MSK-- ------------#
+      ##################################
+  MSKEventSourceMapping:
+    Condition: UseMSK
+    Type: AWS::Lambda::EventSourceMapping
+    Properties:
+      BatchSize: !Ref KafkaBatchSize
+      EventSourceArn: !Ref MSKClusterArn
+      FunctionName: !GetAtt LambdaFunction.Arn
+      StartingPosition: LATEST
+      Topics: !Split [",", !Ref KafkaTopic]
+      ##################################
+      # ------------ SQS-- ------------#
+      ##################################
+  SQSEventSourceMapping:
+    Condition: SQSIsSet
+    Type: AWS::Lambda::EventSourceMapping
+    Properties:
+      BatchSize: 10
+      FunctionName: !GetAtt LambdaFunction.Arn
+      # StartingPosition: LATEST
+      EventSourceArn: !If
+        - IsSQSIntegration
+        - !Ref SQSIntegrationTopicArn
+        - !Ref SQSTopicArn
+  SQSEventPermission:
+    Condition: SQSIsSet
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt LambdaFunction.Arn
+      Principal: sns.amazonaws.com
+      SourceArn: !If
+        - IsSQSIntegration
+        - !Ref SQSIntegrationTopicArn
+        - !Ref SQSTopicArn
+        ##################################
+        # ------------ SNS-- ------------#
+        ##################################
+  SNSSubscription:
+    Condition: SNSIsSet
     Type: AWS::SNS::Subscription
-    Condition: UseKatkaTopicARNWithNotification
     Properties:
-      Protocol: email
-      Endpoint: !Ref NotificationEmail
-      TopicArn: !Ref LambdaFunctionWithKafka.DestinationTopic
-  LambdaFunctionWithKafkaDLQ:
-    Condition: DLQEnabledAndUseKafkaTopicARN
-    Type: Custom::LambdaTrigger
+      Protocol: lambda
+      Endpoint: !GetAtt LambdaFunction.Arn
+      TopicArn: !If
+        - IsSNSIntegration
+        - !Ref SNSIntegrationTopicArn
+        - !Ref SNSTopicArn
+  SNSEventPermission:
+    Condition: SNSIsSet
+    Type: AWS::Lambda::Permission
     Properties:
-      ServiceToken: !GetAtt [CustomResourceLambdaTriggerFunction, Arn]
-      LambdaArn: !GetAtt ['LambdaFunctionWithKafka', Arn]
-      DLQArn: !GetAtt ['DeadLetterQueue', Arn]
-      Command: configure_dlq
-      ##################################
-      # ----- With ECR Scan Image -----#
-      ##################################
-  LambdaFunctionWithECRScan:
-    Condition: UseECRScan
-    Type: AWS::Serverless::Function
-    Properties:
-      CodeUri:
-        Bucket:
-          Fn::Sub: coralogix-serverless-repo-${AWS::Region}
-        Key:
-          Fn::If:
-            - CpuArchIsx8664
-            - coralogix-aws-shipper-x86-64.zip
-            - coralogix-aws-shipper.zip
-      Policies:
-        - AWSLambdaBasicExecutionRole
-        - Statement:
-            - Effect: Allow
-              Action:
-                - 'ecr:DescribeImageScanFindings'
-              Resource: !Sub 'arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/*'
-            - Effect: Allow
-              Action:
-                - 'secretsmanager:GetSecretValue'
-              Resource: !Sub 'arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:*'
-        - Statement:
-            - Effect: Allow
-              Action:
-                - events:PutEvents
-              Resource: "*"
-      EventInvokeConfig:
-        DestinationConfig:
-          OnFailure:
-            Type: SNS
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt LambdaFunction.Arn
+      Principal: sns.amazonaws.com
+      SourceArn: !If
+        - IsSNSIntegration
+        - !Ref SNSIntegrationTopicArn
+        - !Ref SNSTopicArn
+        ##################################
+        # -------  ECR Scan Image -------#
+        ##################################
   LambdaFunctionEcrInvokePermission:
     Condition: UseECRScan
     Type: AWS::Lambda::Permission
     Properties:
-      FunctionName: !GetAtt LambdaFunctionWithECRScan.Arn
+      FunctionName: !GetAtt LambdaFunction.Arn
       Action: lambda:InvokeFunction
       Principal: events.amazonaws.com
       SourceAccount: !Ref AWS::AccountId
@@ -1296,73 +935,62 @@ Resources:
           scan-status:
             - "COMPLETE"
       Targets:
-        - Arn: !GetAtt LambdaFunctionWithECRScan.Arn
+        - Arn: !GetAtt LambdaFunction.Arn
           Id: "TargetFunctionV1"
-  LambdaFunctionNotificationSubscriptionWithECRScanTopic:
-    Type: AWS::SNS::Subscription
-    Condition: UseECRScanWithNotification
-    Properties:
-      Protocol: email
-      Endpoint: !Ref NotificationEmail
-      TopicArn: !Ref LambdaFunctionWithECRScan.DestinationTopic
-  LambdaFunctionWithECRScanDLQ:
-    Condition: DLQEnabledAndUseECRScan
-    Type: Custom::LambdaTrigger
-    Properties:
-      ServiceToken: !GetAtt [CustomResourceLambdaTriggerFunction, Arn]
-      LambdaArn: !GetAtt ['LambdaFunctionWithECRScan', Arn]
-      DLQArn: !GetAtt ['DeadLetterQueue', Arn]
-      Command: configure_dlq
-  ################################ 
-  # ----- Custom Resource -----  #
-  ################################
-
-  # define a custom resource to create the trigger.
-  CustomResourceLambdaTriggerFunction:
+          ##################################
+          # -- Custom Resource Definition -#
+          ##################################
+  CustomResourceFunction:
     Type: AWS::Serverless::Function
+    Metadata:
+      SamResourceId: CustomResourceFunction
     Properties:
-      VpcConfig:
-        Fn::If:
-          - UseVpcConfig
-          - SecurityGroupIds:
-              - !Ref LambdaSecurityGroupID
-            SubnetIds:
-              - !Ref LambdaSubnetID
-          - Ref: AWS::NoValue
       Handler: index.lambda_handler
       Runtime: python3.12
-      Timeout: 50
+      Timeout: 900
       Policies:
         - Statement:
-            - Sid: IAMAccess
+            - Sid: EC2Access
               Effect: Allow
               Action:
-                - iam:*
-              Resource: "*"
-        - Statement:
-            - Sid: SQSAccess
-              Effect: Allow
-              Action:
-                - sqs:*
-              Resource: "*"
+                - 'ec2:CreateNetworkInterface'
+                - 'ec2:DescribeNetworkInterfaces'
+                - 'ec2:DescribeVpcs'
+                - 'ec2:DeleteNetworkInterface'
+                - 'ec2:DescribeSubnets'
+                - 'ec2:DescribeSecurityGroups'
+              Resource: '*'
         - Statement:
             - Sid: LambdaAccess
               Effect: Allow
               Action:
                 - lambda:*
-              Resource: "*"
+              Resource: !GetAtt LambdaFunction.Arn
+        - Statement:
+            - Sid: EventSourceMappings
+              Effect: Allow
+              Action:
+                - lambda:ListEventSourceMappings
+                - lambda:CreateEventSourceMapping
+                - lambda:DeleteEventSourceMapping
+                - lambda:UpdateEventSourceMapping
+              Resource: '*'
         - Statement:
             - Sid: S3NotificationPolicy
               Effect: Allow
               Action:
                 - s3:GetBucketNotification
                 - s3:PutBucketNotification
-              Resource: !Sub "arn:aws:s3:::${S3BucketName}"
+              Resource:
+                Fn::Sub: arn:aws:s3:::${S3BucketName}
             - Sid: PutSubscriptionFilter
               Effect: Allow
               Action:
-                - "logs:PutSubscriptionFilter"
-                - "logs:DeleteSubscriptionFilter"
-                - "logs:DescribeSubscriptionFilters"
-              Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:*:*"
-      InlineCode: "import json\nimport boto3\n# import cfnresponse\nimport json, time, boto3, time\nfrom urllib import request, parse, error\n\ndef add_inline_policy(lambda_arn: str, policy_name: str, policy_document: dict):\n    try:\n        iam = boto3.client('iam')\n        aws_lambda = boto3.client('lambda')\n        \n        resp = aws_lambda.get_function_configuration(FunctionName=lambda_arn)\n        role_arn = resp['Role']\n        role_name = role_arn.split('/')[-1]\n        \n        print(f'creating policy for {lambda_arn}...')\n        policy_resp = iam.create_policy(\n            PolicyName=policy_name.replace('-', '_'),\n            PolicyDocument=json.dumps(policy_document),\n            Description=f'policy generated by CustomResource for {lambda_arn}',\n        )\n        \n        print(f'attaching {policy_name} for {lambda_arn} to role {role_name}...')\n        role_attach_response = iam.attach_role_policy(\n            RoleName=role_name,\n            PolicyArn=policy_resp['Policy']['Arn']\n        )\n        \n        time.sleep(30) # wait for policy to attach\n        print(f'policy atttachment result: {role_attach_response}')\n    except Exception as e:\n        print(f'add_inline_policy function failed: {e}')\n        raise e\n\n\nclass CFNResponse:\n    '''\n    CFNResponse class, temporary class used to handle cloudformation responses\n    as currently lambda has an issue importing cfnresponse module.\n    '''\n    SUCCESS = \"SUCCESS\"\n    FAILED = \"FAILED\"\n\n    def __init__(self, event, context):\n        self.event = event\n        self.context = context\n        self.response_url = event['ResponseURL']\n\n    def send(self, status, response_data={}, physical_resource_id=None, no_echo=False, reason=None):\n        response_body = {\n            'Status': status,\n            'Reason': reason or \"See the details in CloudWatch Log Stream: {}\".format(self.context.log_stream_name),\n            'PhysicalResourceId': physical_resource_id or self.context.log_stream_name,\n            'StackId': self.event['StackId'],\n            'RequestId': self.event['RequestId'],\n            'LogicalResourceId': self.event['LogicalResourceId'],\n            'NoEcho': no_echo,\n            'Data': response_data\n        }\n        json_response_body = json.dumps(response_body).encode('utf-8')\n        headers = {\n            'content-type': '',\n            'content-length': str(len(json_response_body))\n        }\n        try:\n            req = request.Request(self.response_url, data=json_response_body, headers=headers, method='PUT')\n            with request.urlopen(req) as response:\n                print(\"Status code:\", response.getcode())\n                print(\"Response:\", response.read().decode('utf-8'))\n        except error.HTTPError as e:\n            print(\"HTTPError:\", e.reason)\n            print(\"Status code:\", e.code)\n        except error.URLError as e:\n            print(\"URLError:\", e.reason)\n\n\nclass ConfigureS3Trigger:\n    '''\n    ConfigureS3Trigger class used to configure S3 Trigger implementation\n    '''\n    \n    def __init__(self, event, context, cfn):\n        self.context = context\n        self.event = event\n        self.cfn = cfn\n        self.cfn.SUCCESS \n        self.s3 = boto3.client('s3')\n        \n    def handle(self):\n        responseStatus = self.cfn.SUCCESS\n        try:\n            print(\"Request Type:\", self.event['RequestType'])\n            bucket = self.event['ResourceProperties']['Bucket']\n            BucketNotificationConfiguration = self.s3.get_bucket_notification_configuration(\n                Bucket=bucket\n            )\n            BucketNotificationConfiguration.pop('ResponseMetadata')\n            BucketNotificationConfiguration.setdefault('LambdaFunctionConfigurations', [])\n\n            if self.event['RequestType'] in ['Update', 'Delete']:\n                BucketNotificationConfiguration['LambdaFunctionConfigurations'] = list(\n                    filter(\n                        lambda configuration: configuration.get('Id') != self.event['PhysicalResourceId'],\n                        BucketNotificationConfiguration['LambdaFunctionConfigurations']\n                    )\n                )\n            if self.event['RequestType'] in ['Create', 'Update']:\n                BucketNotificationConfiguration['LambdaFunctionConfigurations'].append({\n                    'Id': self.event.get('PhysicalResourceId', self.context.aws_request_id),\n                    'LambdaFunctionArn': self.event['ResourceProperties']['LambdaArn'],\n                    'Filter': {\n                        'Key': {\n                            'FilterRules': [\n                                {\n                                    'Name': 'prefix',\n                                    'Value': self.event['ResourceProperties'].get('Prefix', '')\n                                },\n                                {\n                                    'Name': 'suffix',\n                                    'Value': self.event['ResourceProperties'].get('Suffix', '')\n                                },\n                            ]\n                        }\n                    },\n                    'Events': [\n                        's3:ObjectCreated:*'\n                    ]\n                })\n            if len(BucketNotificationConfiguration['LambdaFunctionConfigurations']) == 0:\n                BucketNotificationConfiguration.pop('LambdaFunctionConfigurations')\n            print(f'nofication configuration: {BucketNotificationConfiguration}')\n            self.s3.put_bucket_notification_configuration(\n                Bucket=bucket,\n                NotificationConfiguration=BucketNotificationConfiguration\n            )\n            responseStatus = self.cfn.SUCCESS\n            print(self.event['RequestType'], \"request completed....\")\n        except Exception as e:\n            print(\"Failed to process:\", e)\n            responseStatus = self.cfn.FAILED\n        finally:\n            print(\"Sending response to custom resource\")\n            self.cfn.send(\n                responseStatus,\n                physical_resource_id=self.event.get('PhysicalResourceId', self.context.aws_request_id)  \n            )\n            \n        \nclass ConfigureKafkaTrigger:\n    '''\n    ConfigureKafkaTrigger \n    ''' \n    \n    def __init__(self, event, context, cfn):\n        self.cfn = cfn\n        self.event = event\n        self.context = context\n        self.aws_lambda = boto3.client(\"lambda\")\n  \n    def delete_event_source_mappings(self, function_name):\n        mappings = self.aws_lambda.list_event_source_mappings(\n            FunctionName=function_name,\n        )[\"EventSourceMappings\"]\n        for mapping in mappings:\n            # disable mapping\n            if mapping[\"State\"] == \"Enabled\":\n                self.aws_lambda.update_event_source_mapping(\n                    UUID=mapping[\"UUID\"],\n                    FunctionName=function_name,\n                    Enabled=False\n                )\n            time.sleep(10) # wait for mapping to be disabled\n            self.aws_lambda.delete_event_source_mapping(UUID=mapping[\"UUID\"])\n    \n    def handle(self):\n        if self.event['ResourceProperties']['Command'] == 'configure_msk_trigger':\n            self.handle_msk()\n            return\n        self.handle_kafka()\n    \n    def handle_msk(self):\n        try:        \n            lambda_name = self.event['ResourceProperties']['LambdaName']\n            msk_cluster_arn = self.event['ResourceProperties']['MSKClusterArn']\n            if self.event['RequestType'] in ['Create', 'Update']:\n                TopicsListString = self.event['ResourceProperties']['TopicsList']\n                TopicsList = TopicsListString.split(',')\n                for topic in TopicsList:\n                    response = self.aws_lambda.create_event_source_mapping(\n                        EventSourceArn=msk_cluster_arn,\n                        FunctionName=lambda_name,\n                        Topics=[\n                            topic\n                        ],\n                        StartingPosition='LATEST',\n                        BatchSize=100,\n                    )\n            responseStatus = self.cfn.SUCCESS\n            print(self.event['RequestType'], \"request completed....\")\n        except Exception as exc:\n            print(\"Failed to process:\", exc)\n            responseStatus = self.cfn.FAILED\n        finally:\n            self.cfn.send(\n                responseStatus,\n                physical_resource_id=self.event.get('PhysicalResourceId', self.context.aws_request_id)\n            )\n  \n    def handle_kafka(self):\n        responseStatus = self.cfn.SUCCESS\n        physicalResourceId = self.event.get(\"PhysicalResourceId\")\n        function_name = self.event[\"ResourceProperties\"][\"Function\"]\n        try:\n            print(\"Request Type:\", self.event[\"RequestType\"])\n            if self.event[\"RequestType\"] in [\"Create\", \"Update\"]:\n                if self.event[\"RequestType\"] == \"Update\":\n                    print('Update event detected, deleting previous mapping(s)')\n                    self.delete_event_source_mappings(function_name)\n                response = self.aws_lambda.create_event_source_mapping(\n                    FunctionName=self.event[\"ResourceProperties\"][\"Function\"],\n                    BatchSize=int(self.event[\"ResourceProperties\"][\"BatchSize\"]),\n                    StartingPosition=self.event[\"ResourceProperties\"][\"StartingPosition\"],\n                    Topics=[\n                        self.event[\"ResourceProperties\"][\"Topic\"]\n                    ],\n                    SelfManagedEventSource={\n                        \"Endpoints\": {\n                            \"KAFKA_BOOTSTRAP_SERVERS\": self.event[\"ResourceProperties\"][\"Brokers\"]\n                        }\n                    },\n                    SourceAccessConfigurations=list([\n                        {\n                            \"Type\": \"VPC_SUBNET\",\n                            \"URI\": \"subnet:\" + subnetId\n                        } for subnetId in self.event[\"ResourceProperties\"][\"SubnetIds\"]\n                    ]) + list([\n                        {\n                            \"Type\": \"VPC_SECURITY_GROUP\",\n                            \"URI\": \"security_group:\" + securityGroupId\n                        } for securityGroupId in self.event[\"ResourceProperties\"][\"SecurityGroupIds\"]\n                    ])\n                )\n                physicalResourceId = response[\"UUID\"]\n                print(f\"EventSourceMapping successfully created: {physicalResourceId}\")\n            elif self.event[\"RequestType\"] == \"Delete\":\n                self.delete_event_source_mappings(function_name)\n                print(\"EventSourceMapping successfully deleted\")\n        except Exception as exc:\n            print(\"Failed to process:\", exc)\n            responseStatus = self.cfn.FAILED\n        finally:\n            self.cfn.send(responseStatus, physical_resource_id=physicalResourceId)      \n\n\nclass ConfigureCloudwatchTrigger:\n    '''\n    CloudwatchTrigger\n    '''\n    \n    def __init__(self, event, context, cfn):\n        self.event = event\n        self.context = context\n        self.cfn = cfn\n        self.aws_lambda = boto3.client(\"lambda\")\n        self.cloudwatch_logs = boto3.client('logs')\n        self.lambda_client = boto3.client('lambda')\n\n    def handle(self):\n        try:        \n            lambda_arn = self.event['ResourceProperties']['LambdaArn']\n            region = self.context.invoked_function_arn.split(\":\")[3]\n            account_id = self.context.invoked_function_arn.split(\":\")[4]\n            StringlogGroupName = self.event['ResourceProperties']['CloudwatchGroup']\n            logGroupName = StringlogGroupName.split(',')\n            LambdaPremissionPreFix = self.event['ResourceProperties']['CloudwatchPrefix'].split(',')\n            if self.event['RequestType'] in ['Update', 'Delete']:\n                for log_group in logGroupName:\n                    response = self.cloudwatch_logs.describe_subscription_filters(logGroupName=log_group)\n                    for filter in response['subscriptionFilters']:\n                        if filter['filterName'] == f'coralogix-aws-shipper-cloudwatch-trigger-{lambda_arn[-4:]}':\n                            self.cloudwatch_logs.delete_subscription_filter(\n                                filterName=f'coralogix-aws-shipper-cloudwatch-trigger-{lambda_arn[-4:]}',\n                                logGroupName=log_group\n                            )\n                        if not LambdaPremissionPreFix:\n                          response = self.aws_lambda.remove_permission(\n                              FunctionName=lambda_arn,\n                              StatementId=f'allow-trigger-from-{log_group.replace(\"/\", \"-\")}'\n                          )\n            if self.event['RequestType'] in ['Create', 'Update']:\n              if LambdaPremissionPreFix and LambdaPremissionPreFix != [\"\"]:\n                for prefix in LambdaPremissionPreFix:\n                  try:\n                    self.lambda_client.add_permission(\n                      FunctionName=lambda_arn,\n                      StatementId=f'allow-trigger-from-{prefix.replace(\"/\", \"-\")}-log-groups',\n                      Action='lambda:InvokeFunction',\n                      Principal='logs.amazonaws.com',\n                      SourceArn=f'arn:aws:logs:{region}:{account_id}:log-group:{prefix}*:*',\n                    )\n                  except Exception as e:\n                    print(\"permission already exists: \", str(e))\n\n              for log_group in logGroupName:\n                  response = self.cloudwatch_logs.describe_subscription_filters(\n                      logGroupName=log_group,\n                      filterNamePrefix=f'coralogix-aws-shipper-cloudwatch-trigger-{lambda_arn[-4:]}'\n                  )\n                  if not LambdaPremissionPreFix or LambdaPremissionPreFix == [\"\"]:\n                    if not response.get(\"subscriptionFilters\") or response.get(\"subscriptionFilters\")[0].get(\"destinationArn\") != lambda_arn:\n                        response = self.aws_lambda.add_permission(\n                            FunctionName=lambda_arn,\n                            StatementId=f'allow-trigger-from-{log_group.replace(\"/\", \"-\")}',\n                            Action='lambda:InvokeFunction',\n                            Principal='logs.amazonaws.com',\n                            SourceArn=f'arn:aws:logs:{region}:{account_id}:log-group:{log_group}:*',\n                        )\n                    time.sleep(1)\n                  self.cloudwatch_logs.put_subscription_filter(\n                      destinationArn=self.event['ResourceProperties']['LambdaArn'],\n                      filterName=f'coralogix-aws-shipper-cloudwatch-trigger-{lambda_arn[-4:]}',\n                      filterPattern='',\n                      logGroupName=log_group\n                  )\n\n            responseStatus = self.cfn.SUCCESS\n            print(self.event['RequestType'], \"request completed....\")\n        except Exception as e:\n            print(\"Failed to process:\", e)\n            responseStatus = self.cfn.FAILED\n        finally:\n            print(\"Sending response to custom resource\")\n            self.cfn.send(\n                responseStatus,\n                physical_resource_id=self.event.get('PhysicalResourceId', self.context.aws_request_id)\n            )\n\nclass ConfigureDLQ:\n    '''\n    ConfigureDLQ        \n    '''\n    \n    def __init__(self, event, context, cfn):\n        self.event = event\n        self.context = context\n        self.cfn = cfn\n        self.aws_lambda = boto3.client(\"lambda\")\n\n    def handle(self):\n        try:\n            lambda_arn = self.event['ResourceProperties']['LambdaArn']\n            if self.event['RequestType'] in ['Create', 'Update']:\n                # Add inline policy to allow lambda to send to sqs\n                lambda_name = lambda_arn.split(':')[-1]\n                policy_name = f'{lambda_name}_sqs_send_policy'\n                policy_document = {\n                    \"Version\": \"2012-10-17\",\n                    \"Statement\": [\n                        {\n                            \"Effect\": \"Allow\",\n                            \"Action\": [\n                                \"sqs:SendMessage\",\n                                \"sqs:ReceiveMessage\",\n                                \"sqs:DeleteMessage\",\n                                \"sqs:GetQueueAttributes\"\n                            ],\n                            \"Resource\": self.event['ResourceProperties']['DLQArn']\n                        },\n                        {\n                            \"Effect\": \"Allow\",\n                            \"Action\": [\n                                \"s3:PutObject\",\n                                \"s3:PutObjectAcl\",\n                                \"s3:AbortMultipartUpload\",\n                                \"s3:DeleteObject\",\n                                \"s3:PutObjectTagging\",\n                                \"s3:PutObjectVersionTagging\"\n                            ],\n                            \"Resource\": \"*\"\n                        }\n                    ]\n                }\n                \n                add_inline_policy(lambda_arn, policy_name, policy_document)\n                \n                self.aws_lambda.update_function_configuration(\n                    FunctionName=lambda_arn,\n                    DeadLetterConfig={\n                        'TargetArn': self.event['ResourceProperties']['DLQArn']\n                    },\n                )\n                \n                # Create event source mapping\n                self.aws_lambda.create_event_source_mapping(\n                    EventSourceArn=self.event['ResourceProperties']['DLQArn'],\n                    FunctionName=lambda_arn,\n                    Enabled=True,\n                    BatchSize=1,\n                )\n            responseStatus = self.cfn.SUCCESS\n            print(self.event['RequestType'], \"request completed....\")\n        except Exception as e:\n            print(\"Failed to process:\", e)\n            responseStatus = self.cfn.FAILED\n        finally:\n            print(\"Sending response to custom resource\")\n            self.cfn.send(\n                responseStatus,\n                physical_resource_id=self.event.get('PhysicalResourceId', self.context.aws_request_id)\n            )   \n\ndef lambda_handler(event, context):\n    print(\"Received event:\", json.dumps(event))\n    cfn = CFNResponse(event, context)\n    # identify the command to run\n    command = event['ResourceProperties']['Command']\n    \n    match command:\n        case 'configure_s3_trigger':\n            ConfigureS3Trigger(event, context, cfn).handle()\n            \n        case 'configure_kafka_trigger' | 'configure_msk_trigger':\n            ConfigureKafkaTrigger(event, context, cfn).handle()\n            \n        case 'configure_cloudwatch_trigger':\n            ConfigureCloudwatchTrigger(event, context, cfn).handle()\n            \n        case 'configure_dlq':\n            ConfigureDLQ(event, context, cfn).handle()\n    \n        case _:\n            raise ValueError(f\"invalid or unsupported custom resource command: {command}\")\n    \n    return\n"
+                - logs:PutSubscriptionFilter
+                - logs:DeleteSubscriptionFilter
+                - logs:DescribeSubscriptionFilters
+              Resource: !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:*:*
+      CodeUri:
+        Bucket:
+          Fn::Sub: coralogix-serverless-repo-${AWS::Region}
+        Key: coralogix-aws-shipper-custom-resource.zip
