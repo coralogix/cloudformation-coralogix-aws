@@ -1,4 +1,21 @@
 # Changelog
+
+## v1.0.11 / 2024-07-30
+### 🧰 Bug fixes 🧰
+- fix bug when trying to deploy CloudWatch integration. deploy with log group, with a name longer than 70 letters hit a limit with aws permission length, update the function so in case that the name is longer than 70 letters it will take the first 65 letters and the last 5.
+
+## v1.0.10 / 2024-07-23
+### 💡 Enhancements 💡
+- Improved tamplate.yaml
+
+## v1.0.9 / 2024-07-22
+### 💡 Enhancements 💡
+- Improved gzip process to support truncanted gzip files.
+
+### 🚀 New components 🚀
+- Added topic_name as option for Add_Metadata
+- Allow user to pass S3 Object URL as topic name or CloudWatchLogGroup, the code will ge the parameter value from this file.
+
 ## v1.0.8 / 2024-05-13
 ### 💡 Enhancements 💡
 - Disabled ANSI characters in tracing crate logs
