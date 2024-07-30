@@ -2,6 +2,9 @@
 
 ## AwsMetrics
 
+### 10.7.2024
+### Depend on specific role to make it more secure & pass wiz security check
+
 ### 2.7.2024
 ### New permissions for future convenience, we would be adding calls that need these permissions in near future
 - Add permissions:
