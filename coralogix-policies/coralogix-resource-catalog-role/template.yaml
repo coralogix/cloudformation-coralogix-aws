@@ -16,29 +16,40 @@ Parameters:
   RoleName:
     Type: String
     Description: The name of the role that will be created.
-  CustomerAccountId:
+  CustomAccountId:
     Type: String
     Description: Custom AWS account ID that you want to deploy the integration in.
     Default: ""
-
+  CustomCoralogixEnvId:
+    Type: String
+    Description: Custom Coralogix region ID that you want to deploy the integration in.
+    Default: ""
 Mappings:
   CoralogixEnvironment:
     EU1:
       ID: 625240141681
+      CxEnvId: production
     EU2:
       ID: 625240141681
+      CxEnvId: euprod2
     AP1:
       ID: 625240141681
+      CxEnvId: mumbaisaas
     Ap2:
       ID: 625240141681
+      CxEnvId: approd2
     US1:
       ID: 625240141681
+      CxEnvId: usprod1
     US2:
       ID: 739076534691
+      CxEnvId: cx498
     CustomEndpoint:
       ID: 000000000000
+      CxEnvId: production
 Conditions:
-  IsCustomAccountId: !Not [!Equals [!Ref CustomerAccountId, ""]]
+  IsCustomAccountId: !Not [!Equals [!Ref CustomAccountId, ""]]
+  IsCustomCoralogixEnvId: !Not [!Equals [!Ref CustomCoralogixEnvId, ""]]
 Resources:
   CoralogixAwsMetricsRole:
     Type: AWS::IAM::Role
@@ -51,11 +62,15 @@ Resources:
           - Effect: Allow
             Principal:
               AWS: !Sub
-                - "arn:aws:iam::${aws_account_id}:root"
+                - "arn:aws:iam::${aws_account_id}:role/inventory-manager-${CxEnvId}"
                 - aws_account_id: !If
                     - IsCustomAccountId
-                    - !Ref CustomerAccountId
+                    - !Ref CustomAccountId
                     - !FindInMap [CoralogixEnvironment, !Ref CoralogixRegion, "ID"]
+                  CxEnvId: !If
+                    - IsCustomCoralogixEnvId
+                    - !Ref CustomCoralogixEnvId
+                    - !FindInMap [CoralogixEnvironment, !Ref CoralogixRegion, "CxEnvId"]
             Action:
               - sts:AssumeRole
       Policies:
