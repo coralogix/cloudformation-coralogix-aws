@@ -43,7 +43,7 @@ Resources:
   CoralogixAwsMetricsRole:
     Type: AWS::IAM::Role
     Properties:
-      Description: description
+      Description: "Role to allow coralogix to describe ec2"
       RoleName: !Ref RoleName
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
@@ -59,7 +59,7 @@ Resources:
             Action:
               - sts:AssumeRole
       Policies:
-        - PolicyName: CoralogixMetricsPolicy
+        - PolicyName: CoralogixDescribeEc2Policy
           PolicyDocument:
             Version: "2012-10-17"
             Statement:
