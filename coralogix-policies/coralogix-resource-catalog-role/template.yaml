@@ -9,7 +9,7 @@ Parameters:
       - EU1
       - EU2
       - AP1
-      - Ap2
+      - AP2
       - US1
       - US2
       - CustomEndpoint
@@ -35,7 +35,7 @@ Mappings:
     AP1:
       ID: 625240141681
       CxEnvId: mumbaisaas
-    Ap2:
+    AP2:
       ID: 625240141681
       CxEnvId: approd2
     US1:
