@@ -101,3 +101,8 @@ Resources:
                   - storagegateway:ListGateways
                   - storagegateway:ListTagsForResource
                 Resource: "*"
+
+Outputs:
+  CoralogixAwsMetricsRoleArn:
+    Description: The ARN of the Coralogix AWS Metrics role.
+    Value: !GetAtt CoralogixAwsMetricsRole.Arn
