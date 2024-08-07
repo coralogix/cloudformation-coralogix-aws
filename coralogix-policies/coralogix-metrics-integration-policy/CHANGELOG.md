@@ -2,6 +2,9 @@
 
 ## AwsMetrics
 
+### 7.8.2024
+### Add output to the role that the module will create
+
 ### 10.7.2024
 ### Depend on specific role to make it more secure & pass wiz security check
 
