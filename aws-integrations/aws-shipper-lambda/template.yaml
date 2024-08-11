@@ -24,7 +24,7 @@ Metadata:
       - kinesis
       - cloudfront
     HomePageUrl: https://coralogix.com
-    SemanticVersion: 1.0.12
+    SemanticVersion: 1.0.13
     SourceCodeUrl: https://github.com/coralogix/coralogix-aws-shipper
   AWS::CloudFormation::Interface:
     ParameterGroups:
@@ -89,6 +89,8 @@ Metadata:
           - FunctionTimeout
           - LogLevel
           - LambdaLogRetention
+          - FunctionRunTime
+          - FunctionArchitectures
       - Label:
           default: VPC configuration Optional
         Parameters:
@@ -201,6 +203,20 @@ Parameters:
     MinValue: 30
     MaxValue: 900
     Default: 300
+  FunctionRunTime:
+    Type: String
+    Description: Type of runtime for the lambda, allowd values are provided.al2023 or provided.al2
+    Default: provided.al2023
+    AllowedValues:
+      - provided.al2023
+      - provided.al2
+  FunctionArchitectures:
+    Type: String
+    Description: Architectures for the lambda function, allowd values are arm64 or x86_64
+    Default: 'arm64'
+    AllowedValues:
+      - arm64
+      - x86_64
   SNSTopicArn:
     Type: String
     Description: The ARN for the SNS topic that contains the SNS subscription responsible for retrieving logs from Amazon S3
@@ -490,10 +506,11 @@ Resources:
     Type: AWS::Serverless::Function
     Metadata:
       SamResourceId: LambdaFunction
+      BuildMethod: makefile
     Properties:
       Description: Send logs to Coralogix.
       Handler: bootstrap
-      Runtime: provided.al2023
+      Runtime: !Ref FunctionRunTime
       Architectures:
         - Ref: CpuArch
       MemorySize: !Ref FunctionMemorySize
