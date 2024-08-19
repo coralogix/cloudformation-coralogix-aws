@@ -46,6 +46,9 @@ Mappings:
     Ap2:
       ID: 625240141681
       RoleSuffix: ap2
+    Ap3:
+      ID: 025066248247
+      RoleSuffix: ap3
     US1:
       ID: 625240141681
       RoleSuffix: us1
@@ -100,7 +103,7 @@ Resources:
                   - ec2:DescribeSpotFleetRequests
                   - storagegateway:ListGateways
                   - storagegateway:ListTagsForResource
-                  -	rds:Describe*
+                  - rds:Describe*
                   - rds:List*
                 Resource: "*"
 
