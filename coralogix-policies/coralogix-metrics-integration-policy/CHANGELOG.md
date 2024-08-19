@@ -3,7 +3,7 @@
 ## AwsMetrics
 
 ### 13.8.2024
-### New permission for RDS enhanced monitoring
+### New permission for RDS enhanced monitoring & new environments
 
 ### 7.8.2024
 ### Add output to the role that the module will create
