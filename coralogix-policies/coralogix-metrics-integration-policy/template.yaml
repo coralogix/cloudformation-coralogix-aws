@@ -103,7 +103,7 @@ Resources:
                   - ec2:DescribeSpotFleetRequests
                   - storagegateway:ListGateways
                   - storagegateway:ListTagsForResource
-                  -	rds:Describe*
+                  - rds:Describe*
                   - rds:List*
                 Resource: "*"
 
