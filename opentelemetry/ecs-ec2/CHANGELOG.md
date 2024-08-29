@@ -1,4 +1,9 @@
 # Changelog
+### 0.0.14 / 2024-08-28
+- Adjusted how ENV variables are set in the ECS-EC2 embedded otel config,`$VAR` has been deprecated in favor of `${VAR}`
+- Updated README to reflect that as of `v0.3.0` decoding base64 encoded env variables is not supported.
+- Added `account-` prefix to account ID default subsystem name in embedded otel config to fix issue with this value being interpreted as a float during unmarshalling in otel.
+
 ### 0.0.14 / 2024-06-09
 - Added config flag to ecs-ec2 task definition
 

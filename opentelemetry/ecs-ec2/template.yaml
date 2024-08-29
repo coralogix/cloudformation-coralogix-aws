@@ -185,13 +185,11 @@ Mappings:
             override: false
 
         exporters:
-          logging:
-            verbosity: detailed
           coralogix:
-            domain: "$CORALOGIX_DOMAIN"
-            private_key: "$PRIVATE_KEY"
-            application_name: "$APP_NAME"
-            subsystem_name: "$SUB_SYS"
+            domain: "${CORALOGIX_DOMAIN}"
+            private_key: "${PRIVATE_KEY}"
+            application_name: "${APP_NAME}"
+            subsystem_name: "${SUB_SYS}"
             application_name_attributes:
             - "aws.ecs.cluster"
             - "aws.ecs.cluster.name"
@@ -339,12 +337,11 @@ Mappings:
             override: false
 
         exporters:
-          logging:
           coralogix:
-            domain: "$CORALOGIX_DOMAIN"
-            private_key: "$PRIVATE_KEY"
-            application_name: "$APP_NAME"
-            subsystem_name: "$SUB_SYS"
+            domain: "${CORALOGIX_DOMAIN}"
+            private_key: "${PRIVATE_KEY}"
+            application_name: "${APP_NAME}"
+            subsystem_name: "${SUB_SYS}"
             application_name_attributes:
             - "aws.ecs.cluster"
             - "aws.ecs.cluster.name"
@@ -520,7 +517,7 @@ Resources:
             - Name: SUB_SYS
               Value: !If
                 - UseDefaultSubsystemName
-                - !Sub "${AWS::AccountId}"
+                - !Sub "account-${AWS::AccountId}"
                 - !Ref DefaultSubsystemName
 
             - Name: OTEL_CONFIG
@@ -594,7 +591,7 @@ Resources:
             - Name: SUB_SYS
               Value: !If
                 - UseDefaultSubsystemName
-                - !Sub "${AWS::AccountId}"
+                - !Sub "account-${AWS::AccountId}"
                 - !Ref DefaultSubsystemName
 
             - Name: OTEL_CONFIG
