@@ -15,6 +15,7 @@ Parameters:
       - EU2
       - AP1
       - Ap2
+      - AP3
       - US1
       - US2
       - CustomEndpoint
@@ -46,7 +47,7 @@ Mappings:
     Ap2:
       ID: 625240141681
       RoleSuffix: ap2
-    Ap3:
+    AP3:
       ID: 025066248247
       RoleSuffix: ap3
     US1:

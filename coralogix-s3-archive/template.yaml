@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: 2010-09-09
-Description: 'CloudFormation template for creating archive s3 bucket for metrics and logs (Note: buckets are created in the same region the cloudformation is running) the template can run only on the following regions eu-west-1,eu-north-1,ap-southeast-1,ap-south-1,us-east-2'
+Description: 'CloudFormation template for creating archive s3 bucket for metrics and logs (Note: buckets are created in the same region the cloudformation is running) the template can run only on the following regions eu-west-1,eu-north-1,ap-southeast-1,ap-southeast-3,ap-south-1,us-east-2'
 Parameters:
   LogsBucketName:
     Type: String
@@ -29,6 +29,9 @@ Conditions:
   IsRegionUs2: !Equals
         - !Ref 'AWS::Region'
         - us-west-2
+  IsRegionAP3: !Equals
+        - !Ref 'AWS::Region'
+        - ap-southeast-3
   CustomArn: !Not
     - !Equals
       - !Ref CustomCoraloigxArn
@@ -59,6 +62,9 @@ Conditions:
     - !Equals
         - !Ref ByPassRegion
         - "True"
+    - !Equals
+        - !Ref 'AWS::Region'
+        - ap-southeast-3
     - !Equals
         - !Ref 'AWS::Region'
         - eu-west-1
@@ -97,6 +103,8 @@ Mappings:
       RoleRegion: ap2
     ap-south-1:
       RoleRegion: ap1
+    ap-southeast-3:
+      RoleRegion: ap3
     us-east-2:
       RoleRegion: us1
     us-west-2:
@@ -152,7 +160,10 @@ Resources:
                     - !If
                       - IsRegionUs2
                       - "739076534691"
-                      - "625240141681"
+                      - !If 
+                        - IsRegionAP3
+                        - "025066248247"
+                        - "625240141681"
    
             Resource:
               - !Sub 'arn:aws:s3:::${LogsBucketName}'
@@ -208,7 +219,10 @@ Resources:
                       - !If
                         - IsRegionUs2
                         - "739076534691"
-                        - "625240141681"
+                        - !If 
+                          - IsRegionAP3
+                          - "025066248247"
+                          - "625240141681"
             Resource:
               - !Sub 'arn:aws:s3:::${MetricsS3Bucket}'
               - !Sub 'arn:aws:s3:::${MetricsS3Bucket}/*'

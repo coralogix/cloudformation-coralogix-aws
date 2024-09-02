@@ -2,6 +2,9 @@
 
 ## coralogix-eventbridge-policy
 
+### 0.0.5 / 02.09.2024
+* [update] Add support for new region ap3.
+
 ### 0.0.4 / 09.01.2023
 * [update] Add role name.
 

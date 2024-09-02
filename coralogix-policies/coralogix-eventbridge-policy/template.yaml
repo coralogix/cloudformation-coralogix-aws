@@ -13,7 +13,7 @@ Parameters:
     MaxLength: 64
   CoralogixRegionAlias:
     Type: String
-    Description: The Alias for the Coralogix region, possible options are [us1, us2, eu1, eu2, ap1, ap2, custom]
+    Description: The Alias for the Coralogix region, possible options are [us1, us2, eu1, eu2, ap1, ap2, ap3, custom]
     AllowedValues:
       - us1
       - us2
@@ -21,6 +21,7 @@ Parameters:
       - eu2
       - ap1
       - ap2
+      - ap3
       - custom
   CustomCoralogixAccount:
     Type: String
@@ -34,6 +35,9 @@ Conditions:
   IsRegionUs2: !Equals
     - Ref: CoralogixRegionAlias
     - us2
+  IsRegionAP3: !Equals
+    - Ref: CoralogixRegionAlias
+    - ap3
   IsCustomAccount: !Not
     - !Equals
       - Ref: CustomCoralogixAccount
@@ -61,7 +65,10 @@ Resources:
                     - !If
                       - IsRegionUs2
                       - '739076534691'
-                      - '625240141681'
+                      - !If
+                        - IsRegionAP3
+                        - '025066248247'
+                        - '625240141681'
                   role_name: !If
                     - IsCustomCoralogixRole
                     - !Ref CustomCoralogixRole

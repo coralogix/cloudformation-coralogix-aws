@@ -2,6 +2,9 @@
 
 ## s3-archive
 
+### 0.0.5 / 2.9.2024
+* [update] Add option to run module in AP3 region
+
 ### 0.0.4 / 19.5.2024
 * [update] 
  - Add delete permissions to the buckets rule
