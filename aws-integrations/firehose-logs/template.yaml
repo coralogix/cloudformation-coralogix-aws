@@ -12,6 +12,7 @@ Parameters:
       - Europe2
       - India
       - Singapore
+      - AP3
       - US
       - US2
     Default: Custom
@@ -84,6 +85,8 @@ Mappings:
       LogUrl: coralogix.in
     Singapore:
       LogUrl: coralogixsg.com
+    AP3:
+      LogUrl: ap3.coralogix.com
     US:
       LogUrl: coralogix.us
     US2:
@@ -233,9 +236,9 @@ Resources:
           Url: 
             !If 
               - IsCustomDomain
-              - !Sub 'https://firehose-ingress.${CustomDomain}/firehose'
+              - !Sub 'https://ingress.${CustomDomain}/aws/firehose'
               - !Sub 
-                - 'https://firehose-ingress.${Domain}/firehose'
+                - 'https://ingress.${Domain}/aws/firehose'
                 - Domain: !FindInMap [CoralogixRegionMap, !Ref CoralogixRegion, LogUrl]
           AccessKey:
             Ref: ApiKey
