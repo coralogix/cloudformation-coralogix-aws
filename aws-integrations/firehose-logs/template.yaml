@@ -5,15 +5,16 @@ Description: Send Kinesis Firehose stream data to Coralogix.
 Parameters:
   CoralogixRegion:
     Type: String
-    Description: The region of your Coralogix Account [Europe, Europe2, India, Singapore, US, US2]. If set to Custom, you must provide a CustomDomain otherwise url will be invalid.
+    Description: The region of your Coralogix Account [EU1, EU2, AP1, AP2, AP3, US1, US2, Custom]. If set to Custom, you must provide a CustomDomain otherwise url will be invalid.
     AllowedValues:
-      - Custom
-      - Europe
-      - Europe2
-      - India
-      - Singapore
-      - US
+      - EU1
+      - EU2
+      - AP1
+      - AP2
+      - AP3
+      - US1
       - US2
+      - Custom
     Default: Custom
   CustomDomain:
     Type: String
@@ -53,7 +54,7 @@ Parameters:
     Default: ""
   
 Metadata:
-  SemanticVersion: 0.0.4
+  SemanticVersion: 0.0.5
   AWS::CloudFormation::Interface: 
     ParameterGroups: 
       - Label: 
@@ -76,21 +77,22 @@ Metadata:
  
 Mappings:
   CoralogixRegionMap:
-    Europe:
+    EU1:
       LogUrl: coralogix.com
-    Europe2:
+    EU2:
       LogUrl: eu2.coralogix.com
-    India:
+    AP1:
       LogUrl: coralogix.in
-    Singapore:
+    AP2:
       LogUrl: coralogixsg.com
-    US:
+    AP3:
+      LogUrl: ap3.coralogix.com
+    US1:
       LogUrl: coralogix.us
     US2:
       LogUrl: cx498.coralogix.com
     Custom:
       LogUrl: ""
-
 Conditions:
   IsApplicationName: !Not [!Equals [!Ref ApplicationName, ""]]
   IsSubsystemName: !Not [!Equals [!Ref SubsystemName, ""]]
@@ -233,9 +235,9 @@ Resources:
           Url: 
             !If 
               - IsCustomDomain
-              - !Sub 'https://firehose-ingress.${CustomDomain}/firehose'
+              - !Sub 'https://ingress.${CustomDomain}/aws/firehose'
               - !Sub 
-                - 'https://firehose-ingress.${Domain}/firehose'
+                - 'https://ingress.${Domain}/aws/firehose'
                 - Domain: !FindInMap [CoralogixRegionMap, !Ref CoralogixRegion, LogUrl]
           AccessKey:
             Ref: ApiKey

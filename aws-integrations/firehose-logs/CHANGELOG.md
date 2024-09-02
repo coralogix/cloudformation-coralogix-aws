@@ -34,3 +34,8 @@
 
 ### 0.0.4 / 16 Nov 2023
 * [Update] DynamicFromFields changes and documentation
+
+### 0.0.5 / 02 Sept 2024
+### 🛑 Breaking changes 🛑
+* [Update] Update ingress domain from ingress-firehose.<domain.com>/firehose to ingress.<domain.com>/aws/firehose
+* [Update] Update regions to follow [coralogix.com/docs/coralogix-domain] and added AP3 domain

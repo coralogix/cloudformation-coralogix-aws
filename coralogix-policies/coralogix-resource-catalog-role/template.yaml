@@ -10,6 +10,7 @@ Parameters:
       - EU2
       - AP1
       - AP2
+      - AP3
       - US1
       - US2
       - CustomEndpoint
@@ -38,6 +39,9 @@ Mappings:
     AP2:
       ID: 625240141681
       CxEnvId: approd2
+    AP3:
+      ID: 025066248247
+      CxEnvId: cx440
     US1:
       ID: 625240141681
       CxEnvId: usprod1

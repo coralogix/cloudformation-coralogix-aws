@@ -2,6 +2,9 @@
 
 ## AwsMetrics
 
+### 2.9.2024
+### Enable ap3 as allowd value in AWSAccount
+
 ### 19.8.2024
 ### New permission for RDS enhanced monitoring & add support for new environment ap3
 

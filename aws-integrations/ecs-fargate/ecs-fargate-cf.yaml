@@ -2,13 +2,14 @@ AWSTemplateFormatVersion: 2010-09-09
 Parameters:
   CoralogixRegion:
     Type: String
-    Description: The Coralogix location region [Europe, Europe2, India, Singapore, US, US2]
+    Description: The Coralogix location region [EU1, EU2, AP1, AP2, AP3, US1, US2]
     AllowedValues:
-      - Europe
-      - Europe2
-      - India
-      - Singapore
-      - US
+      - EU1
+      - EU2
+      - AP1
+      - AP2
+      - AP3
+      - US1
       - US2
   PrivateKey:
     Type: String
@@ -20,19 +21,22 @@ Parameters:
 
 Mappings:
   CoralogixRegionMap:
-    Europe:
+    EU1:
       Endpoint: ingress.coralogix.com
       Domain: coralogix.com
-    Europe2:
+    EU2:
       Endpoint: ingress.eu2.coralogix.com
       Domain: eu2.coralogix.com
-    India:
+    AP1:
       Endpoint: ingress.coralogix.in
       Domain: coralogix.in
-    Singapore:
+    AP2:
       Endpoint: ingress.coralogixsg.com
       Domain: coralogixsg.com
-    US:
+    AP3:
+      Endpoint: ingress.ap3.coralogix.com
+      Domain: ap3.coralogix.com
+    US1:
       Endpoint: ingress.coralogix.us
       Domain: coralogix.us
     US2:
