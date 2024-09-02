@@ -16,7 +16,7 @@ This template can be used to deploy an AWS EventBridge Integration to Coralogix.
 | EventbridgeStream | AWS EventBridge delivery stream name |  | :heavy_check_mark: |
 | RoleName | The name of the EventBridge Role |  | :heavy_check_mark: |
 | PrivateKey | Your Coralogix Private Key | |  :heavy_check_mark: |
-| CoralogixRegion | The region of your Coralogix Account | _Allowed Values:_<br>- ireland<br>- stockholm<br>- india<br>- singapore<br>- us | :heavy_check_mark: |
+| CoralogixRegion | The region of your Coralogix Account | _Allowed Values:_<br>- EU1<br>- EU2<br>- AP1<br>- AP2<br>- AP3<br>- US1<br>- US2 | :heavy_check_mark: |
 | CustomUrl | Custom Coralogix url (Endpoint) |  |  |
 
 
