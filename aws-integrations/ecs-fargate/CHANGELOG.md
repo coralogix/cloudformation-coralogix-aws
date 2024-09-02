@@ -5,6 +5,9 @@
 <!-- ### version / full date -->
 <!-- * [Update/Bug fix] message that describes the changes that you apply -->
 
+### 0.0.4 / 2024-09-02
+* [UPDATE] Update domains to follow [coralogix-domain](coralogix.com/docs/coralogix-domain) and added AP3
+
 ### 0.0.3 / 2024-06-26
 * [CHANGE] Migrate from ADOT to OTEL Collector Contrib
 
