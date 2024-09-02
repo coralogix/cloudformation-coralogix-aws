@@ -108,6 +108,7 @@ Parameters:
       - EU2
       - AP1
       - AP2
+      - AP3
       - US1
       - US2
       - Custom
@@ -370,6 +371,8 @@ Mappings:
       Domain: coralogix.in
     AP2:
       Domain: coralogixsg.com
+    AP3:
+      Domain: ap3.coralogix.com
     US1:
       Domain: coralogix.us
     US2:
