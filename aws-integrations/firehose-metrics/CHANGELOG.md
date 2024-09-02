@@ -39,5 +39,6 @@
 * [Update] default CloudWatch_Metrics_OpenTelemetry070_WithAggregations metrics integrationType option
 
 ### 0.0.6 / 02 Sept 2024
+### 🛑 Breaking changes 🛑
 * [Update] Update ingress domain from ingress-firehose.<domain.com>/firehose to ingress.<domain.com>/aws/firehose
 * [Update] Update regions to follow [coralogix.com/docs/coralogix-domain] and added AP3 domain
