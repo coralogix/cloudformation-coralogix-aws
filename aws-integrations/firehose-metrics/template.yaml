@@ -5,16 +5,16 @@ Description: Send Kinesis Firehose stream data to Coralogix.
 Parameters:
   CoralogixRegion:
     Type: String
-    Description: The region of your Coralogix Account [Europe, Europe2, India, Singapore, US, US2]. If set to Custom, you must provide a CustomDomain otherwise url will be invalid.
+    Description: The region of your Coralogix Account [EU1, EU2, AP1, AP2, AP3, US1, US2, Custom]. If set to Custom, you must provide a CustomDomain otherwise url will be invalid.
     AllowedValues:
-      - Custom
-      - Europe
-      - Europe2
-      - India
-      - Singapore
+      - EU1
+      - EU2
+      - AP1
+      - AP2
       - AP3
-      - US
+      - US1
       - US2
+      - Custom
     Default: Custom
   CustomDomain:
     Type: String
@@ -115,17 +115,17 @@ Metadata:
           
 Mappings:
   CoralogixRegionMap:
-    Europe:
+    EU1:
       LogUrl: coralogix.com
-    Europe2:
+    EU2:
       LogUrl: eu2.coralogix.com
-    India:
+    AP1:
       LogUrl: coralogix.in
-    Singapore:
+    AP2:
       LogUrl: coralogixsg.com
     AP3:
       LogUrl: ap3.coralogix.com
-    US:
+    US1:
       LogUrl: coralogix.us
     US2:
       LogUrl: cx498.coralogix.com

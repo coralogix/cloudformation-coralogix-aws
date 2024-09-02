@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.0.14 / 2024-02-09
+### 💡 Enhancements 💡
+- Added AP3 region to CoralogixRegion parameter
+
 ## v1.0.13 / 2024-11-08
 ### 🧰 Bug fixes 🧰
 - Allow the lambda to use the runtime `provided.al2`, by changing the binary build of cargo to a version that will support it in the Makefile. Add a parameter `FunctionRunTime` to allow users to choose the function runtime
