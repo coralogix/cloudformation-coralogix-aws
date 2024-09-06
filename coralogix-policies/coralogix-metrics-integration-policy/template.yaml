@@ -106,6 +106,8 @@ Resources:
                   - storagegateway:ListTagsForResource
                   - rds:Describe*
                   - rds:List*
+                  - ecs:Describe*
+                  - ecs:List*
                 Resource: "*"
 
 Outputs:
