@@ -2,6 +2,9 @@
 
 ## AwsMetrics
 
+### 6.9.2024
+### New permission for ECS enhanced monitoring
+
 ### 2.9.2024
 ### Enable ap3 as allowd value in AWSAccount
 
@@ -36,4 +39,3 @@
 ### 11.4.2024
 ### 🚀 New components 🚀
 - Create metrics integration module
-
