@@ -5,8 +5,11 @@
 <!-- ### version / full date -->
 <!-- * [Update/Bug fix] message that describes the changes that you apply -->
 
-### 0.0.4 / 2024-09-02
+### 0.0.5 / 2024-09-11
 ### 🛑 Breaking changes 🛑
+* [UPDATE] Update ecs-fargate integration cf template to OTEL only (remove fluentbit logrouter)
+
+### 0.0.4 / 2024-09-02
 * [UPDATE] Update domains to follow [coralogix-domain](coralogix.com/docs/coralogix-domain) and added AP3
 
 ### 0.0.3 / 2024-06-26
