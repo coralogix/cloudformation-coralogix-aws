@@ -1,12 +1,9 @@
 # ECS Fargate APM integrations
 
-## ECS Fargate Logs
-Logs are collected using a sidecar deployment of [aws-for-fluent-bit](https://github.com/aws/aws-for-fluent-bit) as a firelens log_router.
+## Note: This ECS Fargate integration used to require the use of fluentbit logrouter for logs processing. This version does everything within OTEL.
 
-Details of this integration can be found [here](https://github.com/coralogix/telemetry-shippers/tree/master/logs/fluent-bit/ecs-fargate)
-
-## ECS Fargate Traces and Metrics
-Traces and Metrics are collected using Opentelemetry Collector Contrib.
+## ECS Fargate Logs, Metrics and Traces
+Logs, Metrics and Traces are collected using Opentelemetry Collector Contrib.
 
 Details of this integration can be found [here](https://github.com/coralogix/telemetry-shippers/blob/master/otel-ecs-fargate/README.md)
 
@@ -27,7 +24,6 @@ It does demonstrate which permissions are required, at a minimum, to deploy our 
 |-----------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------|--------------------|
 | PrivateKey      | Your Coralogix Private Key                                                                                                                                                                                                           |                                                                              | :heavy_check_mark: |
 | CoralogixRegion | The region of your Coralogix Account                                                                                                                                                                                                 | *Allowed Values:*<br>- EU1<br>- EU2<br>- AP1<br>- AP2<br>- AP3<br>- US1<br>- US2 | :heavy_check_mark: |
-| S3ConfigARN      | The S3 ARN for your uploaded Coralogix Fluent Bit configuration file (Explained in the ECS Fargate Logs integration documentation above)                                                                                                                                                                                                           |                                                                              | :heavy_check_mark: |
 
 
 ### Deploy the Cloudformation template:
@@ -40,5 +36,4 @@ aws cloudformation deploy --template-file ecs-fargate-cf.yaml \
     --parameter-overrides \
         PrivateKey=<your-private-key> \
         CoralogixRegion=<coralogix-region> \
-        S3ConfigARN=<ARN of S3 Config>
 ```
