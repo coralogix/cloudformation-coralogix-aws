@@ -7,6 +7,7 @@
 #### - rename ExternalId to ExternalIdSecret
 #### - Add validation to ExternalIdSecret, must be a valid pattern of [\w+=,.:\/-]*
 #### - Add validation to CustomerAccountId, must be a valid pattern of [0-9]*
+#### - rename CustomerAccountId to CustomAccountId
 
 ### 6.9.2024
 ### New permission for ECS enhanced monitoring
