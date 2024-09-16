@@ -28,6 +28,10 @@ Parameters:
     Description: Custom AWS account ID that you want to deploy the integration in.
     Default: ""
     AllowedPattern: "[0-9]*"
+  CoralogixCompanyId:
+    Type: String
+    Description: Your corlaogix account Compeny id, will use for security validation.
+    AllowedPattern: "[0-9]*"
 
 Mappings:
   CoralogixEnvironment:
@@ -86,12 +90,9 @@ Resources:
             Condition:
               StringEquals:
                 sts:ExternalId: !Sub
-                  - "${ExternalIdSecret}@${account_id}"
+                  - "${ExternalIdSecret}@${company_id}"
                   - ExternalIdSecret: !Ref ExternalIdSecret
-                    account_id: !If
-                      - IsCustomAccountId
-                      - !Ref CustomAccountId
-                      - !FindInMap [CoralogixEnvironment, !Ref AWSAccount, "ID"]
+                    company_id: !Ref CoralogixCompanyId
       Policies:
         - PolicyName: CoralogixMetricsPolicy
           PolicyDocument:
