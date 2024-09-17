@@ -25,12 +25,12 @@ Parameters:
     Description: The name of the role that will be created.
   CustomAccountId:
     Type: String
-    Description: Custom AWS account ID that you want to deploy the integration in.
+    Description: In case you want to use a custom coralogix account, enter the aws account id that you want to use.
     Default: ""
     AllowedPattern: "[0-9]*"
   CoralogixCompanyId:
     Type: String
-    Description: Your corlaogix account Compeny id, will use for security validation.
+    Description: Your coralogix account company ID, will be used for security validation.
     AllowedPattern: "[0-9]*"
 
 Mappings:
