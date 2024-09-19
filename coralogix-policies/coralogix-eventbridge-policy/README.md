@@ -11,3 +11,9 @@ The module will create a role with an inline policy to allow Coralogix to send e
 | CustomCoralogixAccount | In case you want to use a custom coralogix account, enter the aws account id that you want to use.                                                 | n\a           |                    |
 | CustomCoralogixRole    | In case you want to use a custom coralogix role, enter the role name that you want to use.                                                         | n\a           |                    |
 | EventBusArn            | The ARN corresponding to the Event Bus that will receive events via the PutEvents method.                                                          | n\a           | :heavy_check_mark: |
+
+Run the following command to deploy the integration:
+
+```sh
+aws cloudformation deploy --capabilities CAPABILITY_IAM  CAPABILITY_NAMED_IAM --template-file template.yaml --stack-name <the name of the stack that will be deploy in aws> --parameter-overrides CoralogixRegionAlias=<coralogix account region> EventBusArn=<EventBusArn>
+```
