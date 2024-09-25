@@ -2,6 +2,9 @@
 
 ## AwsMetrics
 
+### 25.9.2024
+### New permission to be able to get RDS and EC2 instance metadata like allocated memmory, CPU, etc.
+
 ### 6.9.2024
 ### New permission for ECS enhanced monitoring
 
