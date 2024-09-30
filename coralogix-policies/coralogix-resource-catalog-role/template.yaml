@@ -88,4 +88,5 @@ Resources:
                   - "ec2:DescribeInstances"
                   - "ec2:DescribeRegions"
                   - "ec2:DescribeTransitGateway*"
+                  - "ec2:DescribeNetworkInterfaces"
                 Resource: "*"
