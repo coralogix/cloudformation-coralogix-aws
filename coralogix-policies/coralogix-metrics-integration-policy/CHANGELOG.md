@@ -2,6 +2,9 @@
 
 ## AwsMetrics
 
+### 30.9.2024
+### Make the policy more secure by adding more specific permissions and not using `*` in the policy
+
 ### 25.9.2024
 ### New permission to be able to get RDS and EC2 instance metadata like allocated memmory, CPU, etc.
 

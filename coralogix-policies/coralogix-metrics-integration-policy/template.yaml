@@ -105,10 +105,15 @@ Resources:
                   - ec2:DescribeInstanceTypes
                   - storagegateway:ListGateways
                   - storagegateway:ListTagsForResource
-                  - rds:Describe*
-                  - rds:List*
-                  - ecs:Describe*
-                  - ecs:List*
+                  - rds:DescribeDbInstances
+                  - rds:DescribeReservedDbInstances
+                  - rds:ListListTagsForResource
+                  - ecs:ListClusters
+                  - ecs:DescribeClusters
+                  - ecs:ListServices
+                  - ecs:DescribeServices
+                  - ecs:ListContainerInstances
+                  - ecs:DescribeContainerInstances
                 Resource: "*"
 
 Outputs:
