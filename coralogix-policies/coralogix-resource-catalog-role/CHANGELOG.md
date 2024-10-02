@@ -2,6 +2,10 @@
 
 ## resource catalog
 
+### 0.0.4 / 02.10.2024
+* [update] Add staging and lumos-research to environments
+* 
+
 ### 0.0.3 / 30.9.2024
 * [update] Add ec2:DescribeNetworkInterfaces
 * 

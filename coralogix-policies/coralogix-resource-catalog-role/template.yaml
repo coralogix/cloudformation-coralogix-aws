@@ -6,6 +6,8 @@ Parameters:
     Default: EU1
     Description: The Coralogix region that your account is in.
     AllowedValues:
+      - EU1_STG
+      - EU1_LUM
       - EU1
       - EU2
       - AP1
@@ -27,6 +29,12 @@ Parameters:
     Default: ""
 Mappings:
   CoralogixEnvironment:
+    EU1_STG:
+      ID: 233221153619
+      CxEnvId: stg1
+    EU1_LUM:
+      ID: 311141556446
+      CxEnvId: lumos-research
     EU1:
       ID: 625240141681
       CxEnvId: production
@@ -55,7 +63,7 @@ Conditions:
   IsCustomAccountId: !Not [!Equals [!Ref CustomAccountId, ""]]
   IsCustomCoralogixEnvId: !Not [!Equals [!Ref CustomCoralogixEnvId, ""]]
 Resources:
-  CoralogixAwsMetricsRole:
+  CoralogixResourceCatalogRole:
     Type: AWS::IAM::Role
     Properties:
       Description: "Role to allow coralogix to describe ec2"
