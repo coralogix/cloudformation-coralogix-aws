@@ -107,7 +107,7 @@ Resources:
                   - storagegateway:ListTagsForResource
                   - rds:DescribeDbInstances
                   - rds:DescribeReservedDbInstances
-                  - rds:ListListTagsForResource
+                  - rds:ListTagsForResource
                   - ecs:ListClusters
                   - ecs:DescribeClusters
                   - ecs:ListServices

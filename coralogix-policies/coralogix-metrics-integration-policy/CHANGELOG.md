@@ -2,11 +2,14 @@
 
 ## AwsMetrics
 
+### 18.10.2024
+### Fix rds:ListTagsForResource permission
+
 ### 30.9.2024
 ### Make the policy more secure by adding more specific permissions and not using `*` in the policy
 
 ### 25.9.2024
-### New permission to be able to get RDS and EC2 instance metadata like allocated memmory, CPU, etc.
+### New permission to be able to get RDS and EC2 instance metadata like allocated memory, CPU, etc.
 
 ### 6.9.2024
 ### New permission for ECS enhanced monitoring
