@@ -24,7 +24,9 @@ It does demonstrate which permissions are required, at a minimum, to deploy our 
 |-----------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------|--------------------|
 | PrivateKey      | Your Coralogix Private Key                                                                                                                                                                                                           |                                                                              | :heavy_check_mark: |
 | CoralogixRegion | The region of your Coralogix Account                                                                                                                                                                                                 | *Allowed Values:*<br>- EU1<br>- EU2<br>- AP1<br>- AP2<br>- AP3<br>- US1<br>- US2 | :heavy_check_mark: |
-
+| ParameterName | The name of the Parameter Store to create and use | /CX_OTEL/config.yaml ||
+| StorageType | Storage type to use for configuration | *Allowed Values:*<br>- ParameterStore (default)<br>- ParameterStoreAdvanced ||
+|
 
 ### Deploy the Cloudformation template:
 
@@ -35,5 +37,5 @@ aws cloudformation deploy --template-file ecs-fargate-cf.yaml \
     --capabilities "CAPABILITY_NAMED_IAM" \
     --parameter-overrides \
         PrivateKey=<your-private-key> \
-        CoralogixRegion=<coralogix-region> \
+        CoralogixRegion=<coralogix-region>
 ```
