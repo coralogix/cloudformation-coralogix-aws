@@ -18,11 +18,10 @@ Parameters:
   StorageType:
     Type: String
     Default: ParameterStore
-    Description: 'The storage used for the OTEL config.yaml. Can be one of: ParameterStore, ParameterStoreAdvanced, S3'
+    Description: 'The storage used for the OTEL config.yaml. Can be one of: ParameterStore, ParameterStoreAdvanced'
     AllowedValues:
       - ParameterStore
       - ParameterStoreAdvanced
-      - S3
   ParameterName:
     Type: String
     Default: '/CX_OTEL/config.yaml'
