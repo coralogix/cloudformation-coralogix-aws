@@ -15,6 +15,19 @@ Parameters:
     Type: String
     Description: The Coralogix Send-Your-Data API Key which is used to validate your authenticity
     NoEcho: true
+  StorageType:
+    Type: String
+    Default: ParameterStore
+    Description: 'The storage used for the OTEL config.yaml. Can be one of: ParameterStore, ParameterStoreAdvanced'
+    AllowedValues:
+      - ParameterStore
+      - ParameterStoreAdvanced
+  ParameterName:
+    Type: String
+    Default: '/CX_OTEL/config.yaml'
+    Description: 'The name of the Parameter Store you intend to create and use.'
+    AllowedPattern: '^([\/]?[a-zA-Z0-9_.-]+)?(\/[a-zA-Z0-9_.-]+){0,14}$'
+    MaxLength: 300
 
 Mappings:
   CoralogixRegionMap:
@@ -37,14 +50,17 @@ Mappings:
       Endpoint: ingress.coralogix.us
       Domain: coralogix.us
     US2:
-      Endpoint: ingress.cx498-aws-us-west-2.coralogix.com
+      Endpoint: ingress.cx498.coralogix.com
       Domain: cx498.coralogix.com
+
+Conditions:
+  UseParameterStoreAdvanced: !Equals [!Ref StorageType, "ParameterStoreAdvanced"]
 
 Resources:
   OTELConfigParameter:
     Type: AWS::SSM::Parameter
     Properties:
-      Name: /CX_OTEL/config.yaml
+      Name: !Ref ParameterName
       Description: Configuration parameter for Coralogix OTEL Collector
       Type: String
       Value: |
@@ -176,13 +192,15 @@ Resources:
             metrics:
               address: 0.0.0.0:8888
         
-      Tier: Standard
+      Tier: !If
+        - UseParameterStoreAdvanced   # If it's "ParameterStoreAdvanced", set Tier to Advanced
+        - Advanced
+        - Standard                    # Else, set Tier to Standard
 
   ECSTaskDefinition:
     Type: 'AWS::ECS::TaskDefinition'
     Properties:
-      Family: Coralogix-observability
-      TaskRoleArn: !GetAtt ECSTaskRole.Arn
+      Family: CX-TESTING
       ExecutionRoleArn: !GetAtt ECSExecutionRole.Arn
       NetworkMode: awsvpc
       ContainerDefinitions:
@@ -222,7 +240,7 @@ Resources:
           VolumesFrom: []
           Secrets:
             - Name: SSM_CONFIG
-              ValueFrom: /CX_OTEL/config.yaml
+              ValueFrom: !Ref ParameterName
           LogConfiguration:
             LogDriver: awsfirelens
             Options:
@@ -235,37 +253,11 @@ Resources:
       Cpu: '1024'
       Memory: '2048'
 
-  ECSTaskRole:
-    Type: 'AWS::IAM::Role'
-    Properties:
-      Description: Allows ECS tasks to call AWS services on your behalf.
-      AssumeRolePolicyDocument:
-        Version: 2012-10-17
-        Statement:
-          - Sid: ''
-            Effect: Allow
-            Principal:
-              Service: ecs-tasks.amazonaws.com
-            Action: 'sts:AssumeRole'
-      Policies:
-        - PolicyName: AWSOpenTelemetryPolicy
-          PolicyDocument:
-            Version: 2012-10-17
-            Statement:
-              - Effect: Allow
-                Action:
-                  - 'logs:PutLogEvents'
-                  - 'logs:CreateLogGroup'
-                  - 's3:GetObject'
-                  - 's3:GetBucketLocation'
-                Resource: '*'
-      RoleName: AWSOTelRole
-
   ECSExecutionRole:
     Type: 'AWS::IAM::Role'
     Properties:
       Description: >-
-        Allows ECS container agent makes calls to the Amazon ECS API on your
+        Allows ECS container agent to make calls to the Amazon ECS API on your
         behalf.
       AssumeRolePolicyDocument:
         Version: 2012-10-17
@@ -277,6 +269,20 @@ Resources:
             Action: 'sts:AssumeRole'
       ManagedPolicyArns:
         - 'arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy'
-        - 'arn:aws:iam::aws:policy/CloudWatchLogsFullAccess'
-        - 'arn:aws:iam::aws:policy/AmazonSSMReadOnlyAccess'
-      RoleName: AWSOTelExecutionRole
+      RoleName: !Sub 'AWSOTelExecutionRole-${AWS::StackName}'
+
+  SSMParameterAccessPolicy:
+    Type: 'AWS::IAM::Policy'
+    Properties:
+      PolicyName: SSMParameterAccessPolicy
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Action:
+              - 'ssm:GetParameter'
+              - 'ssm:GetParameters'
+            Resource: !Sub 
+              arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/${OTELConfigParameter}
+      Roles:
+        - !Ref ECSExecutionRole
