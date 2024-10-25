@@ -5,6 +5,9 @@
 <!-- ### version / full date -->
 <!-- * [Update/Bug fix] message that describes the changes that you apply -->
 
+### 0.0.7 / 2024-10-25
+* [CHANGE] Specify grpc as appProtocol, needed to properly export traces.
+
 ### 0.0.6 / 2024-10-18
 * [UPDATE] Update ecs-fargate integration cf to allow larger "Advanced" Parameter Store.
 * [UPDATE] Adjust roles to true minimum requirements.
