@@ -230,7 +230,7 @@ Resources:
             - ContainerPort: 4318
               HostPort: 4318
               Protocol: tcp
-              AppProtocol: grpc
+              AppProtocol: http
           Essential: false
           Command: ["--config", "env:SSM_CONFIG"]
           Environment:
