@@ -8,7 +8,7 @@ Parameters:
 
   OtelImage:
     Type: String
-    Default: coralogixrepo/coralogix-otel-collector:0.1.0-windowsserver-1809
+    Default: coralogixrepo/coralogix-otel-collector:0.2.10-windowsserver-1809
 
   PrivateKey:
     Type: String
