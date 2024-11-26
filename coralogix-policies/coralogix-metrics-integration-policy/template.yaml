@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: 2010-09-09
-Description: The module will create a role with an inline policy to allow Coralogix to send events to an EventBridge event bus.
+Description: The module will create a role with an inline policy to allow Coralogix to collect metrics from several resource types.
 Parameters:
   ExternalId:
     Description: "ExternalId for sts:AssumeRole"
@@ -22,9 +22,9 @@ Parameters:
   RoleName:
     Type: String
     Description: The name of the role that will be created.
-  CustomerAccountId:
+  CustomAccountId:
     Type: String
-    Description: Custom AWS account ID that you want to deploy the integration in.
+    Description: Custom AWS account ID that you want to deploy the integration in (overrides aws account id from CoralogixEnvironment variable).
     Default: ""
 
 Mappings:
@@ -60,7 +60,7 @@ Mappings:
       ID: 000000000000
       RoleSuffix: custom
 Conditions:
-  IsCustomAccountId: !Not [!Equals [!Ref CustomerAccountId, ""]]
+  IsCustomAccountId: !Not [!Equals [!Ref CustomAccountId, ""]]
 Resources:
   CoralogixAwsMetricsRole:
     Type: AWS::IAM::Role
@@ -76,7 +76,7 @@ Resources:
                 - "arn:aws:iam::${aws_account_id}:role/coralogix-ingestion-${role_suffix}"
                 - aws_account_id: !If
                     - IsCustomAccountId
-                    - !Ref CustomerAccountId
+                    - !Ref CustomAccountId
                     - !FindInMap [CoralogixEnvironment, !Ref AWSAccount, "ID"]
                   role_suffix: !FindInMap [CoralogixEnvironment, !Ref AWSAccount, "RoleSuffix"]
             Action:
