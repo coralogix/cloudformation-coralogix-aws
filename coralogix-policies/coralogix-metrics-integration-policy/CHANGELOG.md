@@ -48,3 +48,6 @@
 ### 11.4.2024
 ### 🚀 New components 🚀
 - Create metrics integration module
+
+### 27.11.2024
+### Fix CustomAccountId field name for custom account and align template description
