@@ -51,3 +51,11 @@
 
 ### 27.11.2024
 ### Fix CustomAccountId field name for custom account and align template description
+
+### 5.12.2024
+### New permissions, that would allow integration to get data from Amazon ElastiCache API
+- Added permissions:
+    ```
+    - elasticache:DescribeCacheClusters
+    - elasticache:ListTagsForResource
+    ```
