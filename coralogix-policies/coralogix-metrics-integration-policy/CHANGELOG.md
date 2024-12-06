@@ -51,3 +51,6 @@
 
 ### 27.11.2024
 ### Fix CustomAccountId field name for custom account and align template description
+
+### 06.12.2024
+### Remove dev and staging from the available cx environments list

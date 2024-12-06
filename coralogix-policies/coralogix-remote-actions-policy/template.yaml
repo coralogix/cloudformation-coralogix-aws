@@ -12,8 +12,6 @@ Parameters:
     Default: EU1
     Description: The AWS account that you want to deploy the integration in.
     AllowedValues:
-      - dev
-      - staging
       - EU1
       - EU2
       - AP1
@@ -32,12 +30,6 @@ Parameters:
 
 Mappings:
   CoralogixEnvironment:
-    dev:
-      ID: 233273809180
-      RoleSuffix: dev01
-    staging:
-      ID: 233221153619
-      RoleSuffix: stg1
     EU1:
       ID: 625240141681
       RoleSuffix: eu1
