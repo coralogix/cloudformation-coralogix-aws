@@ -1,0 +1,104 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: The module will create a role with an inline policy to allow Coralogix to execute custom actions remotely.
+Parameters:
+  AwsAccountId:
+    Description: "Aws Account id"
+    Type: "String"
+  ExternalId:
+    Description: "ExternalId for sts:AssumeRole"
+    Type: "String"
+  CoralogixRegion:
+    Type: String
+    Default: EU1
+    Description: The AWS account that you want to deploy the integration in.
+    AllowedValues:
+      - dev
+      - staging
+      - EU1
+      - EU2
+      - AP1
+      - AP2
+      - AP3
+      - US1
+      - US2
+      - CustomEndpoint
+  RoleName:
+    Type: String
+    Description: The name of the role that will be created.
+  CustomAccountId:
+    Type: String
+    Description: Custom AWS account ID that you want to deploy the integration in.
+    Default: ""
+
+Mappings:
+  CoralogixEnvironment:
+    dev:
+      ID: 233273809180
+      RoleSuffix: dev01
+    staging:
+      ID: 233221153619
+      RoleSuffix: stg1
+    EU1:
+      ID: 625240141681
+      RoleSuffix: eu1
+    EU2:
+      ID: 625240141681
+      RoleSuffix: eu2
+    AP1:
+      ID: 625240141681
+      RoleSuffix: ap1
+    AP2:
+      ID: 625240141681
+      RoleSuffix: ap2
+    AP3:
+      ID: 025066248247
+      RoleSuffix: ap3
+    US1:
+      ID: 625240141681
+      RoleSuffix: us1
+    US2:
+      ID: 739076534691
+      RoleSuffix: us2
+    CustomEndpoint:
+      ID: 000000000000
+      RoleSuffix: custom
+Conditions:
+  IsCustomAccountId: !Not [!Equals [!Ref CustomAccountId, ""]]
+Resources:
+  CoralogixRemoteActionRole:
+    Type: AWS::IAM::Role
+    DeletionPolicy: Retain
+    Properties:
+      Description: description
+      RoleName: !Ref RoleName
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: !Sub
+                - "arn:aws:iam::${aws_account_id}:role/coralogix-remote-actions-${role_suffix}"
+                - aws_account_id: !If
+                    - IsCustomAccountId
+                    - !Ref CustomAccountId
+                    - !FindInMap [ CoralogixEnvironment, !Ref CoralogixRegion, "ID" ]
+                  role_suffix: !FindInMap [ CoralogixEnvironment, !Ref CoralogixRegion, "RoleSuffix" ]
+            Action:
+              - sts:AssumeRole
+            Condition:
+              StringEquals:
+                sts:ExternalId: !Ref ExternalId
+      Policies:
+        - PolicyName: CoralogixEc2Policy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ec2:RebootInstances
+                Resource: "*"
+
+Outputs:
+  CoralogixRemoteActionRoleArn:
+    Description: The ARN of the Coralogix remote actions role.
+    Value: !GetAtt CoralogixRemoteActionRole.Arn
