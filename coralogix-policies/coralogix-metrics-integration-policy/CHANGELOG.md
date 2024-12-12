@@ -2,7 +2,7 @@
 
 ## AwsMetrics
 
-### 5.12.2024 New permissions, that would allow integration to get data from Amazon ElastiCache API
+### 12.12.2024 New permissions, that would allow integration to get data from Amazon ElastiCache API
 
 - Added permissions to the policy:
 
