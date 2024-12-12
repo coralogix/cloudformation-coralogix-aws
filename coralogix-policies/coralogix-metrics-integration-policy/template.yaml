@@ -115,7 +115,7 @@ Resources:
                   - ecs:ListContainerInstances
                   - ecs:DescribeContainerInstances
                   -	elasticache:DescribeCacheClusters
-				          - elasticache:ListTagsForResource
+                  - elasticache:ListTagsForResource
                 Resource: "*"
 
 Outputs:
