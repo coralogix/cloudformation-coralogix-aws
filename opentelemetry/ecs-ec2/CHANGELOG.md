@@ -1,4 +1,8 @@
 # Changelog
+
+### 0.0.15 / 2024-12-19
+- Removed the line from Opentelemetry config which caused the agent to fail
+
 ### 0.0.14 / 2024-08-28
 - Adjusted how ENV variables are set in the ECS-EC2 embedded otel config,`$VAR` has been deprecated in favor of `${VAR}`
 - Updated README to reflect that as of `v0.3.0` decoding base64 encoded env variables is not supported.
