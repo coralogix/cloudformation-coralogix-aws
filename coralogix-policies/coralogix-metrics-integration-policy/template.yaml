@@ -5,7 +5,7 @@ Parameters:
     Description: "ExternalIdSecret for sts:AssumeRole"
     Type: "String"
     AllowedPattern: "[\\w+=,.:\\/-]*"
-  CoralogixAccount:
+  CoralogixRegion:
     Type: String
     Default: EU1
     Description: The AWS account that you want to deploy the integration in.

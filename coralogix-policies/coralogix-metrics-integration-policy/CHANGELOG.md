@@ -4,12 +4,13 @@
 
 ### 22.1.2025 - Breaking changes to be able to tie role to specific company
 
-- rename `ExternalId` to `ExternalIdSecret`
 - Add validation to `ExternalIdSecret`, must be a valid pattern of `[\w+=,.:\/-]*`
 - Add validation to `CustomerAccountId`, must be a valid pattern of `[0-9]*`
   - This does not mean that the role would not work for another `CustomerAccountId`, but you should
     be aware of, that it may stop working for non matching `CustomerAccountId` in the near future.
+- rename `ExternalId` to `ExternalIdSecret`
 - rename `CustomAccountId` to `CustomAWSAccountId`
+- rename `AWSAccount` to `CoralogixRegion`
 
 ### 12.12.2024 New permissions, that would allow integration to get data from Amazon ElastiCache API
 
