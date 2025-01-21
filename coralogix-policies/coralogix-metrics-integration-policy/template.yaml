@@ -23,7 +23,7 @@ Parameters:
   RoleName:
     Type: String
     Description: The name of the role that will be created.
-  CustomAccountId:
+  CustomAWSAccountId:
     Type: String
     Description: Custom AWS account ID that you want to deploy the integration in (overrides aws account id from CoralogixEnvironment variable).
     Default: ""
@@ -66,7 +66,7 @@ Mappings:
       ID: 000000000000
       RoleSuffix: custom
 Conditions:
-  IsCustomAccountId: !Not [!Equals [!Ref CustomAccountId, ""]]
+  IsCustomAWSAccountId: !Not [!Equals [!Ref CustomAWSAccountId, ""]]
 Resources:
   CoralogixAwsMetricsRole:
     Type: AWS::IAM::Role
@@ -81,10 +81,15 @@ Resources:
               AWS: !Sub
                 - "arn:aws:iam::${aws_account_id}:role/coralogix-ingestion-${role_suffix}"
                 - aws_account_id: !If
-                    - IsCustomAccountId
-                    - !Ref CustomAccountId
+                    - IsCustomAWSAccountId
+                    - !Ref CustomAWSAccountId
                     - !FindInMap [CoralogixEnvironment, !Ref AWSAccount, "ID"]
-                  role_suffix: !FindInMap [CoralogixEnvironment, !Ref AWSAccount, "RoleSuffix"]
+                  role_suffix:
+                    !FindInMap [
+                      CoralogixEnvironment,
+                      !Ref AWSAccount,
+                      "RoleSuffix",
+                    ]
             Action:
               - sts:AssumeRole
             Condition:

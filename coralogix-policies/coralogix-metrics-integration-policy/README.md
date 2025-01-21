@@ -12,7 +12,6 @@ The module will create a role to be used with AwsMetrics integration
 | CoralogixCompanyId | Your coralogix account company ID, will be used for security validation. | n\a | :heavy_check_mark: |
 | ExternalIdSecret | "sts:ExternalId" this id is used for increased security, the value of the ExternalId will be `ExternalIdSecret@CoralogixCompanyId`. | n\a | :heavy_check_mark: |
 
-
 Run the following command to deploy the integration:
 
 ```sh
