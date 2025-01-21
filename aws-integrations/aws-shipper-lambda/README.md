@@ -78,18 +78,39 @@ Use an existing Coralogix [Send-Your-Data API key](https://coralogix.com/docs/se
 
 > **Note:** You should always deploy the AWS Lambda function in the same AWS Region as your resource (e.g. the S3 bucket).
 
-| Parameter | Description  | Default Value | Required |
-|-----------|--------------|---------------|----------|
-| Application name | This will also be the name of the CloudFormation stack that creates your integration. It can include letters (A–Z and a–z), numbers (0–9) and dashes (-). | | :heavy_check_mark: | 
-| IntegrationType | Choose the AWS service that you wish to integrate with Coralogix. Can be one of: S3, CloudTrail, VpcFlow, CloudWatch, S3Csv, SNS, SQS, CloudFront, Kinesis, Kafka, MSK, EcrScan. | S3 | :heavy_check_mark: |
-| CoralogixRegion | Your data source should be in the same region as the integration stack. You may choose from one of [the default Coralogix regions](https://coralogix.com/docs/coralogix-domain/): [Custom, EU1, EU2, AP1, AP2, US1, US2]. If this value is set to Custom you must specify the Custom Domain to use via the CustomDomain parameter. | Custom | :heavy_check_mark: |
-| CustomDomain | If you choose a custom domain name for your private cluster, Coralogix will send telemetry from the specified address (e.g. custom.coralogix.com). | | |
-| ApplicationName | The name of the application for which the integration is configured. [Advanced Configuration](#advanced-configuration) specifies dynamic value retrieval options.| | :heavy_check_mark: |
-| SubsystemName | Specify the [name of your subsystem](https://coralogix.com/docs/application-and-subsystem-names/). For a dynamic value, refer to the Advanced Configuration section. For CloudWatch, leave this field empty to use the log group name. | | :heavy_check_mark: | | ApiKey | The Send-Your-Data [API Key](https://coralogix.com/docs/send-your-data-api-key/) validates your authenticity. This value can be a direct Coralogix API Key or an AWS Secret Manager ARN containing the API Key.| | :heavy_check_mark: |
-| ApiKey | The Send-Your-Data [API Key](https://coralogix.com/docs/send-your-data-api-key/) validates your authenticity. This value can be a direct Coralogix API Key or an AWS Secret Manager ARN containing the API Key.<br>_Note the parameter expects the API Key in plain text or if stored in secret manager._| | :heavy_check_mark: |
-| StoreAPIKeyInSecretsManager | Enable this to store your API Key securely. Otherwise, it will remain exposed in plain text as an environment variable in the Lambda function console.| True | :heavy_check_mark: |
+| Parameter                    | Description                                                                                                                                                                                                                                                                                                                        | Default Value | Required           |
+|------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------|--------------------|
+| Application name             | This will also be the name of the CloudFormation stack that creates your integration. It can include letters (A–Z and a–z), numbers (0–9) and dashes (-).                                                                                                                                                                          |               | :heavy_check_mark: |
+| IntegrationType              | Choose the AWS service that you wish to integrate with Coralogix. Can be one of: S3, CloudTrail, VpcFlow, CloudWatch, S3Csv, SNS, SQS, CloudFront, Kinesis, Kafka, MSK, EcrScan.                                                                                                                                                   | S3            | :heavy_check_mark: |
+| CoralogixRegion              | Your data source should be in the same region as the integration stack. You may choose from one of [the default Coralogix regions](https://coralogix.com/docs/coralogix-domain/): [Custom, EU1, EU2, AP1, AP2, US1, US2]. If this value is set to Custom you must specify the Custom Domain to use via the CustomDomain parameter. | Custom        | :heavy_check_mark: |
+| CustomDomain                 | If you choose a custom domain name for your private cluster, Coralogix will send telemetry from the specified address (e.g. custom.coralogix.com).                                                                                                                                                                                 |               |                    |
+| ApplicationName              | The name of the application for which the integration is configured. [Advanced Configuration](#advanced-configuration) specifies dynamic value retrieval options.                                                                                                                                                                  |               | :heavy_check_mark: |
+| SubsystemName                | Specify the [name of your subsystem](https://coralogix.com/docs/application-and-subsystem-names/). For a dynamic value, refer to the Advanced Configuration section. For CloudWatch, leave this field empty to use the log group name.                                                                                             |               | :heavy_check_mark: |
+| ApiKey                       | The Send-Your-Data [API Key](https://coralogix.com/docs/send-your-data-api-key/) validates your authenticity. This value can be a direct Coralogix API Key or an AWS Secret Manager ARN containing the API Key.<br>*Note the parameter expects the API Key in plain text or if stored in secret manager.*                          |               | :heavy_check_mark: |
+| StoreAPIKeyInSecretsManager  | Enable this to store your API Key securely. Otherwise, it will remain exposed in plain text as an environment variable in the Lambda function console.                                                                                                                                                                             | True          | :heavy_check_mark: |
+| ReservedConcurrentExecutions | The number of concurrent executions that are reserved for the function, leave empty so the lambda will use unreserved account concurrency.                                                                                                                                                                                         | n/a           |                    |
+| LambdaAssumeRoleARN          | A role that the lambda will assume, leave empty to use the default permissions.<br> Note that if this Parameter is used, all **S3** and **ECR** API calls from the lambda will be made with the permissions of the Assumed Role.                                                                                                   |               |                    |
+| ExecutionRoleARN             | The arn of a user defined role that will be used as the execution role for the lambda function                                                                                                                                                                                                                                     |               |                    |
 
 > **Note:** `EcrScan` doesn't need any extra configuration.
+
+#### Working with Roles
+
+In some cases special or more fine tuned IAM permissions are required. The AWS Shipper supports more granular IAM control using 2 parameters:
+
+- **LambdaAssumeRoleARN**: This parameter allows you to specify a Role ARN, enabling the Lambda function to assume the role. The assumed role will only affect S3 and ECR API calls, as these are the only services invoked by the Lambda function at the code level.
+
+- **ExecutionRoleARN**: This parameter lets you specify the Execution Role for the AWS Shipper Lambda. The provided role must have basic Lambda execution permissions, and any additional permissions required for the Lambda’s operation will be automatically added during deployment.
+
+Basic lambda execution role permission:
+
+```yaml
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service: "lambda.amazonaws.com"
+            Action: "sts:AssumeRole"
+```
 
 ### S3/CloudTrail/VpcFlow/S3Csv Configuration
 
@@ -103,105 +124,172 @@ If you don’t want to send data directly as it enters S3, you can also use SNS/
 
 > **Note:** All resources, such as S3 or SNS/SQS, should be provisioned already. If you are using an S3 bucket as a resource, please make sure it is clear of any Lambda triggers located in the same AWS region as your new function.
 
-| Parameter | Description | Default Value | Required |
-|-----------|-------------|---------------|----------|
-| S3BucketName | Specify the name of the AWS S3 bucket that you want to monitor. | | :heavy_check_mark: |
-| S3KeyPrefix | Specify the prefix of the log path within your S3 bucket. This value is ignored if you use the SNSTopicArn/SQSTopicArn parameter.| CloudTrail/VpcFlow 'AWSLogs/' | |
-| S3KeySuffix | Filter for the suffix of the file path in your S3 bucket. This value is ignored if you use the SNSTopicArn/SQSTopicArn parameter. | CloudTrail '.json.gz', VpcFlow '.log.gz' | |
-| NewlinePattern | Enter a regular expression to detect a new log line for multiline logs, e.g., \n(?=\d{2}-\d{2}\s\d{2}:\d{2}:\d{2}.\d{3}). | | |
-| SNSTopicArn | The ARN for the SNS topic that contains the SNS subscription responsible for retrieving logs from Amazon S3. | | |
-| SQSTopicArn | The ARN for the SQS queue that contains the SQS subscription responsible for retrieving logs from Amazon S3.| | |
-| CSVDelimiter | Specify a single character to be used as a delimiter when ingesting a CSV file with a header line. This value is applicable when the S3Csv integration type is selected, for example, “,” or ” “. | , | |
+| Parameter      | Description                                                                                                                                                                                       | Default Value                            | Required           |
+|----------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------|--------------------|
+| S3BucketName   | Comma-separated list of names for the AWS S3 buckets that you want to monitor.                                                                                                                                   |                                          | :heavy_check_mark: |
+| S3KeyPrefix    | Specify the prefix of the log path within your S3 bucket. This value is ignored if you use the SNSTopicArn/SQSTopicArn parameter.                                                                 | CloudTrail/VpcFlow 'AWSLogs/'            |                    |
+| S3KeySuffix    | Filter for the suffix of the file path in your S3 bucket. This value is ignored if you use the SNSTopicArn/SQSTopicArn parameter.                                                                 | CloudTrail '.json.gz', VpcFlow '.log.gz' |                    |
+| NewlinePattern | Enter a regular expression to detect a new log line for multiline logs, e.g., \n(?=\d{2}-\d{2}\s\d{2}:\d{2}:\d{2}.\d{3}).                                                                         |                                          |                    |
+| SNSTopicArn    | The ARN for the SNS topic that contains the SNS subscription responsible for retrieving logs from Amazon S3.                                                                                      |                                          |                    |
+| SQSTopicArn    | The ARN for the SQS queue that contains the SQS subscription responsible for retrieving logs from Amazon S3.                                                                                      |                                          |                    |
+| CSVDelimiter   | Specify a single character to be used as a delimiter when ingesting a CSV file with a header line. This value is applicable when the S3Csv integration type is selected, for example, “,” or ” “. | ,                                        |                    |
 
 ### CloudWatch Configuration
 
 Coralogix can be configured to receive data directly from your CloudWatch log group. CloudWatch logs are streamed directly to Coralogix via Lambda. This option does not use S3. You must provide the log group name as a parameter during setup.
 
-| Parameter | Description  | Default Value | Required |
-|-----------|--------------|---------------|----------|
-| CloudWatchLogGroupName | Provide a comma-separated list of CloudWatch log group names to monitor, for example, (`log-group1`, `log-group2`, `log-group3`). | | :heavy_check_mark: |
-| CloudWatchLogGroupPrefix | Prefix of the CloudWatch log groups that will trigger the lambda, in case that your log groups are `log-group1, log-group2, log-group3` then you can set the value to `log-group`. When using this variable you will not be able to see the log groups as trigger for the lambda. The parameter dose not replace **CloudWatchLogGroupName** parameter | | |
+| Parameter                | Description                                                                                                                                                                                                                                                                                                                                           | Default Value | Required           |
+|--------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------|--------------------|
+| CloudWatchLogGroupName   | Provide a comma-separated list of CloudWatch log group names to monitor, for example, (`log-group1`, `log-group2`, `log-group3`).                                                                                                                                                                                                                     |               | :heavy_check_mark: |
+| CloudWatchLogGroupPrefix | Prefix of the CloudWatch log groups that will trigger the lambda, in case that your log groups are `log-group1, log-group2, log-group3` then you can set the value to `log-group`. When using this variable you will not be able to see the log groups as trigger for the lambda. The parameter dose not replace **CloudWatchLogGroupName** parameter |               |                    |
 
-In case your log group name is longer than 70, than in the lambda function you will see the permission for that log group as:
-`allow-trigger-from-<the log group first 65 characters and the last 5 characters>` this is because of length limit in AWS for permission name.
+In case your log group name is longer than 70, than in the lambda function you will see the permission for that log group as: `allow-trigger-from-<the log group first 65 characters and the last 5 characters>` this is because of length limit in AWS for permission name.
 
 ### SNS Configuration
 
 To receive SNS messages directly to Coralogix, use the `SNSIntegrationTopicARN` parameter. This differs from the above use of `SNSTopicArn`, which notifies based on S3 events.
 
-| Parameter | Description  | Default Value | Required |
-|-----------|--------------|---------------|----------|
-| SNSIntegrationTopicArn | Provide the ARN of the SNS topic to which you want to subscribe for retrieving messages. | | :heavy_check_mark: |
+| Parameter              | Description                                                                              | Default Value | Required           |
+|------------------------|------------------------------------------------------------------------------------------|---------------|--------------------|
+| SNSIntegrationTopicArn | Provide the ARN of the SNS topic to which you want to subscribe for retrieving messages. |               | :heavy_check_mark: |
 
 ### SQS Configuration
 
 To receive SQS messages directly to Coralogix, use the `SQSIntegrationTopicARN` parameter. This differs from the above use of `SQSTopicArn`, which notifies based on S3 events.
 
-| Parameter | Description | Default Value | Required |
-|-----------|-------------|---------------|----------|
-| SQSIntegrationTopicArn | Provide the ARN of the SQS queue to which you want to subscribe for retrieving messages. | | :heavy_check_mark: |
+| Parameter              | Description                                                                              | Default Value | Required           |
+|------------------------|------------------------------------------------------------------------------------------|---------------|--------------------|
+| SQSIntegrationTopicArn | Provide the ARN of the SQS queue to which you want to subscribe for retrieving messages. |               | :heavy_check_mark: |
 
 ### Kinesis Configuration
 
 We can receive direct [Kinesis](https://aws.amazon.com/kinesis/) stream data from your AWS account to Coralogix. Your Kinesis stream ARN is a required parameter in this case.
 
-| Parameter | Description | Default Value | Required |
-|-----------|-------------|---------------|----------|
-| KinesisStreamArn | Provide the ARN of the Kinesis Stream to which you want to subscribe for retrieving messages. | | :heavy_check_mark: |
+| Parameter        | Description                                                                                   | Default Value | Required           |
+|------------------|-----------------------------------------------------------------------------------------------|---------------|--------------------|
+| KinesisStreamArn | Provide the ARN of the Kinesis Stream to which you want to subscribe for retrieving messages. |               | :heavy_check_mark: |
 
 ### Kafka Configuration
 
-| Parameter | Description | Default Value | Required |
-|-----------|-------------|---------------|----------|
-| KafkaBrokers | Comma-delimited list of Kafka brokers to establish a connection with.  | | :heavy_check_mark: |
-| KafkaTopic | Subscribe to this Kafka topic for data consumption.| | :heavy_check_mark: |
-| KafkaBatchSize | Specify the size of data batches to be read from Kafka during each retrieval. | 100 | |
-| KafkaSecurityGroups | Comma-delimited list of Kafka security groups for secure connection setup. |  | :heavy_check_mark: |
-| KafkaSubnets | Comma-delimited list of Kafka subnets to use when connecting to Kafka. | | :heavy_check_mark: |
+| Parameter           | Description                                                                   | Default Value | Required           |
+|---------------------|-------------------------------------------------------------------------------|---------------|--------------------|
+| KafkaBrokers        | Comma-delimited list of Kafka brokers to establish a connection with.         |               | :heavy_check_mark: |
+| KafkaTopic          | Subscribe to this Kafka topic for data consumption.                           |               | :heavy_check_mark: |
+| KafkaBatchSize      | Specify the size of data batches to be read from Kafka during each retrieval. | 100           |                    |
+| KafkaSecurityGroups | Comma-delimited list of Kafka security groups for secure connection setup.    |               | :heavy_check_mark: |
+| KafkaSubnets        | Comma-delimited list of Kafka subnets to use when connecting to Kafka.        |               | :heavy_check_mark: |
 
 ### MSK Configuration
 
 Your Lambda function must be in a VPC that has access to the MSK cluster. You can configure your VPC via the provided [VPC configuration parameters](#vpc-configuration-optional).
 
-| Parameter | Description | Default Value | Required |
-|-----------|-------------|---------------|----------|
-| MSKBrokers | Comma-delimited list of MSK brokers to connect to. | | :heavy_check_mark: |
-| KafkaTopic | Comma separated list of Kafka topics to Subscribe to. | | :heavy_check_mark: |
+| Parameter  | Description                                           | Default Value | Required           |
+|------------|-------------------------------------------------------|---------------|--------------------|
+| MSKBrokers | Comma-delimited list of MSK brokers to connect to.    |               | :heavy_check_mark: |
+| KafkaTopic | Comma separated list of Kafka topics to Subscribe to. |               | :heavy_check_mark: |
 
 ### Generic Configuration (Optional)
 
 These are optional parameters if you wish to receive notification emails, exclude certain logs or send messages to Coralogix at a particular rate.
 
-| Parameter | Description  | Default Value | Required |
-|-----------|--------------|---------------|----------|
-| NotificationEmail | A failure notification will be sent to this email address.| | |
-| BlockingPattern | Enter a regular expression to identify lines excluded from being sent to Coralogix. For example, use `MainActivity.java:\d{3}` to match log lines with `MainActivity` followed by exactly three digits. | | |
-| SamplingRate | Send messages at a specific rate, such as 1 out of every N logs. For example, if your value is 10, a message will be sent for every 10th log.| 1 | :heavy_check_mark: |
-| AddMetadata | Add aws event metadata to the log message. Expects comma separated values. Options for S3 are `bucket_name`,`key_name`. For CloudWatch use `stream_name`, `loggroup_name` . For Kafka/MSK use `topic_name` | |
-| CustomMetadata | Add custom metadata to the log message. Expects comma separated values. Options are key1=value1,key2=value2 | | |
+| Parameter         | Description                                                                                                                                                                                                | Default Value | Required           |
+|-------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------|--------------------|
+| NotificationEmail | A failure notification will be sent to this email address.                                                                                                                                                 |               |                    |
+| BlockingPattern   | Enter a regular expression to identify lines excluded from being sent to Coralogix. For example, use `MainActivity.java:\d{3}` to match log lines with `MainActivity` followed by exactly three digits.    |               |                    |
+| SamplingRate      | Send messages at a specific rate, such as 1 out of every N logs. For example, if your value is 10, a message will be sent for every 10th log.                                                              | 1             | :heavy_check_mark: |
+| AddMetadata       | Add aws event metadata to the log message. Expects comma separated values. Options for S3 are `bucket_name`,`key_name`. For CloudWatch use `stream_name`, `loggroup_name` . For Kafka/MSK use `topic_name` |               |                    |
+| CustomMetadata    | Add custom metadata to the log message. Expects comma separated values. Options are key1=value1,key2=value2                                                                                                |               |                    |
 
 ### Lambda Configuration (Optional)
 
 These are the default presets for Lambda. Read [Troubleshooting](#troubleshooting) for more information on changing these defaults.
 
-| Parameter | Description | Default Value | Required |
-|-----------|-------------|---------------|----------|
-| FunctionMemorySize | Specify the memory size for the Lambda function in megabytes. | 1024 | :heavy_check_mark: |
-| FunctionTimeout | Set a timeout for the Lambda function in seconds. | 300 | :heavy_check_mark: |
-| LogLevel | Specify the log level for the Lambda function, choosing from the following options: INFO, WARN, ERROR, DEBUG. | WARN  | :heavy_check_mark: |
-| LambdaLogRetention | Set the CloudWatch log retention period (in days) for logs generated by the Lambda function. | 5 | :heavy_check_mark: |
-| FunctionRunTime | Type of runtime for the lambda, allowd values are provided.al2023 or provided.al2. | provided.al2023 | :heavy_check_mark: |
-| FunctionArchitectures | Architectures for the lambda function, allowed values are arm64 or x86_64. | arm64 | :heavy_check_mark: |
+| Parameter             | Description                                                                                                   | Default Value   | Required           |
+|-----------------------|---------------------------------------------------------------------------------------------------------------|-----------------|--------------------|
+| FunctionMemorySize    | Specify the memory size for the Lambda function in megabytes.                                                 | 1024            | :heavy_check_mark: |
+| FunctionTimeout       | Set a timeout for the Lambda function in seconds.                                                             | 300             | :heavy_check_mark: |
+| LogLevel              | Specify the log level for the Lambda function, choosing from the following options: INFO, WARN, ERROR, DEBUG. | WARN            | :heavy_check_mark: |
+| LambdaLogRetention    | Set the CloudWatch log retention period (in days) for logs generated by the Lambda function.                  | 5               | :heavy_check_mark: |
+| FunctionRunTime       | Type of runtime for the lambda, allowd values are provided.al2023 or provided.al2.                            | provided.al2023 | :heavy_check_mark: |
+| FunctionArchitectures | Architectures for the lambda function, allowed values are arm64 or x86_64.                                    | arm64           | :heavy_check_mark: |
 
 ### VPC Configuration (Optional)
 
 Use the following options if you need to configure a private link with Coralogix.
 
-| Parameter | Description | Default Value | Required |
-|-----------|-------------|---------------|----------|
-| LambdaSubnetID | Specify the ID of the subnet where the integration should be deployed. | | :heavy_check_mark: |
-| LambdaSecurityGroupID | Specify the ID of the Security Group where the integration should be deployed. | | :heavy_check_mark: |
-| UsePrivateLink | Set this to true if you will be using AWS PrivateLink. | false | :heavy_check_mark: |
+| Parameter             | Description                                                                    | Default Value | Required           |
+|-----------------------|--------------------------------------------------------------------------------|---------------|--------------------|
+| LambdaSubnetID        | Specify the ID of the subnet where the integration should be deployed.         |               | :heavy_check_mark: |
+| LambdaSecurityGroupID | Specify the ID of the Security Group where the integration should be deployed. |               | :heavy_check_mark: |
+| UsePrivateLink        | Set this to true if you will be using AWS PrivateLink.                         | false         | :heavy_check_mark: |
+
+### Metadata
+
+The metadata features decribed below are only available in `coralogix-aws-shipper v1.1.0` and later.
+
+The `AddMetadata` parameter allows you to add metadata to the log message. The metadata is added to the log message as a JSON object. The metadata is specific to the integration type. For example, for S3, the metadata is `s3.object.key` and `s3.bucket`. For CloudWatch, the metadata is `cw.log.group` and `cw.log.stream`. See table below for full list of metadata.
+
+| Integration Type | Metadata Key             | Description                           |
+|------------------|--------------------------|---------------------------------------|
+| S3               | s3.bucket                | The name of the S3 bucket             |
+| S3               | s3.object.key            | The key/path of the S3 object         |
+| CloudWatch       | cw.log.group             | The name of the CloudWatch log group  |
+| CloudWatch       | cw.log.stream            | The name of the CloudWatch log stream |
+| Cloudwatch       | cw.owner                 | The owner of the log group            |
+| Kafka            | kafka.topic              | The name of the Kafka topic           |
+| MSK              | kafka.topic              | The name of the Kafka topic           |
+| Kinesis          | kinesis.event.id         | The kinesis event ID                  |
+| Kinesis          | kinesis.event.name       | The kinesis event name                |
+| kinesis          | kinesis.event.source     | The kinesis event source              |
+| kinesis          | kinesis.event.source_arn | The kinesis event source ARN          |
+| Sqs              | sqs.event.source         | The sqs event source/queue            |
+| Sqs              | sqs.event.id             | The sqs event id                      |
+| Ecr              | ecr.scan.id              | The ecr scan id                       |
+| Ecr              | ecr.scan.source          | The ecr scan source                   |
+
+Note that metadata is not added by default. You must specify the metadata keys you want in the `AddMetadata` parameter.
+
+For example, if you want to add the bucket name and key name to the log message, you would set the `AddMetadata` parameter to `s3.object.key,s3.bucket`.
+
+Some metadata keys will overlap as some integrations share the same metadata. For example, both Kafka and MSK have the same metadata key `kafka.topic` or both Kinesis and Cloudwatch metadata will be added in cases where a Cloudwatch log stream is being ingested from a Kinesis stream.
+
+##### Dynamic Subsystem or Application Name
+
+As of `v1.1.0`,you can use dynamic values for the Application and Subsystem Name parameters based on the internal metadata defined above.
+
+To do accomplish this, you can use the following syntax:
+
+```
+{{ metadata.key | r'regex' }}
+```
+
+For example, if you want to use the bucket name as the subsystem name, you would set the `SubsystemName` parameter to:
+
+```
+{{ s3.bucket }}
+```
+
+If you want to use the log group name as the application name, you would set the `ApplicationName` parameter to:
+
+```
+{{ cw.log.group }}
+```
+
+If you only want to use part of the metadata value, you can use a regular expression to extract the desired part. For example, If we have an `s3.object.key` value of `AWSLogs/112322232/ELB1/elb.log` and we want to extract the last part of the key as the Subsystem name, we would set the `SubsystemName` parameter to:
+
+```
+{{ s3.object.key | r'AWSLogs\/.+\/(.*)$' }}
+```
+
+This would result in a SubsystemName value of `elb.log` as this is the part of the regex that is captured by the group `(.*)`.
+
+**Important**:
+
+- The regex must be a valid regex pattern.
+- The regex must define a capture group for part of the string you want to use as the value
+- The metadata key must exist in the list defined above and be a part of the integration type that is deployed.
+
+Dynamic values are only supported for the `ApplicationName` and `SubsystemName` parameters, the `CustomMetadata` parameter is not supported.
 
 ### Advanced Configuration
 
@@ -210,6 +298,8 @@ Use the following options if you need to configure a private link with Coralogix
 If you want to bypass using the public internet, you can use AWS PrivateLink to facilitate secure connections between your VPCs and AWS Services. This option is available under the [VPC Configuration](#vpc-configuration-optional) tab. To turn it on, either check off the Use Private Link box in the Coralogix UI or set the parameter to `true`. For additional instructions on AWS PrivateLink, please [follow our dedicated tutorial](https://coralogix.com/docs/coralogix-amazon-web-services-aws-privatelink-endpoints/).
 
 **Dynamic Values**
+
+> Note the following method for using dynamic values will change to the method defined above in `coralogix-aws-shipper v1.1.0` and later. This approach will no longer be supported.
 
 If you wish to use dynamic values for the Application and Subsystem Name parameters, consider the following:
 
@@ -227,7 +317,7 @@ The DLQ workflow for the Coralogix AWS Shipper is as follows:
 
 ![DLQ Workflow](./static/dlq-workflow.png)
 
- To enable the DLQ, you must provide the required parameters outlined below.
+To enable the DLQ, you must provide the required parameters outlined below.
 
 | Parameter     | Description                                                                   | Default Value | Required           |
 |---------------|-------------------------------------------------------------------------------|---------------|--------------------|
@@ -236,10 +326,12 @@ The DLQ workflow for the Coralogix AWS Shipper is as follows:
 | DLQRetryLimit | The number of times a failed event should be retried before being saved in S3 | 3             | :heavy_check_mark: |
 | DLQRetryDelay | The delay in seconds between retries of failed events                         | 900           | :heavy_check_mark: |
 
+> [!NOTE]
+> In the template we use `arn:aws:s3:::*` for the S3 integration because of CF limitation, it is not an option to loop through the s3 bucket and specify permissions to each one. After the lambda gets created you can manually change the permissions to only allow access to your S3 buckets.
+
 ## Troubleshooting
 
-**Parameter max value**
-If you tried to deploy the integration and got this error `length is greater than 4094`, then you can upload the value of the parameter to an S3 bucket as txt and pass the file URL as the parameter value ( this option is available for `KafkaTopic` and `CloudWatchLogGroupName` parameters).
+**Parameter max value** If you tried to deploy the integration and got this error `length is greater than 4094`, then you can upload the value of the parameter to an S3 bucket as txt and pass the file URL as the parameter value ( this option is available for `KafkaTopic` and `CloudWatchLogGroupName` parameters).
 
 **Timeout errors**
 
@@ -253,8 +345,7 @@ If you see “Task out of memory”, you should increase the Lambda maximum Memo
 
 To add more verbosity to your function logs, set RUST_LOG to DEBUG.
 
-**Trigger Failed on Deployment**
-If Deployment is failing while asigning the trigger, please check that S3 Bucket notifications has no notifications enabled. If Using Cloudwatch max number of notificactions per LogGroup is 2.
+**Trigger Failed on Deployment** If Deployment is failing while asigning the trigger, please check that S3 Bucket notifications has no notifications enabled. If Using Cloudwatch max number of notificactions per LogGroup is 2.
 
 > **Warning:** Remember to change it back to WARN after troubleshooting.
 

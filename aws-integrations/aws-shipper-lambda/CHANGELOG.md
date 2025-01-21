@@ -1,5 +1,51 @@
 # Changelog
 
+### v1.2.0 / 2025-1-7
+### 🧰 Bug fixes 🧰
+- Add permissions to custom lambda for `event-source-mapping`
+### 💡 Enhancements 💡
+- Add support to deploy 1 integration with multiple S3 buckets by passing comma seperated list to `S3BucketName` parameter
+
+### v1.1.2 / 2025-12-31
+### 🧰 Bug fixes 🧰
+- cds-1756 - Restricted Lambda `EventSourceMapping` permissions used by custom resource function, so it won't have a wildcard/full resource access
+
+### v1.1.1 / 2025-12-27
+### 🧰 Bug fixes 🧰
+- cds-1747 - Removed `iam:*` permissions from Shipper, as they were leftover from older versions as the Custom Resource use to be responsible for editing the policy directly
+
+### v1.1.0 / 2025-12-11
+### 💡 Enhancements (Breaking) 💡
+- cds-1705 - updated support for dynamic value allocation of Application and Subsystem names based on internal metadata
+- cds-1706 - updated how metadata is recorded and propagated throughout the function, including adding more metadata fields and updating the names of others.
+    - stream_name --> cw.log.stream
+    - bucket_name --> s3.bucket
+    - key_name --> s3.object.key
+    - topic_name --> kafka.topic
+    - log_group_name --> cw.log.group
+
+- [cds-1707] - Added new syntax for evaluating dynamic allocation fields. `{{ metadata | r'regex' }}`
+
+## v1.0.16 / 2024-11-20
+### 🧰 Bug fixes 🧰
+- cds-1690 - Fixed a bug that when you update cloudwatch log group for an existing integraiotn from the CF the stack will fail.
+- cds-1670 - Fixed a bug where Kinesis Integration was not correctly checking for Cloudwatch Formatted Logs in payload.
+
+## v1.0.15 / 2024-11-09
+### 💡 Enhancements 💡
+- Add new parameter `LambdaAssumeRoleARN` which accept role arn, that the lambda will use for Execution role.
+- Update internal code to support the new parameter `LambdaAssumeRoleARN`
+- Add new parameter ReservedConcurrentExecutions to the lambda function.
+- Removed circular dependency between DeadLetterQueue and CustomResourceFunction
+
+## v1.0.14 / 2024-01-24
+### 💡 Enhancements 💡
+- Internal code refactoring to isolate logs workflow from additional telemetry workflows to come.
+
+## v1.0.14 / 2024-01-10
+### 🧰 Bug fixes 🧰
+- Allow matches with arn of aws secretmanager in govcloud, previously only matched with public cloud secretmanager arn
+
 ## v1.0.13 / 2024-11-08
 ### 🧰 Bug fixes 🧰
 - Allow the lambda to use the runtime `provided.al2`, by changing the binary build of cargo to a version that will support it in the Makefile. Add a parameter `FunctionRunTime` to allow users to choose the function runtime

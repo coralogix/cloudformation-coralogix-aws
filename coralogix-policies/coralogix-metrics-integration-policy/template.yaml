@@ -1,11 +1,11 @@
 AWSTemplateFormatVersion: 2010-09-09
-Description: The module will create a role with an inline policy to allow Coralogix to send events to an EventBridge event bus.
+Description: The module will create a role with an inline policy to allow Coralogix to collect metrics from several resource types.
 Parameters:
   ExternalIdSecret:
     Description: "ExternalIdSecret for sts:AssumeRole"
     Type: "String"
     AllowedPattern: "[\\w+=,.:\\/-]*"
-  AWSAccount:
+  CoralogixAccount:
     Type: String
     Default: EU1
     Description: The AWS account that you want to deploy the integration in.
@@ -15,7 +15,7 @@ Parameters:
       - EU1
       - EU2
       - AP1
-      - Ap2
+      - AP2
       - AP3
       - US1
       - US2
@@ -25,7 +25,7 @@ Parameters:
     Description: The name of the role that will be created.
   CustomAccountId:
     Type: String
-    Description: In case you want to use a custom coralogix account, enter the aws account id that you want to use.
+    Description: Custom AWS account ID that you want to deploy the integration in (overrides aws account id from CoralogixEnvironment variable).
     Default: ""
     AllowedPattern: "[0-9]*"
   CoralogixCompanyId:
@@ -50,7 +50,7 @@ Mappings:
     AP1:
       ID: 625240141681
       RoleSuffix: ap1
-    Ap2:
+    AP2:
       ID: 625240141681
       RoleSuffix: ap2
     AP3:
@@ -111,12 +111,20 @@ Resources:
                   - dms:DescribeReplicationTasks
                   - ec2:DescribeTransitGatewayAttachments
                   - ec2:DescribeSpotFleetRequests
+                  - ec2:DescribeInstanceTypes
                   - storagegateway:ListGateways
                   - storagegateway:ListTagsForResource
-                  - rds:Describe*
-                  - rds:List*
-                  - ecs:Describe*
-                  - ecs:List*
+                  - rds:DescribeDbInstances
+                  - rds:DescribeReservedDbInstances
+                  - rds:ListTagsForResource
+                  - ecs:ListClusters
+                  - ecs:DescribeClusters
+                  - ecs:ListServices
+                  - ecs:DescribeServices
+                  - ecs:ListContainerInstances
+                  - ecs:DescribeContainerInstances
+                  - elasticache:DescribeCacheClusters
+                  - elasticache:ListTagsForResource
                 Resource: "*"
 
 Outputs:
