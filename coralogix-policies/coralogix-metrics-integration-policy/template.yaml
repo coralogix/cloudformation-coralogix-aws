@@ -83,11 +83,11 @@ Resources:
                 - aws_account_id: !If
                     - IsCustomAWSAccountId
                     - !Ref CustomAWSAccountId
-                    - !FindInMap [CoralogixEnvironment, !Ref AWSAccount, "ID"]
+                    - !FindInMap [CoralogixEnvironment, !Ref CoralogixRegion, "ID"]
                   role_suffix:
                     !FindInMap [
                       CoralogixEnvironment,
-                      !Ref AWSAccount,
+                      !Ref CoralogixRegion,
                       "RoleSuffix",
                     ]
             Action:
