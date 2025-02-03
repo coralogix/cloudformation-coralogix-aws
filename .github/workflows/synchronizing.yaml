@@ -159,7 +159,7 @@ jobs:
               mv template-directory/${line}-template.yaml integrations/${line}/v${template_version}/template.yaml
             fi
             
-            if [ -f integrations/${line}/manifest.yaml ]; then
+            if [ -f integrations/${line}/manifest.yaml ] && [ "$line" != "firehose-logs" ]; then
               echo "  - revision: ${template_version}
               template: !CloudFormationTemplate v${template_version}/template.yaml
               field_definitions: v${template_version}/fields.yaml" >> integrations/${line}/manifest.yaml
