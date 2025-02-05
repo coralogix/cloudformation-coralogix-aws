@@ -31,19 +31,15 @@ Parameters:
 
   CoralogixRegion:
       Type: String
-      Description: "The Coralogix location region [EU1|EU2|AP1|AP2|US1|US2]. Deprecated: [Europe, Europe2, India, Singapore, US]"
+      Description: "The Coralogix location region [EU1|EU2|AP1|AP2|AP3|US1|US2]]"
       AllowedValues:
         - EU1
         - EU2
         - AP1
         - AP2
+        - AP3
         - US1
         - US2
-        - Europe
-        - Europe2
-        - India
-        - Singapore
-        - US
 
   DefaultApplicationName:
     Type: String
@@ -321,27 +317,15 @@ Mappings:
     AP2:
       Endpoint: ingress.coralogixsg.com:443
       Domain: coralogixsg.com
+    AP3:
+      Endpoint: ingress.ap3.coralogix.com:443
+      Domain: ap3.coralogix.com
     US1:
       Endpoint: ingress.coralogix.us:443
       Domain: coralogix.us
     US2:
       Endpoint: ingress.cx498.coralogix.com:443
       Domain: cx498.coralogix.com
-    Europe:
-      Endpoint: ingress.coralogix.com:443
-      Domain: coralogix.com
-    Europe2:
-      Endpoint: ingress.eu2.coralogix.com:443
-      Domain: eu2.coralogix.com
-    India:
-      Endpoint: ingress.coralogix.in:443
-      Domain: coralogix.in
-    Singapore:
-      Endpoint: ingress.coralogixsg.com:443
-      Domain: coralogixsg.com
-    US:
-      Endpoint: ingress.coralogix.us:443
-      Domain: coralogix.us
 
 Resources:
   OtelTaskDefinition: 

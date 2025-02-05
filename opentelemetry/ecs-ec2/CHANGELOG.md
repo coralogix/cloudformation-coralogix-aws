@@ -9,6 +9,7 @@
 ### 🛑 Breaking changes 🛑
 - Adjusted default deployment to have single configuration with instructions to comment out unwanted sections vs numerous alternate configuration toggles/logic.
 - Replaced Custom plaintext Configuration mechanism with Parameter Store as CF template variables can only be 4096 characters which was insufficient for many custom configurations.
+- Added AP3 Region.
 
 ### 0.0.15 / 2024-12-19
 - Removed the line from Opentelemetry config which caused the agent to fail
