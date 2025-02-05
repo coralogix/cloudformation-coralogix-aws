@@ -6,11 +6,7 @@ CloudFormation template to launch the Coralogix Distribution for Open Telemetry 
 
 ## Image
 
-<!--
-'solution' vs 'example'. We are as a team already supporting this repo. What should be our actual support posture? If this repo is positioned as "supported" by CX? Then:'This solution', is more accurate than:'This example'.
--->
-
-This example uses the coralogixrepo/coralogix-otel-collector image which is a custom distribution of Open Telemetry containing custom components developed by Coralogix. The image is available on [Docker Hub](https://hub.docker.com/r/coralogixrepo/coralogix-otel-collector). The ECS components are described [here](./components.md)
+This solution uses the coralogixrepo/coralogix-otel-collector image which is a custom distribution of Open Telemetry containing custom components developed by Coralogix. The image is available on [Docker Hub](https://hub.docker.com/r/coralogixrepo/coralogix-otel-collector). The ECS components are described [here](./components.md)
 
 The OTEL collector/agent/daemon image used is the [Coralogix Distribution for Open Telemetry](https://hub.docker.com/r/coralogixrepo/coralogix-otel-collector) Docker Hub image. It is deployed as a [*Daemon*](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/ecs_services.html#service_scheduler_daemon) ECS Task, i.e. one OTEL collector agent container on each EC2 instance (i.e. ECS container instance) across the cluster.
 
@@ -26,9 +22,13 @@ The OTEL agent uses a [filelog receiver](https://github.com/open-telemetry/opent
 
 Logs are collected from all containers that log to `/var/lib/docker/containers/*/*.log`. The container requires privileges to mount the host read-only file path `/var/lib/docker/`.
 
-### Metrics
+### Container Metrics
 
-Metrics are collected from all containers running on the ECS Cluster. The metrics are collected using the [awsecscontainermetricsd](./components.md#awsecscontainermetricsd) receiver.
+Container metrics are collected from all containers running on the ECS Cluster. The metrics are collected using the [awsecscontainermetricsd](./components.md#awsecscontainermetricsd) receiver. If you do not wish to collect container metrics, comment out or delete the `metrics/containermetrics` pipeline from the configuration.
+
+### Open Telemetry Collector Metrics
+
+The default configuration exposes opentelemetry collector metrics on port `8888` via the path `/metrics`. The metrics are collected using a [prometheus](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/receiver/prometheusreceiver) scrape job. These are performance metrics of the opentelemetry collector containers. Records received and processed, submission faults and more.
 
 ### Traces
 
@@ -47,11 +47,10 @@ A GRPC(*4317*) and HTTP(*4318*) endpoint is exposed for sending traces to the lo
 | CDOTImageVersion | The Coralogix Open Telemetry Collector Image version/tag to use. See available tags [here](https://hub.docker.com/r/coralogixrepo/coralogix-otel-collector/tags)                                                                     |                                                                          |                    |
 | Memory           | The amount of memory to allocate to the Open Telemetry container.<br>*Assigning too much memory can lead to the ECS Service not being deployed. Make sure that values are within the range of what is available on your ECS Cluster* | 256                                                                      |                    |
 | CoralogixRegion  | The region of your Coralogix Account                                                                                                                                                                                                 | *Allowed Values:* <br>- EU1<br>- EU2<br>- AP1<br>- AP2<br>- US1<br>- US2 | :heavy_check_mark: |
-| ApplicationName  | You application name                                                                                                                                                                                                                 |                                                                          | :heavy_check_mark: |
-| SubsystemName    | You Subsystem name                                                                                                                                                                                                                   | AWS Account ID                                                           | :heavy_check_mark: |
+| ApplicationName  | Your application name                                                                                                                                                                                                                 |                                                                          | :heavy_check_mark: |
+| SubsystemName    | Your Subsystem name |                                                            | :heavy_check_mark: |
 | CoralogixApiKey  | The Send-Your-Data API key for your Coralogix account. See: https://coralogix.com/docs/send-your-data-api-key/                                                                                                                       |                                                                          | :heavy_check_mark: |
-| Metrics          | Enable/Disable Metrics                                                                                                                                                                                                               | disable                                                                  |                    |
-| OtelConfig       | The Open Telemetry Configuration Yaml string. This will be used instead of the embedded configuration if specified.<br>**Note** that as of image `v0.3.0` decoding base64 encoded env variables, is no longer supporter.             |                                                                          |                    |
+| CustomConfig       | The name of a Parameter Store to use as a custom configuration. Must be in the same region as your ECS cluster.            | none                                                                         |                    |
 
 ## Deploy the Cloudformation template:
 
@@ -69,14 +68,14 @@ aws cloudformation deploy --template-file template.yaml --stack-name <stack_name
 **When using a custom configuration for Open Telemetry**
 
 ```sh
-aws cloudformation deploy --template-file cfn_template.yaml --stack-name <stack_name> \
+aws cloudformation deploy --template-file template.yaml --stack-name <stack_name> \
     --region <region> \
     --parameter-overrides \
         DefaultApplicationName=<application name> \
         ClusterName=<ecs cluster name> \
         CDOTImageVersion=<image tag> \
         CoralogixApiKey=<your-private-key> \
-        OtelConfig=$(cat path/to/otelconfig.yaml) \
+        CustomConfig=<Parameter Store Name> \
         CoralogixRegion=<coralogix-region>
 ```
 
@@ -84,11 +83,11 @@ Note that these are just examples of how this could be deployed. You can also de
 
 ### Open Telemetry Configuration
 
-The Open Telemetry configuration is embedded in this cloudformation template by default, however, you do have the option of specifying your own configuration using the `OtelConfig` parameter. The configuration must be base64 encoded.
+The Open Telemetry configuration is embedded in this cloudformation template by default, however, you do have the option of specifying your own configuration using the `CustomConfig` parameter. When using a custom configuration, you must ensure your EC2 host has access to the AWS Systems Manager API and the OTEL containers have read permission for the specified Parameter Store.
 
-The default configuration will monitor container logs and listen for traces on port `4317/4318`. To enable metrics, set the `Metrics` parameter to `enabled`. This will add the `awsecscontainermetricsd` receiver which is based on the [awsecscontainermetrics](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/receiver/awsecscontainermetricsreceiver) receiver, however, instead of monitoring a single task, metrics will be collected from all containers.
+The default configuration will monitor container logs, listen for traces on port `4317/4318`, and monitor container metrics using the `awsecscontainermetricsd` receiver which is based on the [awsecscontainermetrics](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/receiver/awsecscontainermetricsreceiver) receiver, however, instead of monitoring a single task, metrics will be collected from all containers. If you do not wish to collect container metrics, simply comment out or delete the metrics/containermetrics pipeline from the configuration.
 
-The default Open Telemetry configuration can be view [here](./template.yaml#L75-L161) and the metrics [here](./template.yaml#L164-L262).
+The embeded default Open Telemetry configuration can be viewed [here](./template.yaml#L90).
 
 ### Health Check
 
@@ -103,10 +102,6 @@ The healthy response should look like this:
   "uptime": "2m5.2610063s"
 }
 ```
-
-### Open Telemetry Collector Metrics
-
-The default Open Telemetry configuration embedded in this cloudformation template exposes metrics about the collector on port `8888` via the path `/metrics`. The metrics are collected using a [prometheus](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/receiver/prometheusreceiver) scrape job.
 
 ### Further info
 
