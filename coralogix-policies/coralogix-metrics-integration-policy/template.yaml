@@ -1,10 +1,11 @@
 AWSTemplateFormatVersion: 2010-09-09
 Description: The module will create a role with an inline policy to allow Coralogix to collect metrics from several resource types.
 Parameters:
-  ExternalId:
-    Description: "ExternalId for sts:AssumeRole"
+  ExternalIdSecret:
+    Description: "ExternalIdSecret for sts:AssumeRole"
     Type: "String"
-  AWSAccount:
+    AllowedPattern: "[\\w+=,.:\\/-]*"
+  CoralogixRegion:
     Type: String
     Default: EU1
     Description: The AWS account that you want to deploy the integration in.
@@ -22,10 +23,15 @@ Parameters:
   RoleName:
     Type: String
     Description: The name of the role that will be created.
-  CustomAccountId:
+  CustomAWSAccountId:
     Type: String
     Description: Custom AWS account ID that you want to deploy the integration in (overrides aws account id from CoralogixEnvironment variable).
     Default: ""
+    AllowedPattern: "[0-9]*"
+  CoralogixCompanyId:
+    Type: String
+    Description: Your coralogix account company ID, will be used for security validation.
+    AllowedPattern: "[0-9]*"
 
 Mappings:
   CoralogixEnvironment:
@@ -60,7 +66,7 @@ Mappings:
       ID: 000000000000
       RoleSuffix: custom
 Conditions:
-  IsCustomAccountId: !Not [!Equals [!Ref CustomAccountId, ""]]
+  IsCustomAWSAccountId: !Not [!Equals [!Ref CustomAWSAccountId, ""]]
 Resources:
   CoralogixAwsMetricsRole:
     Type: AWS::IAM::Role
@@ -75,15 +81,23 @@ Resources:
               AWS: !Sub
                 - "arn:aws:iam::${aws_account_id}:role/coralogix-ingestion-${role_suffix}"
                 - aws_account_id: !If
-                    - IsCustomAccountId
-                    - !Ref CustomAccountId
-                    - !FindInMap [CoralogixEnvironment, !Ref AWSAccount, "ID"]
-                  role_suffix: !FindInMap [CoralogixEnvironment, !Ref AWSAccount, "RoleSuffix"]
+                    - IsCustomAWSAccountId
+                    - !Ref CustomAWSAccountId
+                    - !FindInMap [CoralogixEnvironment, !Ref CoralogixRegion, "ID"]
+                  role_suffix:
+                    !FindInMap [
+                      CoralogixEnvironment,
+                      !Ref CoralogixRegion,
+                      "RoleSuffix",
+                    ]
             Action:
               - sts:AssumeRole
             Condition:
               StringEquals:
-                sts:ExternalId: !Ref ExternalId
+                sts:ExternalId: !Sub
+                  - "${ExternalIdSecret}@${company_id}"
+                  - ExternalIdSecret: !Ref ExternalIdSecret
+                    company_id: !Ref CoralogixCompanyId
       Policies:
         - PolicyName: CoralogixMetricsPolicy
           PolicyDocument:
@@ -114,6 +128,8 @@ Resources:
                   - ecs:DescribeServices
                   - ecs:ListContainerInstances
                   - ecs:DescribeContainerInstances
+                  - elasticache:DescribeCacheClusters
+                  - elasticache:ListTagsForResource
                 Resource: "*"
 
 Outputs:

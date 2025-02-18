@@ -5,7 +5,9 @@
 <!-- ### version / full date -->
 <!-- * [Update/Bug fix] message that describes the changes that you apply -->
 
-### 0.0.7 / 2024-11-27
+### 0.0.7 / 2024-12-02
+* [FIX] Rename Parameter Store to prevent deployment failure.
+* [UPDATE] Update and flatten configuration to reduce size.
 * [UPDATE] Add Resource Catalog configs to parameter store.
 * [UPDATE] Changed default parameter store name.
 
