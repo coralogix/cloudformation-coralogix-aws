@@ -163,13 +163,10 @@ Mappings:
             collection_interval: 10s
             scrapers:
               cpu: { metrics: { system.cpu.utilization: { enabled: true } } }
-              disk: null
               filesystem:
                 exclude_fs_types: { fs_types: [autofs, binfmt_misc, bpf, cgroup2, configfs, debugfs, devpts, devtmpfs, fusectl, hugetlbfs, iso9660, mqueue, nsfs, overlay, proc, procfs, pstore, rpc_pipefs, securityfs, selinuxfs, squashfs, sysfs, tracefs], match_type: strict }
                 exclude_mount_points: { match_type: regexp, mount_points: [/dev/*, /proc/*, /sys/*, /run/k3s/containerd/*, /run/containerd/runc/*, /var/lib/docker/*, /var/lib/kubelet/*, /snap/*] }
-              load: null
               memory: { metrics: { system.memory.utilization: { enabled: true } } }
-              network: null
               process:
                 metrics:
                   process.cpu.utilization: { enabled: true }
@@ -179,12 +176,7 @@ Mappings:
                 mute_process_user_error: true
 
         processors:
-          resourcedetection:
-            detectors: [env, ec2, system]
-            timeout: 2s
-            override: false
-
-          ecsattributes:
+          ecsattributes/container-logs:
             container_id:
               sources:
                 - "log.file.path"
@@ -236,6 +228,23 @@ Mappings:
                 host.ip: { enabled: true }
                 os.description: { enabled: true }
 
+          resourcedetection/entity:
+            detectors: [system, env, ec2, ecs]
+            override: false
+            timeout: 2s
+            system:
+              resource_attributes:
+                host.id: { enabled: false }
+                host.cpu.cache.l2.size: { enabled: true }
+                host.cpu.stepping: { enabled: true }
+                host.cpu.model.name: { enabled: true }
+                host.cpu.model.id: { enabled: true }
+                host.cpu.family: { enabled: true }
+                host.cpu.vendor.id: { enabled: true }
+                host.mac: { enabled: true }
+                host.ip: { enabled: true }
+                os.description: { enabled: true }
+
         exporters:
           coralogix:
             domain: "${CORALOGIX_DOMAIN}"
@@ -258,7 +267,7 @@ Mappings:
             logs:
               headers:
                 X-Coralogix-Distribution: ecs-ec2-integration/0.0.1
-                x-coralogix-ingress: metadata-as-otlp-logs/v1alpha1
+                x-coralogix-ingress: metadata-as-otlp-logs/v1
             subsystem_name: catalog
             timeout: 30s
 
@@ -272,18 +281,18 @@ Mappings:
             - pprof
 
           pipelines:            
-            logs:
+            logs/container-logs:
               receivers: [filelog]
-              processors: [resourcedetection, ecsattributes, resource/metadata, transform/logs, batch]
+              processors: [ecsattributes/container-logs, resource/metadata, transform/logs, batch]
               exporters: [coralogix]
 
             logs/resource_catalog:
               receivers: [hostmetrics]
-              processors: [resourcedetection/otel-collector, transform/entity-event, batch]
+              processors: [resourcedetection/entity, transform/entity-event, batch]
               exporters: [coralogix/resource_catalog]
 
-            metrics/containermetrics:
-              receivers: [otlp, awsecscontainermetricsd]
+            metrics/container-metrics:
+              receivers: [awsecscontainermetricsd]
               processors: [batch]
               exporters: [coralogix]
 
@@ -292,7 +301,12 @@ Mappings:
               processors: [resourcedetection/otel-collector, resource/metadata, batch]
               exporters: [coralogix]
 
-            traces:
+            metrics/otlp:
+              receivers: [otlp]
+              processors: [resource/metadata, batch]
+              exporters: [coralogix]
+
+            traces/otlp:
               receivers: [otlp]
               processors: [resource/metadata, batch]
               exporters: [coralogix]
