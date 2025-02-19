@@ -2,6 +2,12 @@
 
 ## resource-metadata-sqs
 
+### 0.1.3 / 17.02.2025
+* [Fix] CDS-1876 rewrite batch collection of EC2 instances to avoid exceeding the SQS message size limit
+
+### 0.1.2 / 04.02.2025
+* [Fix] Adjust CloudTrail S3 bucket name to fit the character limit (<=63 characters)
+
 ### 0.1.1 / 31.01.2025
 * [Fix] Remove non-existent function from SAM template and hardcode message retention period to 1 hour instead of using the resource ttl.
 * [Fix] Update GitHub Actions publish step to store multi-function SAM template.

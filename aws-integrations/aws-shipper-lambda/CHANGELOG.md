@@ -1,5 +1,22 @@
 # Changelog
 
+## v1.3.4 / 2025-02-19
+### 🧰 Bug fixes 🧰
+- Fixed issue when deploying S3 integration with bucket name longer than 40 characters.
+
+## v1.3.3 / 2025-02-13
+### 🧰 Bug fixes 🧰
+- Fixed issue when updating an existing CF stack with S3, CloudTrail, VpcFlow or S3Csv integration type.
+
+## v1.3.2 / 2025-02-12
+### 💡 Chore 💡
+- Update dependencies to fix security vulnerabilities
+    - https://github.com/coralogix/coralogix-aws-shipper/security/dependabot/7
+
+## v1.3.1 / 2025-02-04
+### 🧰 Bug fixes 🧰
+- Added support for dynamic allocation of Application and Subsystem names based on json key from log.
+
 ### v1.3.0 / 2025-01-20
 ### 💡 Enhancements 💡
 - New intergration workflow added for ingesting Cloudwatch Stream Metrics via Firehose over PrivateLink
