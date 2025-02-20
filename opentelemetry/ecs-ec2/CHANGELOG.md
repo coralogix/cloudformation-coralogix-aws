@@ -7,8 +7,9 @@
 
 ### 0.0.16 / 2025-01-14
 ### 🛑 Breaking changes 🛑
-- Adjusted default deployment to have single configuration with instructions to comment out unwanted sections vs numerous alternate configuration toggles/logic.
-- Replaced Custom plaintext Configuration mechanism with Parameter Store as CF template variables can only be 4096 characters which was insufficient for many custom configurations.
+- Adjusted embeded configuration to support logs/metrics and traces by default.
+- Added support for resource catalog.
+- Replaced Custom plaintext Configuration mechanism with Parameter Store as CF template parameters can only be 4096 bypes which was insufficient for many custom configurations.
 - Added AP3 Region.
 
 ### 0.0.15 / 2024-12-19

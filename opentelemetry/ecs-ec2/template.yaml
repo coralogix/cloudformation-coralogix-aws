@@ -125,6 +125,7 @@ Mappings:
             force_flush_period: 0
             include:
               - /hostfs/var/lib/docker/containers/*/*.log
+            include_file_name: false
             include_file_path: true
             operators:
               - type: router
@@ -212,7 +213,7 @@ Mappings:
 
           # otel-collector resource detection for collector
           resourcedetection/otel-collector:
-            detectors: [system, env, ec2, ecs]
+            detectors: [system, env, ecs, ec2]
             override: false
             timeout: 2s
             system:
@@ -229,7 +230,7 @@ Mappings:
                 os.description: { enabled: true }
 
           resourcedetection/entity:
-            detectors: [system, env, ec2, ecs]
+            detectors: [system, env, ecs, ec2]
             override: false
             timeout: 2s
             system:
@@ -280,25 +281,20 @@ Mappings:
             - health_check
             - pprof
 
-          pipelines:            
+          pipelines:
             logs/container-logs:
               receivers: [filelog]
               processors: [ecsattributes/container-logs, resource/metadata, transform/logs, batch]
               exporters: [coralogix]
-
-            logs/resource_catalog:
-              receivers: [hostmetrics]
-              processors: [resourcedetection/entity, transform/entity-event, batch]
-              exporters: [coralogix/resource_catalog]
 
             metrics/container-metrics:
               receivers: [awsecscontainermetricsd]
               processors: [batch]
               exporters: [coralogix]
 
-            metrics/otel-collector:
-              receivers: [prometheus, hostmetrics]
-              processors: [resourcedetection/otel-collector, resource/metadata, batch]
+            logs/otlp:
+              receivers: [otlp]
+              processors: [resource/metadata, batch]
               exporters: [coralogix]
 
             metrics/otlp:
@@ -309,6 +305,16 @@ Mappings:
             traces/otlp:
               receivers: [otlp]
               processors: [resource/metadata, batch]
+              exporters: [coralogix]
+
+            logs/resource_catalog:
+              receivers: [hostmetrics]
+              processors: [resourcedetection/entity, transform/entity-event, batch]
+              exporters: [coralogix/resource_catalog]
+
+            metrics/otel-collector:
+              receivers: [prometheus, hostmetrics]
+              processors: [resourcedetection/otel-collector, resource/metadata, batch]
               exporters: [coralogix]
 
           telemetry:
