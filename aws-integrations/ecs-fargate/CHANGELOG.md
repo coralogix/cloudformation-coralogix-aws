@@ -8,6 +8,8 @@
 ### 0.0.7 / 2024-12-02
 * [FIX] Rename Parameter Store to prevent deployment failure.
 * [UPDATE] Update and flatten configuration to reduce size.
+* [UPDATE] Add Resource Catalog configs to parameter store.
+* [UPDATE] Changed default parameter store name.
 
 ### 0.0.6 / 2024-10-18
 * [UPDATE] Update ecs-fargate integration cf to allow larger "Advanced" Parameter Store.

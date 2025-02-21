@@ -218,7 +218,7 @@ jobs:
           if [[ -n "$pr_exists" ]]; then
             echo "Pull request already exists: #$pr_exists"
           else
-            gh pr create --base master --head "${{env.branch_name}}" --title "${pr_name}" --body "This pull request syncs the changes from the cloudformation repo to this repo. link to the original PR $pr_url "
+            gh pr create --base master --head "${{env.branch_name}}" --title "${pr_name}" --body "This pull request syncs the changes from the cloudformation repo to this repo. link to the original PR $pr_url. **dummy ticket to pass ticket validate[CDS-1708]** "
           fi
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
