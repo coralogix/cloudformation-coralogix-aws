@@ -5,7 +5,7 @@
 <!-- ### version / full date -->
 <!-- * [Update/Bug fix] message that describes the changes that you apply -->
 
-### 0.0.16 / 2025-01-14
+### 1.0.0 / 2025-01-14
 ### 🛑 Breaking changes 🛑
 - Adjusted embeded configuration to support logs/metrics and traces by default.
 - Added support for resource catalog.
