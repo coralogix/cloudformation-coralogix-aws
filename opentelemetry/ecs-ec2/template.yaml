@@ -1,17 +1,16 @@
 AWSTemplateFormatVersion: 2010-09-09
 Description: |
-  The template used to create an Otel ECS Service from on an ECS Console. Logs and Traces
-  are enabled by default. Metrics are disabled by default. To enable metrics, set the
-  Metrics parameter to "enable".
+  Create an OTEL ECS Daemon Service on an ECS Cluster.
 
 Parameters:
   ClusterName:
+    Description: |
+      Name of the ECS Cluster onto which to deploy the OTEL Daemon Service.
     Type: String
 
   CDOTImageVersion:
     Description: |
-      The Coralogix Open Telemetry Distribution Image
-      Version/Tag.
+      The Coralogix Distribution OpenTelemetry Image Version/Tag.
       View available tags here: https://hub.docker.com/r/coralogixrepo/coralogix-otel-collector/tags
     Type: String
   
@@ -32,64 +31,74 @@ Parameters:
 
   CoralogixRegion:
       Type: String
-      Description: "The Coralogix location region [EU1|EU2|AP1|AP2|US1|US2]. Deprecated: [Europe, Europe2, India, Singapore, US, US2]"
+      Description: "The Coralogix location region [EU1|EU2|AP1|AP2|AP3|US1|US2]]"
       AllowedValues:
         - EU1
         - EU2
         - AP1
         - AP2
+        - AP3
         - US1
         - US2
-        - Europe
-        - Europe2
-        - India
-        - Singapore
-        - US
 
   DefaultApplicationName:
     Type: String
-    Description: The name of your application
+    Description: |
+      The default name of your application.
+      Default application name will be only be used when no dynamic application name is found, as configured in the Coralogix exporter.
     MinLength: "1"
     MaxLength: "64"
+    Default: "OTEL"
 
   DefaultSubsystemName:
     Type: String
-    Description: The subsystem name of your application
+    Description: |
+      The default subsystem name of your application.
+      Default subsystem name will be only be used when no dynamic application name is found, as configured in the Coralogix exporter.
     MinLength: "1"
     MaxLength: "64"
-    Default: "default"
+    Default: "ECS-EC2"
 
   CoralogixApiKey:
     Type: String
-    Description: "The Send-Your-Data API key for your Coralogix account. See: https://coralogix.com/docs/send-your-data-api-key/"
+    Description: "The Send-Your-Data API key for your Coralogix account. See: https://coralogix.com/docs/user-guides/account-management/api-keys/send-your-data-api-key/"
     NoEcho: true
     AllowedPattern: ".+"
     ConstraintDescription: "API Key required."
 
-  Metrics:
-    Type: String
-    Description: If true, cadivisor will be deployed on each node to collect metrics
-    AllowedValues:
-      - "enable"
-      - "disabled"
-    Default: "disabled"
-
-  OtelConfig:
+  CustomConfig:
     Type: String
     Description: |
-      The base64 encoded opentelemetry configuration string used to start the container.
-      If left as default, the embedded configuration will be used.
+      The name of a Parameter Store to use as a custom configuration.
+      If left as 'none' will use the default configuration from the template.
     Default: "none"
 
+  TaskExecutionRoleARN:
+    Type: String
+    Description: |
+      When using a Custom Configuration in Parameter Store, set to the ARN of a Task Execution Role that has access to the PS.
+    Default: "Default"
+
 Conditions:
-  UseDefaultSubsystemName: !Equals [ !Ref DefaultSubsystemName, "default" ]
-  Metrics: !Equals [ !Ref Metrics, "enable" ]
   UseImage: !Not [!Equals [ !Ref Image, "none" ]]
+  UseDefaultConfig: !Equals [ !Ref CustomConfig, "none" ]
   UseCustomConfig: 
     Fn::Not: 
-    - !Equals [ !Ref OtelConfig, "none" ]
-  IgnoreCustomConfig: !Equals [ !Ref OtelConfig, "none" ]
+    - !Equals [ !Ref CustomConfig, "none" ]
 
+Rules:
+  ValidateTaskExecutionRole:
+    Assertions:
+      - Assert:
+          Fn::Or:
+            - Fn::Equals:
+                - Ref: CustomConfig
+                - "none"
+            - Fn::Not:
+                - Fn::Equals:
+                    - Ref: TaskExecutionRoleARN
+                    - "Default"
+        AssertDescription: "TaskExecutionRoleARN cannot be 'Default' if CustomConfig is set to a value other than 'none'."
 
 Mappings:
   Otel:
@@ -98,16 +107,16 @@ Mappings:
         receivers:
           otlp:
             protocols:
-              grpc:
-                endpoint: "0.0.0.0:4317"
-              http:
-                endpoint: "0.0.0.0:4318"
+              grpc: { endpoint: 0.0.0.0:4317 }
+              http: { endpoint: 0.0.0.0:4318 }
+
+          awsecscontainermetricsd:
 
           prometheus:
             config:
               scrape_configs:
               - job_name: otel-collector-metrics
-                scrape_interval: 60s
+                scrape_interval: 30s
                 static_configs:
                 - targets: ["localhost:8888"]
 
@@ -116,8 +125,8 @@ Mappings:
             force_flush_period: 0
             include:
               - /hostfs/var/lib/docker/containers/*/*.log
+            include_file_name: false
             include_file_path: true
-            # add log.file.path to resource attributes
             operators:
               - type: router
                 id: docker_log_json_parser
@@ -150,14 +159,25 @@ Mappings:
                 from: attributes["log.file.path"]
                 to: resource["log.file.path"]
 
-        processors:
-          resourcedetection:
-            # ecs & docker detectors not required when using ecslogresourcedetection for logs
-            detectors: [env, ec2, system]
-            timeout: 2s
-            override: false
+          hostmetrics:
+            root_path: /
+            collection_interval: 10s
+            scrapers:
+              cpu: { metrics: { system.cpu.utilization: { enabled: true } } }
+              filesystem:
+                exclude_fs_types: { fs_types: [autofs, binfmt_misc, bpf, cgroup2, configfs, debugfs, devpts, devtmpfs, fusectl, hugetlbfs, iso9660, mqueue, nsfs, overlay, proc, procfs, pstore, rpc_pipefs, securityfs, selinuxfs, squashfs, sysfs, tracefs], match_type: strict }
+                exclude_mount_points: { match_type: regexp, mount_points: [/dev/*, /proc/*, /sys/*, /run/k3s/containerd/*, /run/containerd/runc/*, /var/lib/docker/*, /var/lib/kubelet/*, /snap/*] }
+              memory: { metrics: { system.memory.utilization: { enabled: true } } }
+              process:
+                metrics:
+                  process.cpu.utilization: { enabled: true }
+                  process.memory.utilization: { enabled: true }
+                  process.threads: { enabled: true }
+                mute_process_exe_error: true
+                mute_process_user_error: true
 
-          ecsattributes:
+        processors:
+          ecsattributes/container-logs:
             container_id:
               sources:
                 - "log.file.path"
@@ -172,167 +192,59 @@ Mappings:
                   - set(attributes["image_id"], attributes["image.id"])
                   - delete_key(attributes, "image.id")
 
-          batch:
-            send_batch_size: 1024
-            send_batch_max_size: 2048
-            timeout: "1s"
-
-          # otel-collector resource detection for collector
-          resourcedetection/otel-collector:
-            detectors: [ecs, ec2]
-            timeout: 2s
-            override: false
-
-        exporters:
-          coralogix:
-            domain: "${CORALOGIX_DOMAIN}"
-            private_key: "${PRIVATE_KEY}"
-            application_name: "${APP_NAME}"
-            subsystem_name: "${SUB_SYS}"
-            application_name_attributes:
-            - "aws.ecs.cluster"
-            - "aws.ecs.cluster.name"
-            - "aws.ecs.task.definition.family"
-            subsystem_name_attributes:
-            - "aws.ecs.container.name"
-            - "aws.ecs.docker.name"
-            - "docker.name"
-            timeout: 30s
-
-        extensions:
-          health_check:
-          pprof:
-
-        service:
-          extensions:
-            - health_check
-            - pprof
-
-          pipelines:
-            logs:
-              receivers: 
-                - filelog
-              processors:
-                - resourcedetection
-                - ecsattributes
-                - transform/logs
-              exporters:
-                - coralogix
-
-            traces:
-              receivers:
-                - otlp
-              processors:
-                - batch
-              exporters:
-                - coralogix
-
-            metrics/otel-collector:
-              receivers:
-                - prometheus
-              processors:
-                - resourcedetection/otel-collector
-                - batch
-              exporters:
-                - coralogix
-
-          telemetry:
-            logs:
-              level: warn
-            metrics:
-              address: 0.0.0.0:8888
-              level: detailed
-
-      Metrics: |
-        receivers:
-          otlp:
-            protocols:
-              grpc:
-                endpoint: "0.0.0.0:4317"
-              http:
-                endpoint: "0.0.0.0:4318"
-
-          prometheus:
-            config:
-              scrape_configs:
-              - job_name: otel-collector-metrics
-                scrape_interval: 60s
-                static_configs:
-                - targets: ['localhost:8888']
-
-          filelog:
-            start_at: end
-            force_flush_period: 0
-            include:
-              - /hostfs/var/lib/docker/containers/*/*.log
-            include_file_path: true
-            # add log.file.path to resource attributes
-            operators:
-              - type: router
-                id: docker_log_json_parser
-                routes:
-                  - output: json_parser
-                    expr: 'body matches "^\\{\"log\".*\\}"'
-                default: move_log_file_path
-
-              - type: json_parser
-                parse_from: body
-                parse_to: body
-                output: recombine
-                timestamp:
-                  parse_from: body.time
-                  layout: '%Y-%m-%dT%H:%M:%S.%fZ'
-
-              # handle logs split by docker
-              - type: recombine
-                id: recombine
-                output: move_log_file_path
-                combine_field: body.log
-                source_identifier: attributes["log.file.path"]
-                is_last_entry: body.log endsWith "\n"
-                force_flush_period: 10s	
-                on_error: send
-                combine_with: ""
-
-              - type: move
-                id: move_log_file_path
-                from: attributes["log.file.path"]
-                to: resource["log.file.path"]
-                
-          awsecscontainermetricsd:
-
-        processors:
-          resourcedetection:
-            # ecs & docker detectors not required when using ecslogresourcedetection for logs
-            detectors: [env, ec2, system]
-            timeout: 2s
-            override: false
-
-          ecsattributes:
-            container_id:
-              sources:
-                - "log.file.path"
-
-          transform/logs:
-            error_mode: ignore
+          transform/entity-event:
+            error_mode: silent
             log_statements:
+              - context: log
+                statements:
+                  - set(attributes["otel.entity.id"]["host.id"], resource.attributes["host.id"])
+                  - merge_maps(attributes, resource.attributes, "insert")
               - context: resource
                 statements:
-                  - set(attributes["cx_container_id"], attributes["docker.id"])
-                  - set(attributes["aws_ecs_task_family"], attributes["aws.ecs.task.definition.family"])
-                  - set(attributes["image_id"], attributes["image.id"])
-                  - delete_key(attributes, "image.id")
+                  - keep_keys(attributes, [""])
 
-          batch:
-            send_batch_size: 1024
-            send_batch_max_size: 2048
-            timeout: "1s"
+          batch: { send_batch_max_size: 2048, send_batch_size: 1024, timeout: 1s }
+
+          resource/metadata:
+            attributes:
+              - action: upsert
+                key: cx.otel_integration.name
+                value: coralogix-integration-ecs-ec2
 
           # otel-collector resource detection for collector
           resourcedetection/otel-collector:
-            detectors: [ecs, ec2]
-            timeout: 2s
+            detectors: [system, env, ecs, ec2]
             override: false
+            timeout: 2s
+            system:
+              resource_attributes:
+                host.id: { enabled: false }
+                host.cpu.cache.l2.size: { enabled: true }
+                host.cpu.stepping: { enabled: true }
+                host.cpu.model.name: { enabled: true }
+                host.cpu.model.id: { enabled: true }
+                host.cpu.family: { enabled: true }
+                host.cpu.vendor.id: { enabled: true }
+                host.mac: { enabled: true }
+                host.ip: { enabled: true }
+                os.description: { enabled: true }
+
+          resourcedetection/entity:
+            detectors: [system, env, ecs, ec2]
+            override: false
+            timeout: 2s
+            system:
+              resource_attributes:
+                host.id: { enabled: false }
+                host.cpu.cache.l2.size: { enabled: true }
+                host.cpu.stepping: { enabled: true }
+                host.cpu.model.name: { enabled: true }
+                host.cpu.model.id: { enabled: true }
+                host.cpu.family: { enabled: true }
+                host.cpu.vendor.id: { enabled: true }
+                host.mac: { enabled: true }
+                host.ip: { enabled: true }
+                os.description: { enabled: true }
 
         exporters:
           coralogix:
@@ -342,14 +254,24 @@ Mappings:
             subsystem_name: "${SUB_SYS}"
             application_name_attributes:
             - "aws.ecs.cluster"
-            - "aws.ecs.cluster.name"
             - "aws.ecs.task.definition.family"
             subsystem_name_attributes:
             - "aws.ecs.container.name"
             - "aws.ecs.docker.name"
             - "docker.name"
             timeout: 30s
-          
+
+          coralogix/resource_catalog:
+            application_name: resource
+            domain: ${CORALOGIX_DOMAIN}
+            private_key: ${PRIVATE_KEY}
+            logs:
+              headers:
+                X-Coralogix-Distribution: ecs-ec2-integration/1.0.0
+                x-coralogix-ingress: metadata-as-otlp-logs/v1
+            subsystem_name: catalog
+            timeout: 30s
+
         extensions:
           health_check:
           pprof:
@@ -360,41 +282,40 @@ Mappings:
             - pprof
 
           pipelines:
-            logs:
-              receivers: 
-                - filelog
-              processors:
-                - resourcedetection
-                - ecsattributes
-                - transform/logs
-              exporters:
-                - coralogix
+            logs/container-logs:
+              receivers: [filelog]
+              processors: [ecsattributes/container-logs, resource/metadata, transform/logs, batch]
+              exporters: [coralogix]
 
-            metrics:
-              receivers:
-                - otlp
-                - awsecscontainermetricsd
-              processors:
-                - batch
-              exporters:
-                - coralogix
-            
-            traces:
-              receivers:
-                - otlp
-              processors:
-                - batch
-              exporters:
-                - coralogix
+            metrics/container-metrics:
+              receivers: [awsecscontainermetricsd]
+              processors: [batch]
+              exporters: [coralogix]
+
+            logs/otlp:
+              receivers: [otlp]
+              processors: [resource/metadata, batch]
+              exporters: [coralogix]
+
+            metrics/otlp:
+              receivers: [otlp]
+              processors: [resource/metadata, batch]
+              exporters: [coralogix]
+
+            traces/otlp:
+              receivers: [otlp]
+              processors: [resource/metadata, batch]
+              exporters: [coralogix]
+
+            logs/resource_catalog:
+              receivers: [hostmetrics]
+              processors: [resourcedetection/entity, transform/entity-event, batch]
+              exporters: [coralogix/resource_catalog]
 
             metrics/otel-collector:
-              receivers:
-                - prometheus
-              processors:
-                - resourcedetection/otel-collector
-                - batch
-              exporters:
-                - coralogix
+              receivers: [prometheus, hostmetrics]
+              processors: [resourcedetection/otel-collector, resource/metadata, batch]
+              exporters: [coralogix]
 
           telemetry:
             logs:
@@ -402,7 +323,6 @@ Mappings:
             metrics:
               address: 0.0.0.0:8888
               level: detailed
-
 
   CoralogixRegionMap:
     EU1:
@@ -417,33 +337,20 @@ Mappings:
     AP2:
       Endpoint: ingress.coralogixsg.com:443
       Domain: coralogixsg.com
+    AP3:
+      Endpoint: ingress.ap3.coralogix.com:443
+      Domain: ap3.coralogix.com
     US1:
       Endpoint: ingress.coralogix.us:443
       Domain: coralogix.us
     US2:
       Endpoint: ingress.cx498.coralogix.com:443
       Domain: cx498.coralogix.com
-    Europe:
-      Endpoint: ingress.coralogix.com:443
-      Domain: coralogix.com
-    Europe2:
-      Endpoint: ingress.eu2.coralogix.com:443
-      Domain: eu2.coralogix.com
-    India:
-      Endpoint: ingress.coralogix.in:443
-      Domain: coralogix.in
-    Singapore:
-      Endpoint: ingress.coralogixsg.com:443
-      Domain: coralogixsg.com
-    US:
-      Endpoint: ingress.coralogix.us:443
-      Domain: coralogix.us
-
 
 Resources:
   OtelTaskDefinition: 
     Type: AWS::ECS::TaskDefinition
-    Condition: IgnoreCustomConfig
+    Condition: UseDefaultConfig
     Properties:
       Family: opentelemetry
       RequiresCompatibilities:
@@ -474,6 +381,7 @@ Resources:
             # otel grpc endpoint
             - HostPort: 4317
               Protocol: tcp
+              AppProtocol: grpc
               ContainerPort: 4317
             
             # otel http endpoint
@@ -513,21 +421,16 @@ Resources:
               Value: !Ref DefaultApplicationName
 
             - Name: SUB_SYS
-              Value: !If
-                - UseDefaultSubsystemName
-                - !Sub "account-${AWS::AccountId}"
-                - !Ref DefaultSubsystemName
+              Value: !Ref DefaultSubsystemName
 
             - Name: OTEL_CONFIG
-              Value: !If
-                - Metrics
-                - !FindInMap [Otel, Config, Metrics]
-                - !FindInMap [Otel, Config, Default]
+              Value: !FindInMap [Otel, Config, Default]
 
   OtelTaskDefinitionCustom: 
     Type: AWS::ECS::TaskDefinition
     Condition: UseCustomConfig
     Properties:
+      ExecutionRoleArn: !Ref TaskExecutionRoleARN
       Family: opentelemetry
       RequiresCompatibilities:
         - EC2
@@ -553,17 +456,26 @@ Resources:
             
           Essential: true
           PortMappings:
+            # otel grpc endpoint
             - HostPort: 4317
               Protocol: tcp
+              AppProtocol: grpc
               ContainerPort: 4317
             
+            # otel http endpoint
             - HostPort: 4318
               Protocol: tcp
               ContainerPort: 4318
 
+            # otel metrics endpoint
             - HostPort: 8888
               Protocol: tcp
               ContainerPort: 8888
+
+            # pprof extension default port
+            - HostPort: 1777
+              Protocol: tcp
+              ContainerPort: 1777
 
           # Privileged required to access certain host metrics
           Privileged: true
@@ -587,17 +499,15 @@ Resources:
               Value: !Ref DefaultApplicationName
 
             - Name: SUB_SYS
-              Value: !If
-                - UseDefaultSubsystemName
-                - !Sub "account-${AWS::AccountId}"
-                - !Ref DefaultSubsystemName
+              Value: !Ref DefaultSubsystemName
 
+          Secrets:
             - Name: OTEL_CONFIG
-              Value: !Ref OtelConfig
+              ValueFrom: !Ref CustomConfig
 
   ECSService:
     Type: 'AWS::ECS::Service'
-    Condition: IgnoreCustomConfig
+    Condition: UseDefaultConfig
     Properties:
       Cluster: !Ref ClusterName
       LaunchType: EC2
@@ -646,4 +556,3 @@ Resources:
           Value: !Ref 'AWS::StackId'
       EnableECSManagedTags: true
       TaskDefinition: !Ref OtelTaskDefinitionCustom
-      

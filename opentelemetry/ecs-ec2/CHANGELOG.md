@@ -1,5 +1,17 @@
 # Changelog
 
+## opentelemetry ecs-ec2
+<!-- To add a new entry write: -->
+<!-- ### version / full date -->
+<!-- * [Update/Bug fix] message that describes the changes that you apply -->
+
+### 1.0.0 / 2025-01-14
+### 🛑 Breaking changes 🛑
+- Adjusted embeded configuration to support logs/metrics and traces by default.
+- Added support for resource catalog.
+- Replaced Custom plaintext Configuration mechanism with Parameter Store as CF template parameters can only be 4096 bypes which was insufficient for many custom configurations.
+- Added AP3 Region.
+
 ### 0.0.15 / 2024-12-19
 - Removed the line from Opentelemetry config which caused the agent to fail
 
@@ -34,11 +46,6 @@
 
 ### 0.0.7 / 2024-02-23
 - Updated ECS EC2 default Otel configuration to log level warn.
-
-## opentelemetry ecs-ec2
-<!-- To add a new entry write: -->
-<!-- ### version / full date -->
-<!-- * [Update/Bug fix] message that describes the changes that you apply -->
 
 ### 0.0.6 / 2024-02-13
 - [update],[otel]: Restrict mount vol scope; enable metrics otlp; enable batch with defaults. Soft-deprecate previous cx region codes for replacements; Hard-deprecate param name `PrivateKey` for `CoralogixApiKey`; Readme content sync with terraform version, formatting.
