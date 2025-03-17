@@ -40,7 +40,7 @@ For Windows, this receiver does not support being run as a daemonset, as such, e
 
 ### Open Telemetry Configuration
 
-The Open Telemetry configuration is embedded in this cloudformation template by default, however, you do have the option of specifying your own configuration my modifying the template. The  The Coralogix Open Telemetry distribution supports reading configration from S3 as well as an Envrionmentat Variable. Note that Environment variables must be raw strings or Base64 is not supported.
+The Open Telemetry configuration is embedded in this CloudFormation template by default. However, you have the option of specifying your own configuration by modifying the template. The Coralogix Open Telemetry distribution supports reading configuration over HTTP as well as an Environment Variable. Note that Environment Variables must be raw strings. Base64 encoding is not supported.
 
 ### Image
 
