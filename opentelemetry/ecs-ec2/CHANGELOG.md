@@ -7,7 +7,7 @@
 
 ### 1.0.1 / 2025-03-15
 - Updated default otel config for ECS-EC2 to use new otel collector metric syntax
-    - Added transform to remove unneeded labels from metrics added as of otel v0.119.0
+- Added transform to remove unneeded labels from metrics added as of otel v0.119.0
 
 
 ### 1.0.0 / 2025-01-14
