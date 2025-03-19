@@ -34,6 +34,13 @@ The default configuration exposes OpenTelemetry Collector metrics on port `8888`
 
 A GRPC(*4317*) and HTTP(*4318*) endpoint is exposed for sending traces to the local OTLP endpoint.
 
+By default, traces are sampled at 10% rate using head sampling. Head sampling is a feature that allows you to sample traces at the collection point before any processing occurs. When enabled, it creates a separate pipeline for sampled traces using probabilistic sampling. This helps reduce the volume of traces while maintaining a representative sample.
+
+The sampling configuration can be adjusted using the following parameters:
+- `EnableHeadSampler`: Enable/disable head sampling
+- `SamplerMode`: Choose between proportional, equalizing, or hash_seed sampling modes
+- `SamplingPercentage`: Set the desired sampling rate (0-100%)
+
 ### Requires:
 
 - An existing ECS Cluster
@@ -52,8 +59,9 @@ A GRPC(*4317*) and HTTP(*4318*) endpoint is exposed for sending traces to the lo
 | CoralogixApiKey  | The Send-Your-Data API key for your Coralogix account. See: https://coralogix.com/docs/send-your-data-api-key/                                                                                                                       |                                                                          | :heavy_check_mark: |
 | CustomConfig       | The name of a Parameter Store to use as a custom configuration. Must be in the same region as your ECS cluster.            | none                                                                         |                    |
 | TaskExecutionRoleARN       |       When using a Custom Configuration in Parameter Store, set to the ARN of a Task Execution Role that has access to the PS.            | Default                                                                        |                    |
-
-
+| EnableHeadSampler       |       Enable or disable head sampling for traces. When enabled, sampling decisions are made at the collection point before any processing occurs.            | true 
+| SamplerMode       |       The sampling mode to use:<br>**proportional**: Maintains the relative proportion of traces across services.<br>**equalizing**: Attempts to sample equal numbers of traces from each service.<br>**hash_seed**: Uses consistent hashing to ensure the same traces are sampled across restarts.            | proportional 
+| SamplingPercentage       |        The percentage of traces to sample (0-100). A value of 100 means all traces will be sampled, while 0 means no traces will be sampled.            | 10 
 ## Deploy the Cloudformation template:
 
 ```sh

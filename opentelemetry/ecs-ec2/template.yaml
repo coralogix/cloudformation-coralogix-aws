@@ -79,6 +79,32 @@ Parameters:
       When using a Custom Configuration in Parameter Store, set to the ARN of a Task Execution Role that has access to the PS.
     Default: "Default"
 
+  EnableHeadSampler:
+    Type: String
+    Description: |
+      Enable or disable the head sampler for trace sampling.
+      When enabled, traces will be sampled at the head of the pipeline before processing.
+    AllowedValues: [true, false]
+    Default: true
+
+  SamplerMode:
+    Type: String
+    Description: |
+      The sampling mode to use for the head sampler.
+      - proportional: Sample traces at a fixed percentage
+      - equalizing: Dynamically adjust sampling rate to achieve a desired throughput
+      - hash_seed: Use consistent sampling based on a hash of trace attributes
+    AllowedValues: [proportional, equalizing, hash_seed]
+    Default: proportional
+
+  SamplingPercentage:
+    Type: Number
+    Description: |
+      The percentage of traces to sample (0-100).
+      A value of 100 means all traces will be sampled, while 0 means no traces will be sampled.    Default: 10
+    MinValue: 0
+    MaxValue: 100
+
 Conditions:
   UseImage: !Not [!Equals [ !Ref Image, "none" ]]
   UseDefaultConfig: !Equals [ !Ref CustomConfig, "none" ]
@@ -103,7 +129,8 @@ Rules:
 Mappings:
   Otel:
     Config:
-      Default: |
+      Default: !Sub |
+        ${EnableHeadSampler == "true" ? "connectors:\n  forward/sampled: {}\n" : ""}
         receivers:
           otlp:
             protocols:
@@ -222,6 +249,7 @@ Mappings:
 
           
           batch: { send_batch_max_size: 2048, send_batch_size: 1024, timeout: 1s }
+          ${EnableHeadSampler == "true" ? "head_sampler:\n    sampling_percentage: ${SamplingPercentage}\n    mode: ${SamplerMode}\n" : ""}
 
           resource/metadata:
             attributes:
@@ -323,7 +351,12 @@ Mappings:
             traces/otlp:
               receivers: [otlp]
               processors: [resource/metadata, batch]
-              exporters: [coralogix]
+              exporters: [${EnableHeadSampler == "true" ? "forward/sampled" : "coralogix"}]
+
+            ${EnableHeadSampler == "true" ? "traces/sampled:
+              receivers: [forward/sampled]
+              processors: [head_sampler, batch]
+              exporters: [coralogix]" : ""}
 
             logs/resource_catalog:
               receivers: [hostmetrics]
