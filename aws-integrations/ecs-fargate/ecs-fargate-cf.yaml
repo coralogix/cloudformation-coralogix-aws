@@ -64,6 +64,9 @@ Resources:
       Description: Configuration parameter for Coralogix OTEL Collector
       Type: String
       Value: |
+        connectors:
+          forward/sampled: {}
+
         receivers:
           fluentforward/socket: { endpoint: unix:///var/run/fluent.sock }
           awsecscontainermetrics: { collection_interval: 10s }
@@ -120,6 +123,9 @@ Resources:
                   - delete_matching_keys(cache, "^(message|trace_id|span_id|severity_number)$")
                   - merge_maps(attributes, cache, "insert")
           batch: { send_batch_max_size: 2048, send_batch_size: 1024, timeout: 1s }
+          probabilistic_sampler:
+            sampling_percentage: 10
+            mode: proportional
           resource/metadata:
             attributes:
               - action: upsert
@@ -189,9 +195,13 @@ Resources:
               processors: [resource/metadata, resourcedetection, batch]
               receivers: [otlp, awsecscontainermetrics, prometheus, hostmetrics]
             traces:
-              exporters: [coralogix]
+              exporters: [forward/sampled]
               processors: [resource/metadata, resourcedetection, batch]
               receivers: [otlp]
+            traces/sampled:
+              receivers: [forward/sampled]
+              processors: [probabilistic_sampler, batch]
+              exporters: [coralogix]
           telemetry:
             logs: { level: "warn", encoding: json }
             metrics: { address: 0.0.0.0:8888 }
