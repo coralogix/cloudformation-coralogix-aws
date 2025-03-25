@@ -5,6 +5,10 @@
 <!-- ### version / full date -->
 <!-- * [Update/Bug fix] message that describes the changes that you apply -->
 
+### 1.0.2 / 2025-03-25
+- Add Head Sampling to traces of the ECS-EC2 integartion to reduce the initial data ingestion, provided parameters to disable and customize.
+
+
 ### 1.0.1 / 2025-03-15
 - Updated default otel config for ECS-EC2 to use new otel collector metric syntax
 - Added transform to remove unneeded labels from metrics added as of otel v0.119.0
