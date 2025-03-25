@@ -5,6 +5,9 @@
 <!-- ### version / full date -->
 <!-- * [Update/Bug fix] message that describes the changes that you apply -->
 
+### 0.0.8 / 2025-25-03
+* [UPDATE] Added head sampling to reduce the initial data ingestion.
+
 ### 0.0.7 / 2024-12-02
 * [FIX] Rename Parameter Store to prevent deployment failure.
 * [UPDATE] Update and flatten configuration to reduce size.
