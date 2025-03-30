@@ -79,12 +79,43 @@ Parameters:
       When using a Custom Configuration in Parameter Store, set to the ARN of a Task Execution Role that has access to the PS.
     Default: "Default"
 
+  EnableHeadSampler:
+    Type: String
+    Description: |
+      Enable or disable the head sampler for trace sampling.
+      When enabled (default), traces will be sampled at the head of the pipeline before processing.
+      Set to "false" to disable sampling and process all traces.
+    AllowedValues: ["true", "false"]
+    Default: "true"
+
+  SamplerMode:
+    Type: String
+    Description: |
+      The sampling mode to use for the head sampler.
+      - proportional: Sample traces at a fixed percentage
+      - equalizing: Dynamically adjust sampling rate to achieve a desired throughput
+      - hash_seed: Use consistent sampling based on a hash of trace attributes
+    AllowedValues: [proportional, equalizing, hash_seed]
+    Default: proportional
+
+  SamplingPercentage:
+    Type: String
+    Description: |
+      The percentage of traces to sample (0-100).
+      A value of 100 means all traces will be sampled, while 0 means no traces will be sampled.
+      Default is 10% sampling.
+    Default: "10"
+
 Conditions:
   UseImage: !Not [!Equals [ !Ref Image, "none" ]]
   UseDefaultConfig: !Equals [ !Ref CustomConfig, "none" ]
   UseCustomConfig: 
     Fn::Not: 
     - !Equals [ !Ref CustomConfig, "none" ]
+  DisableHeadSamplerCondition:
+    Fn::Equals:
+      - !Ref EnableHeadSampler
+      - "false"
 
 Rules:
   ValidateTaskExecutionRole:
@@ -102,8 +133,8 @@ Rules:
 
 Mappings:
   Otel:
-    Config:
-      Default: |
+    BaseConfig:
+      Value: |
         receivers:
           otlp:
             protocols:
@@ -263,6 +294,11 @@ Mappings:
                 host.mac: { enabled: true }
                 host.ip: { enabled: true }
                 os.description: { enabled: true }
+          
+
+          probabilistic_sampler:
+            sampling_percentage: "${SAMPLING_PERCENTAGE}"
+            mode: "${SAMPLER_MODE}"
 
         exporters:
           coralogix:
@@ -289,10 +325,79 @@ Mappings:
                 x-coralogix-ingress: metadata-as-otlp-logs/v1
             subsystem_name: catalog
             timeout: 30s
+            
+        connectors:
+          forward/sampled: {}
 
+    PipelineWithSampling:
+      Value: |
         extensions:
           health_check:
           pprof:
+
+        service:
+          extensions:
+            - health_check
+            - pprof
+
+          pipelines:
+            logs/container-logs:
+              receivers: [filelog]
+              processors: [ecsattributes/container-logs, resource/metadata, transform/logs, batch]
+              exporters: [coralogix]
+
+            metrics/container-metrics:
+              receivers: [awsecscontainermetricsd]
+              processors: [batch]
+              exporters: [coralogix]
+
+            logs/otlp:
+              receivers: [otlp]
+              processors: [resource/metadata, batch]
+              exporters: [coralogix]
+
+            metrics/otlp:
+              receivers: [otlp]
+              processors: [resource/metadata, batch]
+              exporters: [coralogix]
+
+            traces/otlp:
+              receivers: [otlp]
+              processors: [resource/metadata, batch]
+              exporters: [forward/sampled]
+              
+            traces/sampled:
+              receivers: [forward/sampled]
+              processors: [probabilistic_sampler, batch]
+              exporters: [coralogix]
+
+            logs/resource_catalog:
+              receivers: [hostmetrics]
+              processors: [resourcedetection/entity, transform/entity-event, batch]
+              exporters: [coralogix/resource_catalog]
+
+            metrics/otel-collector:
+              receivers: [prometheus, hostmetrics]
+              processors: [resourcedetection/otel-collector, resource/metadata, transform/prometheus, batch]
+              exporters: [coralogix]
+
+          telemetry:
+            logs:
+              level: warn
+
+            metrics:
+              readers:
+                - pull:
+                    exporter:
+                      prometheus:
+                        host: 0.0.0.0
+                        port: 8888
+    
+    PipelinesWithoutSampling:
+      Value: |
+        extensions:
+          health_check: {}
+          pprof: {}
 
         service:
           extensions:
@@ -445,9 +550,30 @@ Resources:
 
             - Name: SUB_SYS
               Value: !Ref DefaultSubsystemName
+              
+            - Name: SAMPLING_PERCENTAGE
+              Value: !Ref SamplingPercentage
+
+            - Name: SAMPLER_MODE
+              Value: !Ref SamplerMode
 
             - Name: OTEL_CONFIG
-              Value: !FindInMap [Otel, Config, Default]
+              Value: !If
+                - DisableHeadSamplerCondition
+                - !Sub
+                  - |
+                    ${BaseConfig}
+                    ${PipelinesDef}
+                  - 
+                    BaseConfig: !FindInMap [Otel, BaseConfig, Value]
+                    PipelinesDef: !FindInMap [Otel, PipelinesWithoutSampling, Value]
+                - !Sub
+                  - |
+                    ${BaseConfig}
+                    ${PipelinesDef}
+                  -
+                    BaseConfig: !FindInMap [Otel, BaseConfig, Value]
+                    PipelinesDef: !FindInMap [Otel, PipelineWithSampling, Value]
 
   OtelTaskDefinitionCustom: 
     Type: AWS::ECS::TaskDefinition
@@ -523,6 +649,12 @@ Resources:
 
             - Name: SUB_SYS
               Value: !Ref DefaultSubsystemName
+              
+            - Name: SAMPLING_PERCENTAGE
+              Value: !Ref SamplingPercentage
+
+            - Name: SAMPLER_MODE
+              Value: !Ref SamplerMode
 
           Secrets:
             - Name: OTEL_CONFIG
