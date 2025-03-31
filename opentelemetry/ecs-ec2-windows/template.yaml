@@ -120,7 +120,7 @@ Resources:
               awslogs-region: !Ref 'AWS::Region'
               awslogs-stream-prefix: "otel-collector"
               awslogs-create-group: "true"
-          # Command: ["--config", !Ref OTELS3Config]
+          Command: ["--config", "env:OTEL_CONFIG"]
           Environment:
             - Name: "CORALOGIX_DOMAIN"
               Value: !FindInMap [CoralogixRegionMap, !Ref CoralogixRegion, Domain]
