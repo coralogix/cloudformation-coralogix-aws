@@ -5,6 +5,8 @@
 <!-- ### version / full date -->
 <!-- * [Update/Bug fix] message that describes the changes that you apply -->
 
+### 0.0.3 / 2025-3-31
+* Add command  `--config env:OTEL_CONFIG` to the windows otel collector container example
 
 ### 0.0.2 / 2025-3-15
 * Added Collector metric collection to ECS-EC2-Windows example
