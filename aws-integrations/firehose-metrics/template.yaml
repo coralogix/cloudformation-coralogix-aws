@@ -344,13 +344,13 @@ Resources:
           IntervalInSeconds: 60
           SizeInMBs: 1
         RetryOptions:
-          DurationInSeconds: 30
+          DurationInSeconds: 300
         S3BackupMode: FailedDataOnly
         S3Configuration:
           BufferingHints:
             IntervalInSeconds: 300
             SizeInMBs: 5
-          BucketARN: 
+          BucketARN:
             !GetAtt BackupDataBucket.Arn
           CompressionFormat: GZIP
           RoleARN:
