@@ -269,7 +269,7 @@ Resources:
             Ref: DeliveryStreamLogStream
         BufferingHints:
           IntervalInSeconds: 60
-          SizeInMBs: 6
+          SizeInMBs: 1
         RetryOptions:
           DurationInSeconds: 300
         S3BackupMode: FailedDataOnly
