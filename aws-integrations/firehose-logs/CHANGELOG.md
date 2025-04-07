@@ -39,3 +39,6 @@
 ### 🛑 Breaking changes 🛑
 * [Update] Update ingress domain from ingress-firehose.<domain.com>/firehose to ingress.<domain.com>/aws/firehose
 * [Update] Update regions to follow [coralogix.com/docs/coralogix-domain] and added AP3 domain
+
+### 0.0.6 / 03 April 2025
+* [Update] Update buffer size to 1MB to be in line with documentation
