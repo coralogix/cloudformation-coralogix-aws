@@ -135,8 +135,7 @@ Resources:
               Value: !Ref SubsystemName
             
             - Name: "OTEL_CONFIG"
-              Value: 
-                Fn::Base64: |
+              Value: |
                   receivers:
                     awsecscontainermetricsd:
                       sidecar: true
@@ -171,7 +170,7 @@ Resources:
                     batch:
 
                   exporters:
-                    logging:
+                    debug:
                       verbosity: detailed
                     coralogix:
                       domain: "$CORALOGIX_DOMAIN"
