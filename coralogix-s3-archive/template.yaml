@@ -17,7 +17,7 @@ Parameters:
   LogsKmsArn:
     Type: String
     Description: 'The arn for the kms of the logs and traces bucket - leave empty if not needed'
-  CustomCoraloigxArn:
+  CustomCoralogixArn:
     Type: String
     Description: 'In case you want to use a custom coralogix arn enter the aws account id that you want to use'
     Default: ""
@@ -34,7 +34,7 @@ Conditions:
         - ap-southeast-3
   CustomArn: !Not
     - !Equals
-      - !Ref CustomCoraloigxArn
+      - !Ref CustomCoralogixArn
       - ""
   ByPassRegionTrue: !Equals
       - !Ref ByPassRegion
@@ -156,7 +156,7 @@ Resources:
                 - aws_role_region: !FindInMap [CoralogixRegionMap, !Ref 'AWS::Region', RoleRegion]
                   aws_account_id: !If
                     - CustomArn
-                    - !Ref CustomCoraloigxArn
+                    - !Ref CustomCoralogixArn
                     - !If
                       - IsRegionUs2
                       - "739076534691"
@@ -215,7 +215,7 @@ Resources:
                   - 'arn:aws:iam::${aws_account_id}:root'
                   - aws_account_id: !If
                       - CustomArn
-                      - !Ref CustomCoraloigxArn
+                      - !Ref CustomCoralogixArn
                       - !If
                         - IsRegionUs2
                         - "739076534691"
