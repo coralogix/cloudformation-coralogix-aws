@@ -29,6 +29,34 @@ Parameters:
         - Singapore
         - US
 
+  HealthCheckEnabled:
+    Type: String
+    Description: Enable ECS container health check for the OTEL agent container.
+    AllowedValues: ["true", "false"]
+    Default: "false"
+
+  HealthCheckInterval:
+    Type: Number
+    Description: Health check interval (seconds). Only used if HealthCheckEnabled is true
+    Default: "30"
+
+  HealthCheckTimeout:
+    Type: Number
+    Description: Health check timeout (seconds). Only used if HealthCheckEnabled is true
+    Default: "5"
+
+  HealthCheckRetries:
+    Type: Number
+    Description: Health check retries. Only used if HealthCheckEnabled is true
+    Default: "3"
+
+  HealthCheckStartPeriod:
+    Type: Number
+    Description: Health check start period (seconds). Only used if HealthCheckEnabled is true
+    Default: "10"
+
+Conditions:
+  EnableHealthCheck: !Equals [!Ref HealthCheckEnabled, "true"]
 
 Mappings:
   CoralogixRegionMap:
@@ -209,6 +237,15 @@ Resources:
                       exporters:
                         - coralogix
 
+          HealthCheck: !If
+            - EnableHealthCheck
+            - Command:
+                - "/healthcheck"
+              Interval: !Ref HealthCheckInterval
+              Timeout: !Ref HealthCheckTimeout
+              Retries: !Ref HealthCheckRetries
+              StartPeriod: !Ref HealthCheckStartPeriod
+            - !Ref AWS::NoValue
 
         ### --- your app task definition goes here --- ###
         - Name: "win-app"
