@@ -4,6 +4,8 @@
 <!-- To add a new entry write: -->
 <!-- ### version / full date -->
 <!-- * [Update/Bug fix] message that describes the changes that you apply -->
+### 1.0.3 / 2025-05-20
+- Added healthcheck to ECS task.
 
 ### 0.0.3 / 2025-3-31
 * Add command  `--config env:OTEL_CONFIG` to the windows otel collector container example

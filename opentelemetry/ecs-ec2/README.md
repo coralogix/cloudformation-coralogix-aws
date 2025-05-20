@@ -62,6 +62,11 @@ The sampling configuration can be adjusted using the following parameters:
 | EnableHeadSampler       |       Enable or disable head sampling for traces. When enabled, sampling decisions are made at the collection point before any processing occurs.            | true 
 | SamplerMode       |       The sampling mode to use:<br>**proportional**: Maintains the relative proportion of traces across services.<br>**equalizing**: Attempts to sample equal numbers of traces from each service.<br>**hash_seed**: Uses consistent hashing to ensure the same traces are sampled across restarts.            | proportional 
 | SamplingPercentage       |        The percentage of traces to sample (0-100). A value of 100 means all traces will be sampled, while 0 means no traces will be sampled.            | 10 
+| HealthCheckEnabled     | Enable ECS container health check for the OTEL agent container. | false | |
+| HealthCheckInterval    | Health check interval (seconds)             | 30      |          |
+| HealthCheckTimeout     | Health check timeout (seconds)              | 5       |          |
+| HealthCheckRetries     | Health check retries                        | 3       |          |
+| HealthCheckStartPeriod | Health check start period (seconds)         | 10      |          |
 ## Deploy the Cloudformation template:
 
 ```sh
@@ -72,7 +77,8 @@ aws cloudformation deploy --template-file template.yaml --stack-name <stack_name
         ClusterName=<ecs cluster name> \
         CDOTImageVersion=<image tag> \
         CoralogixApiKey=<your-private-key> \
-        CoralogixRegion=<coralogix-region>
+        CoralogixRegion=<coralogix-region> \
+        HealthCheckEnabled=true
 ```
 
 **When using a custom configuration for OpenTelemetry**
@@ -87,7 +93,8 @@ aws cloudformation deploy --template-file template.yaml --stack-name <stack_name
         CoralogixApiKey=<your-private-key> \
         CoralogixRegion=<coralogix-region> \
         CustomConfig=<Parameter Store Name> \
-        TaskExecutionRoleARN=<task-execution-role-arn>
+        TaskExecutionRoleARN=<task-execution-role-arn> \
+        HealthCheckEnabled=true
 ```
 
 Note that these are just examples of how this could be deployed. You can also deploy this template using the AWS Console or any Cloudformation management tools.
@@ -112,6 +119,32 @@ The healthy response should look like this:
   "upSince": "2023-10-25T15:37:32.003837622Z",
   "uptime": "2m5.2610063s"
 }
+```
+
+### ECS Container Health Check
+
+You can customize the health check settings using the following parameters:
+- `HealthCheckInterval` (default: 30)
+- `HealthCheckTimeout` (default: 5)
+- `HealthCheckRetries` (default: 3)
+- `HealthCheckStartPeriod` (default: 10)
+
+Example deployment with custom health check settings:
+
+```sh
+aws cloudformation deploy --template-file template.yaml --stack-name <stack_name> \
+    --region <region> \
+    --parameter-overrides \
+        DefaultApplicationName=<application name> \
+        ClusterName=<ecs cluster name> \
+        CDOTImageVersion=<image tag> \
+        CoralogixApiKey=<your-private-key> \
+        CoralogixRegion=<coralogix-region> \
+        HealthCheckEnabled=true \
+        HealthCheckInterval=60 \
+        HealthCheckTimeout=10 \
+        HealthCheckRetries=5 \
+        HealthCheckStartPeriod=20
 ```
 
 ### Further info
