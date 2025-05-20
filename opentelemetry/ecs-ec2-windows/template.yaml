@@ -53,7 +53,7 @@ Parameters:
   HealthCheckStartPeriod:
     Type: Number
     Description: Health check start period (seconds). Only used if HealthCheckEnabled is true
-    Default: "10"
+    Default: "60"
 
 Conditions:
   EnableHealthCheck: !Equals [!Ref HealthCheckEnabled, "true"]
