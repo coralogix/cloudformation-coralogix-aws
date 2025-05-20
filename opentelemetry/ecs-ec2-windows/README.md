@@ -25,7 +25,7 @@ This template section provides an example template for deploying the Open Teleme
 | HealthCheckInterval    | Health check interval (seconds)             | 30      |          |
 | HealthCheckTimeout     | Health check timeout (seconds)              | 5       |          |
 | HealthCheckRetries     | Health check retries                        | 3       |          |
-| HealthCheckStartPeriod | Health check start period (seconds)         | 10      |          |
+| HealthCheckStartPeriod | Health check start period (seconds)         | 60      |          |
 
 
 
@@ -54,7 +54,7 @@ You can enable and customize the ECS container health check for the OTEL agent c
 - `HealthCheckInterval` (default: 30)
 - `HealthCheckTimeout` (default: 5)
 - `HealthCheckRetries` (default: 3)
-- `HealthCheckStartPeriod` (default: 10)
+- `HealthCheckStartPeriod` (default: 60)
 
 Example deployment with custom health check settings:
 
@@ -73,7 +73,7 @@ aws cloudformation deploy --template-file template.yaml --stack-name <stack_name
         HealthCheckInterval=60 \
         HealthCheckTimeout=10 \
         HealthCheckRetries=5 \
-        HealthCheckStartPeriod=20
+        HealthCheckStartPeriod=60
 ```
 
 ### Image
