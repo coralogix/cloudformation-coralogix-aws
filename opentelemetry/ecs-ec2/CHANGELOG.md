@@ -5,6 +5,9 @@
 <!-- ### version / full date -->
 <!-- * [Update/Bug fix] message that describes the changes that you apply -->
 
+### 1.0.4 / 2025-06-02
+- Update memory default to 2GB
+
 ### 1.0.3 / 2025-05-20
 - Added healthcheck to ECS task.
 
