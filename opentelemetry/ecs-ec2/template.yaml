@@ -27,7 +27,7 @@ Parameters:
       The amount of memory (in MiB) used by the task.
       Note that you cluster must have sufficient memory available to support the given value.
     Type: Number
-    Default: "256"
+    Default: "2048"
 
   CoralogixRegion:
       Type: String
