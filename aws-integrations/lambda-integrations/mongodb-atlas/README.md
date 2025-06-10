@@ -1,9 +1,11 @@
-# Coralogix-MongoDB-Atlas
+# Warning: This Lambda Function is deprecated and no longer supported
 
 This template were created automatically from coralogix/coralogix-aws-serverless.
 To make a change in the template go to the link below.
 
 https://github.com/coralogix/coralogix-aws-serverless/tree/master/src/mongodb-atlas
+
+# Coralogix-MongoDB-Atlas
 
 Collects and pushes MongoDB Atlas cluster logs, metrics (as logs), events, and alerts to Coralogix.
 
