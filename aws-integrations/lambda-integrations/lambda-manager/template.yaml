@@ -18,7 +18,7 @@ Metadata:
       - cloudwatch
       - lambda
     HomePageUrl: https://coralogix.com
-    SemanticVersion: 2.0.9
+    SemanticVersion: 2.0.10
     SourceCodeUrl: https://github.com/coralogix/coralogix-aws-serverless
   AWS::CloudFormation::Interface:
     ParameterGroups:
@@ -216,6 +216,9 @@ Resources:
                   - "logs.amazonaws.com"
                 eventName:
                   - "CreateLogGroup"
+                requestParameters:
+                  logGroupClass:
+                    - "STANDARD"
             Target:
               Id: cx-loggroup-target
   LambdaTrigger:
