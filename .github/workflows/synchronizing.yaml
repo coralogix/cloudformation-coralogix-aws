@@ -21,7 +21,7 @@ jobs:
       has_file_from_the_list_changed: ${{ env.has_template_from_the_list_changed }}
     name: upload files
     env:
-      integration_list: "firehose-logs,firehose-metrics,resource-metadata,aws-shipper-lambda"
+      integration_list: "firehose-logs,firehose-metrics,resource-metadata,aws-shipper-lambda,resource-metadata-sqs"
     steps:
       - name: checkout when trigger is from push
         uses: actions/checkout@v4
