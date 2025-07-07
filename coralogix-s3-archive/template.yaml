@@ -212,7 +212,7 @@ Resources:
             Effect: 'Allow'
             Principal: 
               AWS: !Sub 
-                  - 'arn:aws:iam::${aws_account_id}:root'
+                  - 'arn:aws:iam::${aws_account_id}:role/coralogix-archive-${aws_role_region}'
                   - aws_account_id: !If
                       - CustomArn
                       - !Ref CustomCoralogixArn
