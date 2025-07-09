@@ -2,6 +2,9 @@
 
 ## s3-archive
 
+### 0.0.6 / 7.7.2025
+* [update] Change the metrics role to be the same as the logs role: `arn:aws:iam::${aws_account_id}:role/coralogix-archive-${aws_role_region}`
+
 ### 0.0.5 / 2.9.2024
 * [update] Add option to run module in AP3 region
 
