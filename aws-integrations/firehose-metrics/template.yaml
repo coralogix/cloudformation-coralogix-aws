@@ -116,19 +116,19 @@ Metadata:
 Mappings:
   CoralogixRegionMap:
     EU1:
-      LogUrl: coralogix.com
+      LogUrl: eu1.coralogix.com
     EU2:
       LogUrl: eu2.coralogix.com
     AP1:
-      LogUrl: coralogix.in
+      LogUrl: ap1.coralogix.com
     AP2:
-      LogUrl: coralogixsg.com
+      LogUrl: ap2.coralogix.com
     AP3:
       LogUrl: ap3.coralogix.com
     US1:
-      LogUrl: coralogix.us
+      LogUrl: us1.coralogix.com
     US2:
-      LogUrl: cx498.coralogix.com
+      LogUrl: us2.coralogix.com
     Custom:
       LogUrl: ""
 

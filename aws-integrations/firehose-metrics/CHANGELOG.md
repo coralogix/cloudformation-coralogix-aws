@@ -45,3 +45,6 @@
 
 ### 0.0.7 / 03 April 2025
 * [Update] Update buffer size to 1MB to be in line with documentation
+
+### 0.0.8 / 2025-10-07
+* [UPDATE] Change coralogix domains and endpoints to new format `<coralogix_region>.coralogix.com`.

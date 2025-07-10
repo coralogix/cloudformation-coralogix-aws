@@ -2,6 +2,9 @@
 
 ## s3-archive
 
+### 0.0.7 / 10.7.2025
+* [fix] Fix bug with missing dependencies for resource `aws_role_region`
+
 ### 0.0.6 / 7.7.2025
 * [update] Change the metrics role to be the same as the logs role: `arn:aws:iam::${aws_account_id}:role/coralogix-archive-${aws_role_region}`
 

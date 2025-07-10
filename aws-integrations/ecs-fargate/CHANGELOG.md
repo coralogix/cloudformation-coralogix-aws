@@ -5,6 +5,9 @@
 <!-- ### version / full date -->
 <!-- * [Update/Bug fix] message that describes the changes that you apply -->
 
+### 0.0.9 / 2025-10-07
+* [UPDATE] Change coralogix domains and endpoints to new format `<coralogix_region>.coralogix.com`.
+
 ### 0.0.8 / 2025-25-03
 * [UPDATE] Added head sampling to reduce the initial data ingestion.
 
