@@ -213,7 +213,8 @@ Resources:
             Principal: 
               AWS: !Sub 
                   - 'arn:aws:iam::${aws_account_id}:role/coralogix-archive-${aws_role_region}'
-                  - aws_account_id: !If
+                  - aws_role_region: !FindInMap [CoralogixRegionMap, !Ref 'AWS::Region', RoleRegion]
+                    aws_account_id: !If
                       - CustomArn
                       - !Ref CustomCoralogixArn
                       - !If
