@@ -41,6 +41,14 @@ The sampling configuration can be adjusted using the following parameters:
 - `SamplerMode`: Choose between proportional, equalizing, or hash_seed sampling modes
 - `SamplingPercentage`: Set the desired sampling rate (0-100%)
 
+### Span Metrics
+
+When enabled, the spanmetrics connector generates metrics from traces, providing insights into trace performance and patterns. This feature creates additional metrics pipelines that convert span data into metrics for monitoring and alerting purposes.
+
+### Database Traces
+
+When enabled, database operation traces are processed separately with dedicated metrics generation. This feature provides specialized monitoring for database operations with optimized bucket configurations and filtering.
+
 ### Requires:
 
 - An existing ECS Cluster
@@ -60,9 +68,11 @@ The sampling configuration can be adjusted using the following parameters:
 | CustomConfig       | The name of a Parameter Store to use as a custom configuration. Must be in the same region as your ECS cluster.            | none                                                                         |                    |
 | TaskExecutionRoleARN       |       When using a Custom Configuration in Parameter Store, set to the ARN of a Task Execution Role that has access to the PS.            | Default                                                                        |                    |
 | EnableHeadSampler       |       Enable or disable head sampling for traces. When enabled, sampling decisions are made at the collection point before any processing occurs.            | true 
+| EnableSpanMetrics       |       Enable or disable the spanmetrics connector and pipeline. When enabled (default), span metrics will be generated from traces.            | true 
+| EnableTracesDB       |       Enable or disable the traces/db pipeline for database operation metrics. When enabled, database operation metrics will be generated. Note: This feature requires spanmetrics to be enabled.            | false 
 | SamplerMode       |       The sampling mode to use:<br>**proportional**: Maintains the relative proportion of traces across services.<br>**equalizing**: Attempts to sample equal numbers of traces from each service.<br>**hash_seed**: Uses consistent hashing to ensure the same traces are sampled across restarts.            | proportional 
 | SamplingPercentage       |        The percentage of traces to sample (0-100). A value of 100 means all traces will be sampled, while 0 means no traces will be sampled.            | 10 
-| HealthCheckEnabled     | Enable ECS container health check for the OTEL agent container. | false | |
+| HealthCheckEnabled     | Enable ECS container health check for the OTEL agent container. Requires OTEL collector image version v0.4.2 or later.| false | |
 | HealthCheckInterval    | Health check interval (seconds)             | 30      |          |
 | HealthCheckTimeout     | Health check timeout (seconds)              | 5       |          |
 | HealthCheckRetries     | Health check retries                        | 3       |          |
@@ -109,6 +119,7 @@ The embeded default OpenTelemetry configuration can be viewed [here](./template.
 
 ### Health Check
 
+Requires OTEL collector image version v0.4.2 or later.
 The default config will expose a health check on port `13133` of the localhost via the path `/`. The health check is exposed using the [health_check](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/extension/healthcheckextension) extension.
 
 The healthy response should look like this:

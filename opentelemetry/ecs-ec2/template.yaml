@@ -88,6 +88,25 @@ Parameters:
     AllowedValues: ["true", "false"]
     Default: "true"
 
+  EnableSpanMetrics:
+    Type: String
+    Description: |
+      Enable or disable the spanmetrics processor and pipeline.
+      When enabled (default), span metrics will be generated from traces.
+      Set to "false" to disable span metrics generation.
+    AllowedValues: ["true", "false"]
+    Default: "true"
+
+  EnableTracesDB:
+    Type: String
+    Description: |
+      Enable or disable the traces/db pipeline for database operation metrics.
+      When enabled (default), database operation metrics will be generated.
+      Set to "false" to disable database operation metrics.
+      Note: This feature requires spanmetrics to be enabled.
+    AllowedValues: ["true", "false"]
+    Default: "false"
+
   SamplerMode:
     Type: String
     Description: |
@@ -142,6 +161,18 @@ Conditions:
     Fn::Equals:
       - !Ref EnableHeadSampler
       - "false"
+  EnableSpanMetricsCondition:
+    Fn::Equals:
+      - !Ref EnableSpanMetrics
+      - "true"
+  EnableTracesDBCondition:
+    Fn::And:
+      - Fn::Equals:
+          - !Ref EnableTracesDB
+          - "true"
+      - Fn::Equals:
+          - !Ref EnableSpanMetrics
+          - "true"
   EnableHealthCheck: !Equals [!Ref HealthCheckEnabled, "true"]
 
 Rules:
@@ -165,7 +196,7 @@ Mappings:
         receivers:
           otlp:
             protocols:
-              grpc: { endpoint: 0.0.0.0:4317 }
+              grpc: { endpoint: 0.0.0.0:4317, max_recv_msg_size_mib: 20 }
               http: { endpoint: 0.0.0.0:4318 }
 
           awsecscontainermetricsd:
@@ -201,7 +232,6 @@ Mappings:
                   parse_from: body.time
                   layout: '%Y-%m-%dT%H:%M:%S.%fZ'
 
-              # handle logs split by docker
               - type: recombine
                 id: recombine
                 output: move_log_file_path
@@ -278,7 +308,20 @@ Mappings:
                   - delete_key(attributes, "service.instance.id") where attributes["service.name"] == "cdot"
                   - delete_key(attributes, "service.name") where attributes["service.name"] == "cdot"
 
-          
+          transform/semconv:
+            error_mode: ignore
+            trace_statements:
+              - context: span
+                statements:
+                  - set(attributes["http.method"], attributes["http.request.method"]) where attributes["http.request.method"] != nil
+
+
+
+          filter/db_spanmetrics:
+            traces:
+              span:
+                - 'attributes["db.system"] == nil'
+
           batch: { send_batch_max_size: 2048, send_batch_size: 1024, timeout: 1s }
 
           resource/metadata:
@@ -287,7 +330,6 @@ Mappings:
                 key: cx.otel_integration.name
                 value: coralogix-integration-ecs-ec2
 
-          # otel-collector resource detection for collector
           resourcedetection/otel-collector:
             detectors: [system, env, ecs, ec2]
             override: false
@@ -321,7 +363,6 @@ Mappings:
                 host.mac: { enabled: true }
                 host.ip: { enabled: true }
                 os.description: { enabled: true }
-          
 
           probabilistic_sampler:
             sampling_percentage: "${SAMPLING_PERCENTAGE}"
@@ -355,72 +396,61 @@ Mappings:
             
         connectors:
           forward/sampled: {}
+          spanmetrics:
+            dimensions:
+              - name: http.method
+              - name: cgx.transaction
+              - name: cgx.transaction.root
+              - name: status_code
+              - name: db.namespace
+              - name: db.operation.name
+              - name: db.collection.name
+              - name: db.system
+              - name: http.response.status_code
+              - name: rpc.grpc.status_code
+              - name: service.version
+            histogram:
+              explicit:
+                buckets:
+                  - 1ms
+                  - 4ms
+                  - 10ms
+                  - 20ms
+                  - 50ms
+                  - 100ms
+                  - 200ms
+                  - 500ms
+                  - 1s
+                  - 2s
+                  - 5s
+            metrics_expiration: 5m
+            metrics_flush_interval: '30s'
+            namespace: ""
+          forward/db: {}
+          spanmetrics/db:
+            dimensions:
+              - name: db.namespace
+              - name: db.operation.name
+              - name: db.collection.name
+              - name: db.system
+              - name: service.version
+            histogram:
+              explicit:
+                buckets:
+                  - 100us
+                  - 1ms
+                  - 2ms
+                  - 2.5ms
+                  - 4ms
+                  - 6ms
+                  - 10ms
+                  - 100ms
+                  - 250ms
+            metrics_expiration: 5m
+            metrics_flush_interval: '30s'
+            namespace: db
 
-    PipelineWithSampling:
-      Value: |
-        extensions:
-          health_check:
-          pprof:
-
-        service:
-          extensions:
-            - health_check
-            - pprof
-
-          pipelines:
-            logs/container-logs:
-              receivers: [filelog]
-              processors: [ecsattributes/container-logs, resource/metadata, transform/logs, batch]
-              exporters: [coralogix]
-
-            metrics/container-metrics:
-              receivers: [awsecscontainermetricsd]
-              processors: [batch]
-              exporters: [coralogix]
-
-            logs/otlp:
-              receivers: [otlp]
-              processors: [resource/metadata, batch]
-              exporters: [coralogix]
-
-            metrics/otlp:
-              receivers: [otlp]
-              processors: [resource/metadata, batch]
-              exporters: [coralogix]
-
-            traces/otlp:
-              receivers: [otlp]
-              processors: [resource/metadata, batch]
-              exporters: [forward/sampled]
-              
-            traces/sampled:
-              receivers: [forward/sampled]
-              processors: [probabilistic_sampler, batch]
-              exporters: [coralogix]
-
-            logs/resource_catalog:
-              receivers: [hostmetrics]
-              processors: [resourcedetection/entity, transform/entity-event, batch]
-              exporters: [coralogix/resource_catalog]
-
-            metrics/otel-collector:
-              receivers: [prometheus, hostmetrics]
-              processors: [resourcedetection/otel-collector, resource/metadata, transform/prometheus, batch]
-              exporters: [coralogix]
-
-          telemetry:
-            logs:
-              level: warn
-
-            metrics:
-              readers:
-                - pull:
-                    exporter:
-                      prometheus:
-                        host: 0.0.0.0
-                        port: 8888
-    
-    PipelinesWithoutSampling:
+    PipelineSamplingOnly:
       Value: |
         extensions:
           health_check: {}
@@ -454,7 +484,12 @@ Mappings:
 
             traces/otlp:
               receivers: [otlp]
-              processors: [resource/metadata, batch]
+              processors: [resource/metadata, transform/semconv, batch]
+              exporters: [forward/sampled]
+              
+            traces/sampled:
+              receivers: [forward/sampled]
+              processors: [probabilistic_sampler, batch]
               exporters: [coralogix]
 
             logs/resource_catalog:
@@ -469,8 +504,355 @@ Mappings:
 
           telemetry:
             logs:
+              encoding: json
               level: warn
+            metrics:
+              readers:
+                - pull:
+                    exporter:
+                      prometheus:
+                        host: 0.0.0.0
+                        port: 8888
 
+
+
+    PipelineSamplingWithSpanMetricsAndTracesDB:
+      Value: |
+        extensions:
+          health_check: {}
+          pprof: {}
+
+        service:
+          extensions:
+            - health_check
+            - pprof
+
+          pipelines:
+            logs/container-logs:
+              receivers: [filelog]
+              processors: [ecsattributes/container-logs, resource/metadata, transform/logs, batch]
+              exporters: [coralogix]
+
+            metrics/container-metrics:
+              receivers: [awsecscontainermetricsd]
+              processors: [batch]
+              exporters: [coralogix]
+
+            logs/otlp:
+              receivers: [otlp]
+              processors: [resource/metadata, batch]
+              exporters: [coralogix]
+
+            metrics/otlp:
+              receivers: [otlp]
+              processors: [resource/metadata, batch]
+              exporters: [coralogix]
+
+            traces:
+              receivers: [otlp]
+              processors: [resource/metadata, transform/semconv, batch]
+              exporters: [forward/sampled, spanmetrics, forward/db]
+              
+            traces/sampled:
+              receivers: [forward/sampled]
+              processors: [probabilistic_sampler, batch]
+              exporters: [coralogix]
+
+            traces/db:
+              receivers: [forward/db]
+              processors: [filter/db_spanmetrics, batch]
+              exporters: [spanmetrics/db]
+
+            metrics/spanmetrics:
+              receivers: [spanmetrics]
+              processors: [batch]
+              exporters: [coralogix]
+
+            metrics/spanmetrics-db:
+              receivers: [spanmetrics/db]
+              processors: [batch]
+              exporters: [coralogix]
+
+            logs/resource_catalog:
+              receivers: [hostmetrics]
+              processors: [resourcedetection/entity, transform/entity-event, batch]
+              exporters: [coralogix/resource_catalog]
+
+            metrics/otel-collector:
+              receivers: [prometheus, hostmetrics]
+              processors: [resourcedetection/otel-collector, resource/metadata, transform/prometheus, batch]
+              exporters: [coralogix]
+
+          telemetry:
+            logs:
+              encoding: json
+              level: warn
+            metrics:
+              readers:
+                - pull:
+                    exporter:
+                      prometheus:
+                        host: 0.0.0.0
+                        port: 8888
+
+    PipelineSamplingWithSpanMetrics:
+      Value: |
+        extensions:
+          health_check: {}
+          pprof: {}
+
+        service:
+          extensions:
+            - health_check
+            - pprof
+
+          pipelines:
+            logs/container-logs:
+              receivers: [filelog]
+              processors: [ecsattributes/container-logs, resource/metadata, transform/logs, batch]
+              exporters: [coralogix]
+
+            metrics/container-metrics:
+              receivers: [awsecscontainermetricsd]
+              processors: [batch]
+              exporters: [coralogix]
+
+            logs/otlp:
+              receivers: [otlp]
+              processors: [resource/metadata, batch]
+              exporters: [coralogix]
+
+            metrics/otlp:
+              receivers: [otlp]
+              processors: [resource/metadata, batch]
+              exporters: [coralogix]
+
+            traces/otlp:
+              receivers: [otlp]
+              processors: [resource/metadata, transform/semconv, batch]
+              exporters: [forward/sampled, spanmetrics]
+              
+            traces/sampled:
+              receivers: [forward/sampled]
+              processors: [probabilistic_sampler, batch]
+              exporters: [coralogix]
+
+            metrics/spanmetrics:
+              receivers: [spanmetrics]
+              processors: [batch]
+              exporters: [coralogix]
+
+            logs/resource_catalog:
+              receivers: [hostmetrics]
+              processors: [resourcedetection/entity, transform/entity-event, batch]
+              exporters: [coralogix/resource_catalog]
+
+            metrics/otel-collector:
+              receivers: [prometheus, hostmetrics]
+              processors: [resourcedetection/otel-collector, resource/metadata, transform/prometheus, batch]
+              exporters: [coralogix]
+
+          telemetry:
+            logs:
+              encoding: json
+              level: warn
+            metrics:
+              readers:
+                - pull:
+                    exporter:
+                      prometheus:
+                        host: 0.0.0.0
+                        port: 8888
+
+    PipelineNoSampling:
+      Value: |
+        extensions:
+          health_check: {}
+          pprof: {}
+
+        service:
+          extensions:
+            - health_check
+            - pprof
+
+          pipelines:
+            logs/container-logs:
+              receivers: [filelog]
+              processors: [ecsattributes/container-logs, resource/metadata, transform/logs, batch]
+              exporters: [coralogix]
+
+            metrics/container-metrics:
+              receivers: [awsecscontainermetricsd]
+              processors: [batch]
+              exporters: [coralogix]
+
+            logs/otlp:
+              receivers: [otlp]
+              processors: [resource/metadata, batch]
+              exporters: [coralogix]
+
+            metrics/otlp:
+              receivers: [otlp]
+              processors: [resource/metadata, batch]
+              exporters: [coralogix]
+
+            traces/otlp:
+              receivers: [otlp]
+              processors: [resource/metadata, transform/semconv, batch]
+              exporters: [coralogix]
+
+            logs/resource_catalog:
+              receivers: [hostmetrics]
+              processors: [resourcedetection/entity, transform/entity-event, batch]
+              exporters: [coralogix/resource_catalog]
+
+            metrics/otel-collector:
+              receivers: [prometheus, hostmetrics]
+              processors: [resourcedetection/otel-collector, resource/metadata, transform/prometheus, batch]
+              exporters: [coralogix]
+
+          telemetry:
+            logs:
+              encoding: json
+              level: warn
+            metrics:
+              readers:
+                - pull:
+                    exporter:
+                      prometheus:
+                        host: 0.0.0.0
+                        port: 8888
+
+    PipelineNoSamplingWithSpanMetrics:
+      Value: |
+        extensions:
+          health_check: {}
+          pprof: {}
+
+        service:
+          extensions:
+            - health_check
+            - pprof
+
+          pipelines:
+            logs/container-logs:
+              receivers: [filelog]
+              processors: [ecsattributes/container-logs, resource/metadata, transform/logs, batch]
+              exporters: [coralogix]
+
+            metrics/container-metrics:
+              receivers: [awsecscontainermetricsd]
+              processors: [batch]
+              exporters: [coralogix]
+
+            logs/otlp:
+              receivers: [otlp]
+              processors: [resource/metadata, batch]
+              exporters: [coralogix]
+
+            metrics/otlp:
+              receivers: [otlp]
+              processors: [resource/metadata, batch]
+              exporters: [coralogix]
+
+            traces:
+              receivers: [otlp]
+              processors: [resource/metadata, transform/semconv, batch]
+              exporters: [coralogix, spanmetrics]
+
+            metrics/spanmetrics:
+              receivers: [spanmetrics]
+              processors: [batch]
+              exporters: [coralogix]
+
+            logs/resource_catalog:
+              receivers: [hostmetrics]
+              processors: [resourcedetection/entity, transform/entity-event, batch]
+              exporters: [coralogix/resource_catalog]
+
+            metrics/otel-collector:
+              receivers: [prometheus, hostmetrics]
+              processors: [resourcedetection/otel-collector, resource/metadata, transform/prometheus, batch]
+              exporters: [coralogix]
+
+          telemetry:
+            logs:
+              encoding: json
+              level: warn
+            metrics:
+              readers:
+                - pull:
+                    exporter:
+                      prometheus:
+                        host: 0.0.0.0
+                        port: 8888
+
+    PipelineNoSamplingWithSpanMetricsAndTracesDB:
+      Value: |
+        extensions:
+          health_check: {}
+          pprof: {}
+
+        service:
+          extensions:
+            - health_check
+            - pprof
+
+          pipelines:
+            logs/container-logs:
+              receivers: [filelog]
+              processors: [ecsattributes/container-logs, resource/metadata, transform/logs, batch]
+              exporters: [coralogix]
+
+            metrics/container-metrics:
+              receivers: [awsecscontainermetricsd]
+              processors: [batch]
+              exporters: [coralogix]
+
+            logs/otlp:
+              receivers: [otlp]
+              processors: [resource/metadata, batch]
+              exporters: [coralogix]
+
+            metrics/otlp:
+              receivers: [otlp]
+              processors: [resource/metadata, batch]
+              exporters: [coralogix]
+
+            traces:
+              receivers: [otlp]
+              processors: [resource/metadata, transform/semconv, batch]
+              exporters: [coralogix, spanmetrics, forward/db]
+
+            traces/db:
+              receivers: [forward/db]
+              processors: [filter/db_spanmetrics, batch]
+              exporters: [spanmetrics/db]
+
+            metrics/spanmetrics:
+              receivers: [spanmetrics]
+              processors: [batch]
+              exporters: [coralogix]
+
+            metrics/spanmetrics-db:
+              receivers: [spanmetrics/db]
+              processors: [batch]
+              exporters: [coralogix]
+
+            logs/resource_catalog:
+              receivers: [hostmetrics]
+              processors: [resourcedetection/entity, transform/entity-event, batch]
+              exporters: [coralogix/resource_catalog]
+
+            metrics/otel-collector:
+              receivers: [prometheus, hostmetrics]
+              processors: [resourcedetection/otel-collector, resource/metadata, transform/prometheus, batch]
+              exporters: [coralogix]
+
+          telemetry:
+            logs:
+              encoding: json
+              level: warn
             metrics:
               readers:
                 - pull:
@@ -542,7 +924,7 @@ Resources:
             - !Ref AWS::NoValue
 
           PortMappings:
-            # otel grpc endpoint
+            # otel grpc endpoint
             - HostPort: 4317
               Protocol: tcp
               AppProtocol: grpc
@@ -594,22 +976,28 @@ Resources:
               Value: !Ref SamplerMode
 
             - Name: OTEL_CONFIG
-              Value: !If
-                - DisableHeadSamplerCondition
-                - !Sub
-                  - |
-                    ${BaseConfig}
-                    ${PipelinesDef}
-                  - 
-                    BaseConfig: !FindInMap [Otel, BaseConfig, Value]
-                    PipelinesDef: !FindInMap [Otel, PipelinesWithoutSampling, Value]
-                - !Sub
-                  - |
-                    ${BaseConfig}
-                    ${PipelinesDef}
-                  -
-                    BaseConfig: !FindInMap [Otel, BaseConfig, Value]
-                    PipelinesDef: !FindInMap [Otel, PipelineWithSampling, Value]
+              Value: !Sub
+                - |
+                  ${BaseConfig}
+                  ${PipelineConfig}
+                - 
+                  BaseConfig: !FindInMap [Otel, BaseConfig, Value]
+                  PipelineConfig: !If
+                    - DisableHeadSamplerCondition
+                    - !If
+                      - EnableTracesDBCondition
+                      - !FindInMap [Otel, PipelineNoSamplingWithSpanMetricsAndTracesDB, Value]
+                      - !If
+                        - EnableSpanMetricsCondition
+                        - !FindInMap [Otel, PipelineNoSamplingWithSpanMetrics, Value]
+                        - !FindInMap [Otel, PipelineNoSampling, Value]
+                    - !If
+                      - EnableTracesDBCondition
+                      - !FindInMap [Otel, PipelineSamplingWithSpanMetricsAndTracesDB, Value]
+                      - !If
+                        - EnableSpanMetricsCondition
+                        - !FindInMap [Otel, PipelineSamplingWithSpanMetrics, Value]
+                        - !FindInMap [Otel, PipelineSamplingOnly, Value]
 
   OtelTaskDefinitionCustom: 
     Type: AWS::ECS::TaskDefinition
@@ -651,7 +1039,7 @@ Resources:
             - !Ref AWS::NoValue
 
           PortMappings:
-            # otel grpc endpoint
+            # otel grpc endpoint
             - HostPort: 4317
               Protocol: tcp
               AppProtocol: grpc
@@ -756,4 +1144,4 @@ Resources:
         - Key: 'ecs:service:stackId'
           Value: !Ref 'AWS::StackId'
       EnableECSManagedTags: true
-      TaskDefinition: !Ref OtelTaskDefinitionCustom
+      TaskDefinition: !Ref OtelTaskDefinitionCustom 

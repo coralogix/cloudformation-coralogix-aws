@@ -5,6 +5,9 @@
 <!-- ### version / full date -->
 <!-- * [Update/Bug fix] message that describes the changes that you apply -->
 
+### 1.0.5 / 2025-01-27
+- Added spanmetrics pipline (enebaled by default) and traces/db, each have its own parameter.
+
 ### 1.0.4 / 2025-06-02
 - Update memory default to 2GB
 
