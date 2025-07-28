@@ -58,7 +58,7 @@ When enabled, database operation traces are processed separately with dedicated 
 
 | Parameter        | Description                                                                                                                                                                                                                          | Default Value                                                            | Required           |
 |------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------|--------------------|
-| ConfigSource     | Select the configuration source for OpenTelemetry Collector:<br>- `template`: Use built-in template configuration<br>- `s3`: Use configuration file from S3 (via S3 URI)<br>- `ssm`: Use configuration from SSM Parameter Store | template                                                                |                    |
+| ConfigSource     | Select the configuration source for OpenTelemetry Collector:<br>- `template`: Use built-in template configuration<br>- `s3`: Use configuration file from S3 (via S3 URI)<br>- `parameter-store`: Use configuration from AWS Systems Manager Parameter Store | template                                                                |                    |
 | ClusterName      | The name of an **existing** ECS Cluster                                                                                                                                                                                              |                                                                          | :heavy_check_mark: |
 | CDOTImageVersion | The Coralogix OpenTelemetry Collector Image version/tag to use. See available tags [here](https://hub.docker.com/r/coralogixrepo/coralogix-otel-collector/tags)                                                                     |                                                                          |                    |
 | Image            | The OpenTelemetry Collector Image to use. If specified, this value will override the CDOTImageVersion parameter and the coralogix otel collector image.                                                                              | none                                                                     |                    |
@@ -69,7 +69,7 @@ When enabled, database operation traces are processed separately with dedicated 
 | CoralogixApiKey  | The Send-Your-Data API key for your Coralogix account. See: https://coralogix.com/docs/send-your-data-api-key/                                                                                                                       |                                                                          | :heavy_check_mark: |
 | S3ConfigBucket   | S3 bucket name containing the configuration file. Required when ConfigSource is 's3'.                                                                                                                                                |                                                                          |                    |
 | S3ConfigKey      | S3 object key (file path) for the configuration file. Required when ConfigSource is 's3'.                                                                                                                                           |                                                                          |                    |
-| CustomConfig     | The name of a Parameter Store to use as a custom configuration. Required when ConfigSource is 'ssm'.                                                                                                                                | none                                                                     |                    |
+| CustomConfig     | The name of an AWS Systems Manager Parameter Store parameter to use as a custom configuration. Required when ConfigSource is 'parameter-store'.                                                                                                | none                                                                     |                    |
 | EnableHeadSampler | Enable or disable head sampling for traces. When enabled, sampling decisions are made at the collection point before any processing occurs.                                                                                        | true                                                                     |                    |
 | EnableSpanMetrics | Enable or disable the spanmetrics connector and pipeline. When enabled (default), span metrics will be generated from traces.                                                                                                      | true                                                                     |                    |
 | EnableTracesDB   | Enable or disable the traces/db pipeline for database operation metrics. When enabled, database operation metrics will be generated. Note: This feature requires spanmetrics to be enabled.                                           | false                                                                    |                    |
@@ -115,15 +115,15 @@ aws cloudformation deploy --template-file template.yaml --stack-name <stack_name
         HealthCheckEnabled=true
 ```
 
-### SSM Parameter Store Configuration
+### AWS Systems Manager Parameter Store Configuration
 
-For custom configurations stored in SSM Parameter Store:
+For custom configurations stored in AWS Systems Manager Parameter Store:
 
 ```sh
 aws cloudformation deploy --template-file template.yaml --stack-name <stack_name> \
     --region <region> \
     --parameter-overrides \
-        ConfigSource=ssm \
+        ConfigSource=parameter-store \
         CustomConfig=<Parameter Store Name> \
         ClusterName=<ecs cluster name> \
         CDOTImageVersion=<image tag> \
@@ -140,9 +140,9 @@ The template supports three configuration sources:
 
 1. **Template Configuration (Default)**: An OpenTelemetry configuration is embedded in the cloudformation template by default.
 
-2. **S3 Configuration**: For large configurations that exceed SSM Parameter Store limits, you can store your configuration file in S3. The template will automatically create the necessary IAM roles for S3 access.
+2. **S3 Configuration**: For large configurations that exceed AWS Systems Manager Parameter Store limits, you can store your configuration file in S3. The template will automatically create the necessary IAM roles for S3 access.
 
-3. **SSM Parameter Store**: You can specify your own configuration stored in AWS Systems Manager Parameter Store using the `CustomConfig` parameter. When using SSM configuration, you must ensure your EC2 host has access to the AWS Systems Manager API and the OTEL containers have read permission for the specified Parameter Store.
+3. **AWS Systems Manager Parameter Store**: You can specify your own configuration stored in AWS Systems Manager Parameter Store using the `CustomConfig` parameter. When using Parameter Store configuration (ConfigSource=parameter-store), you must ensure your EC2 host has access to the AWS Systems Manager API and the OTEL containers have read permission for the specified parameter.
 
 The default configuration will monitor container logs, listen for logs, metrics and traces on port `4317/4318`, and monitor container metrics using the `awsecscontainermetricsd` receiver. The `awsecscontainermetricsd` receiver is based on the [awsecscontainermetrics](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/receiver/awsecscontainermetricsreceiver) receiver, however, instead of monitoring a single task, metrics will be collected from all containers. If you do not wish to collect container metrics, comment out or delete the metrics/container-metrics pipeline from the configuration.
 

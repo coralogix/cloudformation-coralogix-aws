@@ -1,7 +1,7 @@
 AWSTemplateFormatVersion: 2010-09-09
 Description: |
   Create an OTEL ECS Daemon Service on an ECS Cluster.
-  NOTE: Contains conditional IAM roles (only created for s3 and ssm). 
+  NOTE: Contains conditional IAM roles (only created for s3 and Parameter Store). 
   IAM warning appears even when no IAM resources are created - this is expected and safe to acknowledge.
 
 Metadata:
@@ -38,7 +38,7 @@ Metadata:
           - S3ConfigKey
       
       - Label:
-          default: "SSM Configuration (required when ConfigSource=ssm)"
+          default: "Parameter Store Configuration (required when ConfigSource=parameter-store)"
         Parameters:
           - CustomConfig
       
@@ -65,7 +65,7 @@ Metadata:
       S3ConfigKey:
         default: "S3 Object Key (file path)"
       CustomConfig:
-        default: "SSM Parameter Name"
+        default: "Parameter Store Parameter Name"
 
       ClusterName:
         default: "ECS Cluster Name"
@@ -111,9 +111,9 @@ Parameters:
       Select the configuration source for OpenTelemetry Collector.
       - 'template': Use built-in template configuration
       - 's3': Use configuration file from S3 (via S3 URI)
-      - 'ssm': Use configuration from SSM Parameter Store
+      - 'parameter-store': Use configuration from AWS Systems Manager Parameter Store
     Default: "template"
-    AllowedValues: ["template", "s3", "ssm"]
+    AllowedValues: ["template", "s3", "parameter-store"]
 
   S3ConfigBucket:
     Type: String
@@ -198,8 +198,8 @@ Parameters:
   CustomConfig:
     Type: String
     Description: |
-      The name of a Parameter Store to use as a custom configuration.
-      Required when ConfigSource is 'ssm'.
+      The name of an AWS Systems Manager Parameter Store parameter to use as a custom configuration.
+      Required when ConfigSource is 'parameter-store'.
     Default: "none"
 
   EnableHeadSampler:
@@ -278,7 +278,7 @@ Conditions:
   UseImage: !Not [!Equals [!Ref Image, "none"]]
   UseDefaultConfig: !Equals [!Ref ConfigSource, "template"]
   UseS3Config: !Equals [!Ref ConfigSource, "s3"]
-  UseSSMConfig: !Equals [!Ref ConfigSource, "ssm"]
+  UseSSMConfig: !Equals [!Ref ConfigSource, "parameter-store"]
   UseTemplateOrS3Config: !Or [!Equals [!Ref ConfigSource, "template"], !Equals [!Ref ConfigSource, "s3"]]
   DisableHeadSamplerCondition: !Equals [!Ref EnableHeadSampler, "false"]
   EnableSpanMetricsCondition: !Equals [!Ref EnableSpanMetrics, "true"]
@@ -308,19 +308,19 @@ Rules:
                     - ""
         AssertDescription: "S3ConfigBucket and S3ConfigKey must be provided when ConfigSource is 's3'."
 
-  ValidateSSMParameters:
+  ValidateParameterStoreParameters:
     Assertions:
       - Assert:
           Fn::Or:
             - Fn::Not:
                 - Fn::Equals:
                     - !Ref ConfigSource
-                    - "ssm"
+                    - "parameter-store"
             - Fn::Not:
                 - Fn::Equals:
                     - !Ref CustomConfig
                     - "none"
-        AssertDescription: "CustomConfig must be provided when ConfigSource is 'ssm'."
+        AssertDescription: "CustomConfig must be provided when ConfigSource is 'parameter-store'."
 
 
 
@@ -1256,12 +1256,12 @@ Resources:
                   - s3:GetObjectVersion
                 Resource: !Sub "arn:aws:s3:::${S3ConfigBucket}/*"
 
-  # IAM Role for SSM access (only created when ConfigSource=ssm)
+  # IAM Role for Parameter Store access (only created when ConfigSource=parameter-store)
   OtelTaskExecutionRoleSSM:
     Type: AWS::IAM::Role
     Condition: UseSSMConfig
     Properties:
-      RoleName: !Sub "${AWS::StackName}-otel-task-execution-role-ssm"
+      RoleName: !Sub "${AWS::StackName}-otel-task-execution-role-parameter-store"
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -1272,7 +1272,7 @@ Resources:
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
       Policies:
-        - PolicyName: SSMReadAccess
+        - PolicyName: ParameterStoreReadAccess
           PolicyDocument:
             Version: '2012-10-17'
             Statement:
