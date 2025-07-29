@@ -1,8 +1,136 @@
 AWSTemplateFormatVersion: 2010-09-09
 Description: |
   Create an OTEL ECS Daemon Service on an ECS Cluster.
+  NOTE: Contains conditional IAM roles (only created for s3 and Parameter Store). 
+  IAM warning appears even when no IAM resources are created - this is expected and safe to acknowledge.
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: "Basic Configuration"
+        Parameters:
+          - ClusterName
+          - CoralogixRegion
+          - CoralogixApiKey
+          - CDOTImageVersion
+      
+      - Label:
+          default: "Configuration Selection"
+        Parameters:
+          - ConfigSource
+      
+      - Label:
+          default: "Default Template Configuration (required when ConfigSource=template)"
+        Parameters:
+          - DefaultApplicationName
+          - DefaultSubsystemName
+          - EnableHeadSampler
+          - EnableSpanMetrics
+          - EnableTracesDB
+          - SamplerMode
+          - SamplingPercentage
+      
+      - Label:
+          default: "S3 Configuration (required when ConfigSource=s3)"
+        Parameters:
+          - S3ConfigBucket
+          - S3ConfigKey
+      
+      - Label:
+          default: "Parameter Store Configuration (required when ConfigSource=parameter-store)"
+        Parameters:
+          - CustomConfig
+      
+      - Label:
+          default: "Container Configuration"
+        Parameters:
+          - Image
+          - Memory
+      
+      - Label:
+          default: "Health Check Configuration"
+        Parameters:
+          - HealthCheckEnabled
+          - HealthCheckInterval
+          - HealthCheckTimeout
+          - HealthCheckRetries
+          - HealthCheckStartPeriod
+    
+    ParameterLabels:
+      ConfigSource:
+        default: "Select Configuration Source"
+      S3ConfigBucket:
+        default: "S3 Bucket Name"
+      S3ConfigKey:
+        default: "S3 Object Key (file path)"
+      CustomConfig:
+        default: "Parameter Store Parameter Name"
+
+      ClusterName:
+        default: "ECS Cluster Name"
+      CoralogixRegion:
+        default: "Coralogix Region"
+      CoralogixApiKey:
+        default: "Coralogix API Key"
+      DefaultApplicationName:
+        default: "Default Application Name"
+      DefaultSubsystemName:
+        default: "Default Subsystem Name"
+      EnableHeadSampler:
+        default: "Enable Head Sampler"
+      EnableSpanMetrics:
+        default: "Enable Span Metrics"
+      EnableTracesDB:
+        default: "Enable Traces DB"
+      SamplerMode:
+        default: "Sampler Mode"
+      SamplingPercentage:
+        default: "Sampling Percentage"
+      CDOTImageVersion:
+        default: "CDOT Image Version"
+      Image:
+        default: "Custom Image (overrides CDOTImageVersion)"
+      Memory:
+        default: "Memory (MiB)"
+      HealthCheckEnabled:
+        default: "Enable Health Check"
+      HealthCheckInterval:
+        default: "Health Check Interval (seconds)"
+      HealthCheckTimeout:
+        default: "Health Check Timeout (seconds)"
+      HealthCheckRetries:
+        default: "Health Check Retries"
+      HealthCheckStartPeriod:
+        default: "Health Check Start Period (seconds)"
 
 Parameters:
+  ConfigSource:
+    Type: String
+    Description: |
+      Select the configuration source for OpenTelemetry Collector.
+      - 'template': Use built-in template configuration
+      - 's3': Use configuration file from S3 (via S3 URI)
+      - 'parameter-store': Use configuration from AWS Systems Manager Parameter Store
+    Default: "template"
+    AllowedValues: ["template", "s3", "parameter-store"]
+
+  S3ConfigBucket:
+    Type: String
+    Description: |
+      S3 bucket name containing the configuration file.
+      Example: 'my-bucket'
+      Required when ConfigSource is 's3'.
+    Default: ""
+
+  S3ConfigKey:
+    Type: String
+    Description: |
+      S3 object key (file path) for the configuration file.
+      Example: 'configs/otel-config.yaml'
+      Required when ConfigSource is 's3'.
+    Default: ""
+
   ClusterName:
     Description: |
       Name of the ECS Cluster onto which to deploy the OTEL Daemon Service.
@@ -12,6 +140,7 @@ Parameters:
     Description: |
       The Coralogix Distribution OpenTelemetry Image Version/Tag.
       View available tags here: https://hub.docker.com/r/coralogixrepo/coralogix-otel-collector/tags
+      This is required when Custom Image is set to "none".
     Type: String
   
   Image:
@@ -19,7 +148,7 @@ Parameters:
       The OpenTelemetry Collector Image to use.
       If specified, this value will override the CDOTImageVersion parameter and
       the coralogix otel collector image.
-    Default: none
+    Default: "none"
     Type: String
 
   Memory:
@@ -69,15 +198,9 @@ Parameters:
   CustomConfig:
     Type: String
     Description: |
-      The name of a Parameter Store to use as a custom configuration.
-      If left as 'none' will use the default configuration from the template.
+      The name of an AWS Systems Manager Parameter Store parameter to use as a custom configuration.
+      Required when ConfigSource is 'parameter-store'.
     Default: "none"
-
-  TaskExecutionRoleARN:
-    Type: String
-    Description: |
-      When using a Custom Configuration in Parameter Store, set to the ARN of a Task Execution Role that has access to the PS.
-    Default: "Default"
 
   EnableHeadSampler:
     Type: String
@@ -152,42 +275,54 @@ Parameters:
     Default: "10"
 
 Conditions:
-  UseImage: !Not [!Equals [ !Ref Image, "none" ]]
-  UseDefaultConfig: !Equals [ !Ref CustomConfig, "none" ]
-  UseCustomConfig: 
-    Fn::Not: 
-    - !Equals [ !Ref CustomConfig, "none" ]
-  DisableHeadSamplerCondition:
-    Fn::Equals:
-      - !Ref EnableHeadSampler
-      - "false"
-  EnableSpanMetricsCondition:
-    Fn::Equals:
-      - !Ref EnableSpanMetrics
-      - "true"
+  UseImage: !Not [!Equals [!Ref Image, "none"]]
+  UseDefaultConfig: !Equals [!Ref ConfigSource, "template"]
+  UseS3Config: !Equals [!Ref ConfigSource, "s3"]
+  UseSSMConfig: !Equals [!Ref ConfigSource, "parameter-store"]
+  UseTemplateOrS3Config: !Or [!Equals [!Ref ConfigSource, "template"], !Equals [!Ref ConfigSource, "s3"]]
+  DisableHeadSamplerCondition: !Equals [!Ref EnableHeadSampler, "false"]
+  EnableSpanMetricsCondition: !Equals [!Ref EnableSpanMetrics, "true"]
   EnableTracesDBCondition:
     Fn::And:
-      - Fn::Equals:
-          - !Ref EnableTracesDB
-          - "true"
-      - Fn::Equals:
-          - !Ref EnableSpanMetrics
-          - "true"
+      - !Equals [!Ref EnableTracesDB, "true"]
+      - !Equals [!Ref EnableSpanMetrics, "true"]
   EnableHealthCheck: !Equals [!Ref HealthCheckEnabled, "true"]
 
 Rules:
-  ValidateTaskExecutionRole:
+
+  ValidateS3Parameters:
     Assertions:
       - Assert:
           Fn::Or:
-            - Fn::Equals:
-                - Ref: CustomConfig
-                - "none"
             - Fn::Not:
                 - Fn::Equals:
-                    - Ref: TaskExecutionRoleARN
-                    - "Default"
-        AssertDescription: "TaskExecutionRoleARN cannot be 'Default' if CustomConfig is set to a value other than 'none'."
+                    - !Ref ConfigSource
+                    - "s3"
+            - Fn::Not:
+                - Fn::Equals:
+                    - !Ref S3ConfigBucket
+                    - ""
+            - Fn::Not:
+                - Fn::Equals:
+                    - !Ref S3ConfigKey
+                    - ""
+        AssertDescription: "S3ConfigBucket and S3ConfigKey must be provided when ConfigSource is 's3'."
+
+  ValidateParameterStoreParameters:
+    Assertions:
+      - Assert:
+          Fn::Or:
+            - Fn::Not:
+                - Fn::Equals:
+                    - !Ref ConfigSource
+                    - "parameter-store"
+            - Fn::Not:
+                - Fn::Equals:
+                    - !Ref CustomConfig
+                    - "none"
+        AssertDescription: "CustomConfig must be provided when ConfigSource is 'parameter-store'."
+
+
 
 Mappings:
   Otel:
@@ -906,7 +1041,10 @@ Resources:
         - Name: coralogix-otel-agent
           Cpu: 0
           Memory: !Ref Memory
-          Command: ["--config", "env:OTEL_CONFIG"]
+          Command: !If
+            - UseS3Config
+            - ["--config", !Sub "s3://${S3ConfigBucket}.s3.${AWS::Region}.amazonaws.com/${S3ConfigKey}"]
+            - ["--config", "env:OTEL_CONFIG"]
           Image: !If
             - UseImage
             - !Ref Image
@@ -999,11 +1137,157 @@ Resources:
                         - !FindInMap [Otel, PipelineSamplingWithSpanMetrics, Value]
                         - !FindInMap [Otel, PipelineSamplingOnly, Value]
 
+  # Task Definition for S3 configuration
+  OtelTaskDefinitionS3: 
+    Type: AWS::ECS::TaskDefinition
+    Condition: UseS3Config
+    Properties:
+      ExecutionRoleArn: !Ref OtelTaskExecutionRole
+      TaskRoleArn: !Ref OtelTaskExecutionRole
+      Family: opentelemetry
+      RequiresCompatibilities:
+        - EC2
+      NetworkMode: host
+      Volumes:
+        - Name: hostfs
+          Host:
+            SourcePath: "/var/lib/docker/"
+  
+        - Name: docker-socket
+          Host:
+            SourcePath: /var/run/docker.sock
+
+      ContainerDefinitions:
+        - Name: coralogix-otel-agent
+          Cpu: 0
+          Memory: !Ref Memory
+          Command: ["--config", !Sub "s3://${S3ConfigBucket}.s3.${AWS::Region}.amazonaws.com/${S3ConfigKey}"]
+          Image: !If
+            - UseImage
+            - !Ref Image
+            - !Sub "coralogixrepo/coralogix-otel-collector:${CDOTImageVersion}"
+
+          Essential: true
+          HealthCheck: !If
+            - EnableHealthCheck
+            - Command:
+                - "/healthcheck"
+              Interval: !Ref HealthCheckInterval
+              Timeout: !Ref HealthCheckTimeout
+              Retries: !Ref HealthCheckRetries
+              StartPeriod: !Ref HealthCheckStartPeriod
+            - !Ref AWS::NoValue
+
+          PortMappings:
+            # otel grpc endpoint
+            - HostPort: 4317
+              Protocol: tcp
+              AppProtocol: grpc
+              ContainerPort: 4317
+            
+            # otel http endpoint
+            - HostPort: 4318
+              Protocol: tcp
+              ContainerPort: 4318
+
+            # otel metrics endpoint
+            - HostPort: 8888
+              Protocol: tcp
+              ContainerPort: 8888
+
+            # pprof extension default port
+            - HostPort: 1777
+              Protocol: tcp
+              ContainerPort: 1777
+
+          # Privileged required to access certain host metrics
+          Privileged: true
+
+          MountPoints:
+            - SourceVolume: hostfs
+              ContainerPath: "/hostfs/var/lib/docker"
+              ReadOnly: True
+
+            - SourceVolume: docker-socket
+              ContainerPath: /var/run/docker.sock
+
+          Environment:
+            - Name: CORALOGIX_DOMAIN
+              Value: !FindInMap [CoralogixRegionMap, !Ref CoralogixRegion, Domain]
+           
+            - Name: PRIVATE_KEY
+              Value: !Ref CoralogixApiKey
+
+            - Name: APP_NAME
+              Value: !Ref DefaultApplicationName
+
+            - Name: SUB_SYS
+              Value: !Ref DefaultSubsystemName
+              
+            - Name: SAMPLING_PERCENTAGE
+              Value: !Ref SamplingPercentage
+
+            - Name: SAMPLER_MODE
+              Value: !Ref SamplerMode
+
+  # IAM Role for S3 access (only created when ConfigSource=s3)
+  OtelTaskExecutionRole:
+    Type: AWS::IAM::Role
+    Condition: UseS3Config
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-otel-task-execution-role"
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+      Policies:
+        - PolicyName: S3ReadAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:GetObjectVersion
+                Resource: !Sub "arn:aws:s3:::${S3ConfigBucket}/*"
+
+  # IAM Role for Parameter Store access (only created when ConfigSource=parameter-store)
+  OtelTaskExecutionRoleSSM:
+    Type: AWS::IAM::Role
+    Condition: UseSSMConfig
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-otel-task-execution-role-parameter-store"
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+      Policies:
+        - PolicyName: ParameterStoreReadAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ssm:GetParameter
+                  - ssm:GetParameters
+                Resource: !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/${CustomConfig}"
+
   OtelTaskDefinitionCustom: 
     Type: AWS::ECS::TaskDefinition
-    Condition: UseCustomConfig
+    Condition: UseSSMConfig
     Properties:
-      ExecutionRoleArn: !Ref TaskExecutionRoleARN
+      ExecutionRoleArn: !Ref OtelTaskExecutionRoleSSM
+      TaskRoleArn: !Ref OtelTaskExecutionRoleSSM
       Family: opentelemetry
       RequiresCompatibilities:
         - EC2
@@ -1092,7 +1376,10 @@ Resources:
 
           Secrets:
             - Name: OTEL_CONFIG
-              ValueFrom: !Ref CustomConfig
+              ValueFrom: !If
+                - UseSSMConfig
+                - !Ref CustomConfig
+                - !Ref AWS::NoValue
 
   ECSService:
     Type: 'AWS::ECS::Service'
@@ -1120,9 +1407,35 @@ Resources:
       EnableECSManagedTags: true
       TaskDefinition: !Ref OtelTaskDefinition
 
-  ECSServiceCustom:
+  ECSServiceS3:
     Type: 'AWS::ECS::Service'
-    Condition: UseCustomConfig
+    Condition: UseS3Config
+    Properties:
+      Cluster: !Ref ClusterName
+      LaunchType: EC2
+      ServiceName: coralogix-otel-agent
+      SchedulingStrategy: DAEMON
+      DeploymentConfiguration:
+        MaximumPercent: 100
+        MinimumHealthyPercent: 0
+        DeploymentCircuitBreaker:
+          Enable: true
+          Rollback: true
+      DeploymentController:
+        Type: ECS
+      ServiceConnectConfiguration:
+        Enabled: false
+      PlacementStrategies: []
+      PlacementConstraints: []
+      Tags:
+        - Key: 'ecs:service:stackId'
+          Value: !Ref 'AWS::StackId'
+      EnableECSManagedTags: true
+      TaskDefinition: !Ref OtelTaskDefinitionS3
+
+  ECSServiceSSM:
+    Type: 'AWS::ECS::Service'
+    Condition: UseSSMConfig
     Properties:
       Cluster: !Ref ClusterName
       LaunchType: EC2

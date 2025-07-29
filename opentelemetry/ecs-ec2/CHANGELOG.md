@@ -5,7 +5,12 @@
 <!-- ### version / full date -->
 <!-- * [Update/Bug fix] message that describes the changes that you apply -->
 
-### 1.0.5 / 2025-01-27
+### 1.0.6 / 2025-07-28
+- Added support for s3 provider to read otel config.
+- TaskRoleARN is created by the template for Parameter Store and S3.
+- Added examples folder with complate example config file.
+
+### 1.0.5 / 2025-07-16
 - Added spanmetrics pipline (enebaled by default) and traces/db, each have its own parameter.
 
 ### 1.0.4 / 2025-06-02
