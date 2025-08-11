@@ -1,8 +1,20 @@
 # Changelog
 
-## v1.3.8 / 2025-08-11
+## v1.3.11 / 2025-08-11
 ### 💡 Enhancements 💡
 - Add support for S3 bucket KMS key using `S3BucketKMSKeyARN`
+
+## v1.3.10 / 2025-08-04
+### 🧰 Bug fixes 🧰
+- Fixed issue when deploying S3 integration with bucket names containing periods (e.g., `my-bucket.example.com`). The custom resource now sanitizes bucket names by replacing periods with underscores in Lambda permission statement IDs to comply with AWS naming constraints.
+
+## v1.3.9 / 2025-02-08
+### 🧰 Bug fixes 🧰
+- Fixed dynamic metadata fallback behavior to use defaults when template references missing metadata keys instead of falling back to unrelated metadata
+
+## v1.3.8 / 2025-02-07
+### 🧰 Bug fixes 🧰
+- Remove MaxLength for the `S3BucketName` parameter, as it could accept a comma-separated list of buckets
 
 ## v1.3.7 / 2025-6-9
 ### 💡 Enhancements 💡
