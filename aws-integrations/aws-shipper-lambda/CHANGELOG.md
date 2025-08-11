@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.3.8 / 2025-08-11
+### 💡 Enhancements 💡
+- Add support for S3 bucket KMS key using `S3BucketKMSKeyARN`
+
 ## v1.3.7 / 2025-6-9
 ### 💡 Enhancements 💡
 - Add support for AP3 region
