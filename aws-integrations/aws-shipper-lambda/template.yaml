@@ -24,7 +24,7 @@ Metadata:
       - kinesis
       - cloudfront
     HomePageUrl: https://coralogix.com
-    SemanticVersion: 1.3.10
+    SemanticVersion: 1.3.11
     SourceCodeUrl: https://github.com/coralogix/coralogix-aws-shipper
   AWS::CloudFormation::Interface:
     ParameterGroups:
@@ -44,6 +44,7 @@ Metadata:
           - S3BucketName
           - S3KeyPrefix
           - S3KeySuffix
+          - S3BucketKMSKeyARN
           - NewlinePattern
           - SNSTopicArn
           - SQSTopicArn
@@ -198,6 +199,12 @@ Parameters:
       The AWS S3 path suffix to watch. This value is ignored
       when the SNSTopicArn parameter is provided.
     MaxLength: 1024
+    Default: ''
+  S3BucketKMSKeyARN:
+    Type: String
+    Description: |
+      The ARN of the KMS key used to encrypt/decrypt objects in the specified S3 bucket.
+      If provided, the Lambda policy will include permissions to decrypt using this key.
     Default: ''
   FunctionMemorySize:
     Type: Number
@@ -465,6 +472,7 @@ Conditions:
   IsLambdaAssumeRoleEnable: !Not [!Equals [!Ref LambdaAssumeRoleARN, '']]
   ExecutionRoleARNIsSet: !Not [!Equals [!Ref ExecutionRoleARN, '']]
   ReservedConcurrentExecutionsIsSet: !Not [!Equals [!Ref ReservedConcurrentExecutions, 0]]
+  S3BucketKMSKeyARNIsSet: !Not [!Equals [!Ref S3BucketKMSKeyARN, '']]
   # TelemetryModeIsLogs: !Equals [!Ref TelemetryMode, logs]
   TelemetryModeIsMetrics: !Equals [!Ref TelemetryMode, metrics]
   CpuArchIsx8664:
@@ -613,6 +621,14 @@ Resources:
               Action:
                 - 's3:GetObject'
               Resource: arn:aws:s3:::*
+            - !Ref AWS::NoValue
+          - !If
+            # KMS Policy for S3 bucket encryption
+            - S3BucketKMSKeyARNIsSet
+            - Effect: Allow
+              Action:
+                - 'kms:Decrypt'
+              Resource: !Ref S3BucketKMSKeyARN
             - !Ref AWS::NoValue
           - !If
             # SQS Policy
