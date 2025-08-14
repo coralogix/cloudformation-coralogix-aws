@@ -66,6 +66,29 @@ Resources:
       Value: |
         connectors:
           forward/sampled: {}
+          spanmetrics:
+            namespace: ""
+            histogram:
+              explicit:
+                buckets: [100us, 1ms, 2ms, 4ms, 6ms, 10ms, 100ms, 250ms]
+            dimensions:
+              - name: http.method
+              - name: cgx.transaction
+              - name: cgx.transaction.root
+              - name: aws.ecs.task.family
+              - name: aws.ecs.task.id
+              - name: service.namespace
+              - name: container_name
+            exemplars:
+              enabled: true
+            aggregation_cardinality_limit: 1000
+            aggregation_temporality: "AGGREGATION_TEMPORALITY_CUMULATIVE"
+            metrics_flush_interval: 15s
+            events:
+              enabled: true
+              dimensions:
+                - name: exception.type
+                - name: exception.message
 
         receivers:
           fluentforward/socket: { endpoint: unix:///var/run/fluent.sock }
@@ -193,9 +216,9 @@ Resources:
             metrics:
               exporters: [coralogix]
               processors: [resource/metadata, resourcedetection, batch]
-              receivers: [otlp, awsecscontainermetrics, prometheus, hostmetrics]
+              receivers: [otlp, awsecscontainermetrics, prometheus, hostmetrics, spanmetrics]
             traces:
-              exporters: [forward/sampled]
+              exporters: [forward/sampled, spanmetrics]
               processors: [resource/metadata, resourcedetection, batch]
               receivers: [otlp]
             traces/sampled:
@@ -204,7 +227,13 @@ Resources:
               exporters: [coralogix]
           telemetry:
             logs: { level: "warn", encoding: json }
-            metrics: { address: 0.0.0.0:8888 }
+            metrics:
+              readers:
+                - pull:
+                    exporter:
+                      prometheus:
+                        host: 0.0.0.0
+                        port: 8888
             resource:
               service.instance.id: ""
               service.name: ""
