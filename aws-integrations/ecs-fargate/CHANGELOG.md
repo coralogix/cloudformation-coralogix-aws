@@ -4,6 +4,9 @@
 <!-- To add a new entry write: -->
 <!-- ### version / full date -->
 <!-- * [Update/Bug fix] message that describes the changes that you apply -->
+### 0.0.10 / 2025-08-14
+* [FIX] Changed telemetry.metrics to new syntax
+* [UPDATE] spanmetric added to the config
 
 ### 0.0.9 / 2025-10-07
 * [UPDATE] Change coralogix domains and endpoints to new format `<coralogix_region>.coralogix.com`.
