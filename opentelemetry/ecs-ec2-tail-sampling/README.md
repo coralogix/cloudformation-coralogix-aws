@@ -1,7 +1,6 @@
-# Coralogix OpenTelemetry Tail Sampling for ECS-EC2
+# Coralogix OpenTelemetry Tail Sampling for ECS-EC2 - Example Deployment
 
-
-This CloudFormation template deploys a complete OpenTelemetry tail sampling solution on Amazon ECS with EC2 launch type. The solution enables intelligent trace sampling based on trace characteristics and provides a scalable architecture for processing high-volume telemetry data.
+This CloudFormation template provides an example of how to deploy a complete OpenTelemetry tail sampling solution on Amazon ECS with EC2 launch type. The solution enables intelligent trace sampling based on trace characteristics and provides a scalable architecture for processing high-volume telemetry data.
 
 ## Overview
 
