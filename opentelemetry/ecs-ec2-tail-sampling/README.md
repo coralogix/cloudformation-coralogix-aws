@@ -155,6 +155,30 @@ OTEL_EXPORTER_OTLP_ENDPOINT=http://grpc-lb.cx-otel:4317
 OTEL_EXPORTER_OTLP_ENDPOINT=http://your-nlb-endpoint:4317
 ```
 
+### Modifying OpenTelemetry Configuration
+
+If you need to customize the OpenTelemetry Collector configuration, you can modify the embedded configuration in the CloudFormation templates:
+
+#### **Complete Cluster Template (`otel-complete-cluster.yaml`)**
+
+**Load Balancer Configuration:**
+- **Location**: Lines ~200-300 (search for `OTEL_CONFIG`)
+- **What to modify**: Receivers, processors, exporters, connectors, and pipelines for the load balancer service
+
+**Sampling Agents Configuration:**
+- **Location**: Lines ~400-500 (search for `OTEL_CONFIG`)
+- **What to modify**: Tail sampling policies, processors, and exporters for the sampling agents
+
+#### **Step-by-Step Templates**
+
+**Load Balancer (`step3-load-balancer.yaml`):**
+- **Location**: Lines ~80-200 (search for `OTEL_CONFIG`)
+- **What to modify**: Load balancer configuration including spanmetrics connector
+
+**Sampling Agents (`step4-sampling-agents.yaml`):**
+- **Location**: Lines ~80-150 (search for `OTEL_CONFIG`)
+- **What to modify**: Tail sampling policies and processing configuration
+
 ### Span Metrics Configuration
 
 **Important**: Choose one approach for span metrics to avoid duplicate metrics generation.
