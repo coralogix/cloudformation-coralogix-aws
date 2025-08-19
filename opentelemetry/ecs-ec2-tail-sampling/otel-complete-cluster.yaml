@@ -1,0 +1,558 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  Fully self-contained OpenTelemetry ECS cluster with EC2 infrastructure, Cloud Map, and otel-lb/sampling services.
+
+Parameters:
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: Existing VPC for ECS services
+  SubnetIds:
+    Type: CommaDelimitedList
+    Description: Private subnets for ECS services
+  SecurityGroupId:
+    Type: AWS::EC2::SecurityGroup::Id
+    Description: Security group for ECS tasks/instances
+  KeyName:
+    Type: AWS::EC2::KeyPair::KeyName
+    Description: EC2 KeyPair for SSH access
+  ECSAMI:
+    Type: AWS::EC2::Image::Id
+    Description: ECS-optimized AMI ID for your region
+  ImageVersion:
+    Type: String
+    Description: OpenTelemetry Collector image version
+    Default: latest
+  Memory:
+    Type: Number
+    Default: 1024
+    Description: Memory for ECS tasks (MiB)
+  InstanceType:
+    Type: String
+    Default: t3.medium
+    Description: EC2 instance type for ECS hosts
+  ClusterName:
+    Type: String
+    Default: otel-cluster
+    Description: Name for the ECS cluster
+  CoralogixDomain:
+    Type: String
+    Description: Coralogix domain (e.g., coralogix.com)
+  CoralogixPrivateKey:
+    Type: String
+    Description: Coralogix private key
+    NoEcho: true
+  ApplicationName:
+    Type: String
+    Default: ecs-ec2-integration
+    Description: Application name for Coralogix
+  SubsystemName:
+    Type: String
+    Default: sampling
+    Description: Subsystem name for Coralogix
+  MinSize:
+    Type: Number
+    Default: 1
+    Description: Minimum number of EC2 instances in the Auto Scaling Group
+  MaxSize:
+    Type: Number
+    Default: 4
+    Description: Maximum number of EC2 instances in the Auto Scaling Group
+  DesiredCapacity:
+    Type: Number
+    Default: 2
+    Description: Desired number of EC2 instances in the Auto Scaling Group
+  EnableSpanMetrics:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: Enable span metrics generation in the Load Balancer
+  LoadBalancerTaskCount:
+    Type: Number
+    Default: 1
+    Description: Number of Load Balancer tasks to run
+  SamplingTaskCount:
+    Type: Number
+    Default: 1
+    Description: Number of Sampling Agent tasks to run
+
+Conditions:
+  EnableSpanMetricsCondition:
+    Fn::Equals:
+      - !Ref EnableSpanMetrics
+      - "true"
+
+Resources:
+
+  OtelECSCluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: !Ref ClusterName
+
+  ECSInstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: [ec2.amazonaws.com]
+            Action: ['sts:AssumeRole']
+      Path: /
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+        - arn:aws:iam::aws:policy/AWSCloudMapFullAccess
+
+  ECSInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Path: /
+      Roles: [ !Ref ECSInstanceRole ]
+
+  ECSLaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      LaunchTemplateName: !Sub "${ClusterName}-lt"
+      LaunchTemplateData:
+        ImageId: !Ref ECSAMI
+        InstanceType: !Ref InstanceType
+        IamInstanceProfile:
+          Arn: !GetAtt ECSInstanceProfile.Arn
+        KeyName: !Ref KeyName
+        SecurityGroupIds: [ !Ref SecurityGroupId ]
+        UserData:
+          Fn::Base64: !Sub |
+            #!/bin/bash
+            echo ECS_CLUSTER=${ClusterName} >> /etc/ecs/ecs.config
+
+  ECSAutoScalingGroup:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      VPCZoneIdentifier: !Ref SubnetIds
+      LaunchTemplate:
+        LaunchTemplateId: !Ref ECSLaunchTemplate
+        Version: !GetAtt ECSLaunchTemplate.LatestVersionNumber
+      MinSize: !Ref MinSize
+      MaxSize: !Ref MaxSize
+      DesiredCapacity: !Ref DesiredCapacity
+
+  OtelCloudMapNamespace:
+    Type: AWS::ServiceDiscovery::PrivateDnsNamespace
+    Properties:
+      Name: cx-otel
+      Vpc: !Ref VpcId
+      Description: "Cloud Map namespace for OpenTelemetry services"
+
+  OtelLbCloudMapService:
+    Type: AWS::ServiceDiscovery::Service
+    Properties:
+      Name: grpc-lb
+      NamespaceId: !Ref OtelCloudMapNamespace
+      DnsConfig:
+        DnsRecords:
+          - Type: A
+            TTL: 60
+      HealthCheckCustomConfig:
+        FailureThreshold: 1
+
+  OtelSamplingCloudMapService:
+    Type: AWS::ServiceDiscovery::Service
+    Properties:
+      Name: grpc-sampling
+      NamespaceId: !Ref OtelCloudMapNamespace
+      DnsConfig:
+        DnsRecords:
+          - Type: A
+            TTL: 60
+      HealthCheckCustomConfig:
+        FailureThreshold: 1
+
+  OtelLbTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: opentelemetry-lb
+      RequiresCompatibilities: [EC2]
+      NetworkMode: awsvpc
+      ContainerDefinitions:
+        - Name: coralogix-lb
+          Cpu: 0
+          Memory: !Ref Memory
+          Command: ["--config", "env:OTEL_CONFIG"]
+          Image: !Sub "otel/opentelemetry-collector-contrib:${ImageVersion}"
+          Essential: true
+          PortMappings:
+            - ContainerPort: 4317
+              Name: grpc
+              Protocol: tcp
+              AppProtocol: grpc
+            - ContainerPort: 4318
+              Name: http-lb
+              Protocol: tcp
+            - ContainerPort: 8888
+              Name: metrics-lb
+              Protocol: tcp
+            - ContainerPort: 1777
+              Name: pprof-lb
+              Protocol: tcp
+          Privileged: true
+          Environment:
+            - Name: OTEL_CONFIG
+              Value: !If
+                - EnableSpanMetricsCondition
+                - !Sub |
+                  receivers:
+                    otlp:
+                      protocols:
+                        grpc: { endpoint: 0.0.0.0:4317, max_recv_msg_size_mib: 20 }
+                        http: { endpoint: 0.0.0.0:4318 }
+                    prometheus:
+                      config:
+                        scrape_configs:
+                          - job_name: otel-collector-metrics
+                            scrape_interval: 30s
+                            static_configs:
+                              - targets: ["127.0.0.1:8888"]
+
+                  processors:
+                    batch: { send_batch_max_size: 2048, send_batch_size: 1024, timeout: 1s }
+                    resource/metadata:
+                      attributes:
+                        - action: upsert
+                          key: cx.otel_integration.name
+                          value: coralogix-integration-ecs-tail-sampling
+
+                  exporters:
+                    loadbalancing:
+                      routing_key: "traceID"
+                      protocol:
+                        otlp:
+                          tls:
+                            insecure: true
+                      resolver:
+                        aws_cloud_map:
+                          namespace: cx-otel
+                          service_name: grpc-sampling
+                          interval: 30s
+                          port: 4317
+                    coralogix:
+                      domain: "${CoralogixDomain}"
+                      private_key: "${CoralogixPrivateKey}"
+                      application_name: "${ApplicationName}"
+                      subsystem_name: "${SubsystemName}"
+                      application_name_attributes:
+                        - "aws.ecs.cluster"
+                        - "aws.ecs.task.definition.family"
+                      subsystem_name_attributes:
+                        - "aws.ecs.container.name"
+                        - "aws.ecs.docker.name"
+                        - "docker.name"
+                      timeout: 30s
+                    debug:
+                      verbosity: basic
+
+                  connectors:
+                    spanmetrics:
+                      dimensions:
+                        - name: http.method
+                        - name: cgx.transaction
+                        - name: cgx.transaction.root
+                        - name: status_code
+                        - name: db.namespace
+                        - name: db.operation.name
+                        - name: db.collection.name
+                        - name: db.system
+                        - name: http.response.status_code
+                        - name: rpc.grpc.status_code
+                        - name: service.version
+                      histogram:
+                        explicit:
+                          buckets:
+                            - 1ms
+                            - 4ms
+                            - 10ms
+                            - 20ms
+                            - 50ms
+                            - 100ms
+                            - 200ms
+                            - 500ms
+                            - 1s
+                            - 2s
+                            - 5s
+                      metrics_expiration: 5m
+                      metrics_flush_interval: '30s'
+                      namespace: ""
+
+                  extensions:
+                    health_check:
+                    pprof:
+
+                  service:
+                    extensions:
+                      - health_check
+                      - pprof
+
+                    pipelines:
+                      traces:
+                        receivers: [otlp]
+                        processors: [resource/metadata, batch]
+                        exporters: [loadbalancing, debug, spanmetrics]
+                      metrics:
+                        receivers: [spanmetrics]
+                        exporters: [coralogix]
+
+                    telemetry:
+                      logs:
+                        encoding: json
+                        level: warn
+                      metrics:
+                        readers:
+                          - pull:
+                              exporter:
+                                prometheus:
+                                  host: 0.0.0.0
+                                  port: 8888
+                - !Sub |
+                  receivers:
+                    otlp:
+                      protocols:
+                        grpc: { endpoint: 0.0.0.0:4317, max_recv_msg_size_mib: 20 }
+                        http: { endpoint: 0.0.0.0:4318 }
+                    prometheus:
+                      config:
+                        scrape_configs:
+                          - job_name: otel-collector-metrics
+                            scrape_interval: 30s
+                            static_configs:
+                              - targets: ["127.0.0.1:8888"]
+
+                  processors:
+                    batch: { send_batch_max_size: 2048, send_batch_size: 1024, timeout: 1s }
+                    resource/metadata:
+                      attributes:
+                        - action: upsert
+                          key: cx.otel_integration.name
+                          value: coralogix-integration-ecs-tail-sampling
+
+                  exporters:
+                    loadbalancing:
+                      routing_key: "traceID"
+                      protocol:
+                        otlp:
+                          tls:
+                            insecure: true
+                      resolver:
+                        aws_cloud_map:
+                          namespace: cx-otel
+                          service_name: grpc-sampling
+                          interval: 30s
+                          port: 4317
+                    coralogix:
+                      domain: "${CoralogixDomain}"
+                      private_key: "${CoralogixPrivateKey}"
+                      application_name: "${ApplicationName}"
+                      subsystem_name: "${SubsystemName}"
+                      application_name_attributes:
+                        - "aws.ecs.cluster"
+                        - "aws.ecs.task.definition.family"
+                      subsystem_name_attributes:
+                        - "aws.ecs.container.name"
+                        - "aws.ecs.docker.name"
+                        - "docker.name"
+                      timeout: 30s
+                    debug:
+                      verbosity: basic
+
+                  extensions:
+                    health_check:
+                    pprof:
+
+                  service:
+                    extensions:
+                      - health_check
+                      - pprof
+
+                    pipelines:
+                      traces:
+                        receivers: [otlp]
+                        processors: [resource/metadata, batch]
+                        exporters: [loadbalancing, debug]
+
+                    telemetry:
+                      logs:
+                        encoding: json
+                        level: warn
+                      metrics:
+                        readers:
+                          - pull:
+                              exporter:
+                                prometheus:
+                                  host: 0.0.0.0
+                                  port: 8888
+
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: "/ecs/opentelemetry-lb"
+              mode: "non-blocking"
+              awslogs-create-group: "true"
+              max-buffer-size: "25m"
+              awslogs-region: "us-east-1"
+              awslogs-stream-prefix: "ecs"
+
+  OtelSamplingTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: opentelemetry-sampling
+      RequiresCompatibilities: [EC2]
+      NetworkMode: awsvpc
+      ContainerDefinitions:
+        - Name: coralogix-otel-sampling
+          Cpu: 0
+          Memory: !Ref Memory
+          Command: ["--config", "env:OTEL_CONFIG"]
+          Image: !Sub "otel/opentelemetry-collector-contrib:${ImageVersion}"
+          Essential: true
+          PortMappings:
+            - ContainerPort: 4317
+              Name: grpc
+              Protocol: tcp
+              AppProtocol: grpc
+            - ContainerPort: 4318
+              Name: http
+              Protocol: tcp
+            - ContainerPort: 8888
+              Name: metrics
+              Protocol: tcp
+            - ContainerPort: 1777
+              Name: pprof
+              Protocol: tcp
+          Privileged: true
+          Environment:
+            - Name: OTEL_CONFIG
+              Value: !Sub |
+                receivers:
+                  otlp:
+                    protocols:
+                      grpc: { endpoint: 0.0.0.0:4317 }
+                      http: { endpoint: 0.0.0.0:4318 }
+                processors:
+                  tail_sampling:
+                    decision_wait: 10s
+                    num_traces: 5000
+                    policies:
+                      [
+                        {
+                          name: sampling-policy,
+                          type: probabilistic,
+                          probabilistic: { sampling_percentage: 25 },
+                        }
+                      ]
+                exporters:
+                  coralogix:
+                    domain: "${CoralogixDomain}"
+                    private_key: "${CoralogixPrivateKey}"
+                    application_name: "${ApplicationName}"
+                    subsystem_name: "${SubsystemName}"
+                    application_name_attributes:
+                      - "aws.ecs.cluster"
+                      - "aws.ecs.task.definition.family"
+                    subsystem_name_attributes:
+                      - "aws.ecs.container.name"
+                      - "aws.ecs.docker.name"
+                      - "docker.name"
+                    timeout: 30s
+                  debug:
+                    verbosity: basic
+                extensions:
+                  health_check:
+                  pprof:
+                service:
+                  extensions:
+                    - health_check
+                    - pprof
+                  pipelines:
+                    traces:
+                      receivers: [otlp]
+                      processors: [tail_sampling]
+                      exporters: [debug, coralogix]
+                  telemetry:
+                    logs:
+                      level: debug
+                    metrics:
+                      readers:
+                        - pull:
+                            exporter:
+                              prometheus:
+                                host: 0.0.0.0
+                                port: 8888
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: "/ecs/opentelemetry-sampling"
+              mode: "non-blocking"
+              awslogs-create-group: "true"
+              max-buffer-size: "25m"
+              awslogs-region: "us-east-1"
+              awslogs-stream-prefix: "ecs"
+
+  OtelSamplingService:
+    Type: AWS::ECS::Service
+    DependsOn:
+      - OtelCloudMapNamespace
+      - OtelSamplingCloudMapService
+    Properties:
+      Cluster: !Ref OtelECSCluster
+      LaunchType: EC2
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          SecurityGroups: [!Ref SecurityGroupId]
+          Subnets:  !Ref SubnetIds
+      ServiceName: coralogix-otel-sampling
+      ServiceRegistries:
+        - RegistryArn: !GetAtt OtelSamplingCloudMapService.Arn
+      SchedulingStrategy: REPLICA
+      DesiredCount: !Ref SamplingTaskCount
+      DeploymentController:
+        Type: ECS
+      EnableECSManagedTags: true
+      TaskDefinition: !Ref OtelSamplingTaskDefinition
+
+
+  OtelLbService:
+    Type: AWS::ECS::Service
+    DependsOn:
+      - OtelLbCloudMapService
+      - OtelSamplingCloudMapService
+      - OtelCloudMapNamespace
+    Properties:
+      Cluster: !Ref OtelECSCluster
+      LaunchType: EC2
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          SecurityGroups: [!Ref SecurityGroupId]
+          Subnets:  !Ref SubnetIds
+      ServiceName: coralogix-lb
+      ServiceRegistries:
+        - RegistryArn: !GetAtt OtelLbCloudMapService.Arn
+      SchedulingStrategy: REPLICA
+      DesiredCount: !Ref LoadBalancerTaskCount
+      DeploymentController:
+        Type: ECS
+      EnableECSManagedTags: true
+      TaskDefinition: !Ref OtelLbTaskDefinition
+
+
+Outputs:
+  LbServiceDiscoveryName:
+    Description: "Service discovery DNS name for otel-lb"
+    Value: !Sub "grpc-lb.cx-otel"
+  SamplingServiceDiscoveryName:
+    Description: "Service discovery DNS name for otel-sampling"
+    Value: !Sub "grpc-sampling.cx-otel"
+  ECSClusterName:
+    Description: "Name of the new ECS cluster"
+    Value: !Ref OtelECSCluster
+  CloudMapNamespaceId:
+    Description: "Cloud Map namespace ID"
+    Value: !Ref OtelCloudMapNamespace 

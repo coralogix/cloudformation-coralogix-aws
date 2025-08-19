@@ -1,0 +1,91 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Step 2: Create ECS cluster and infrastructure'
+
+Parameters:
+  ClusterName:
+    Type: String
+    Default: otel-cluster
+    Description: Name for the ECS cluster
+  InstanceType:
+    Type: String
+    Default: t3.medium
+    Description: EC2 instance type for ECS hosts
+  KeyName:
+    Type: AWS::EC2::KeyPair::KeyName
+    Description: EC2 KeyPair for SSH access
+  ECSAMI:
+    Type: AWS::EC2::Image::Id
+    Description: ECS-optimized AMI ID for your region
+  SubnetIds:
+    Type: String
+    Description: Comma-separated list of private subnets for ECS services
+  SecurityGroupId:
+    Type: AWS::EC2::SecurityGroup::Id
+    Description: Security group for ECS tasks/instances
+
+Resources:
+  OtelECSCluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: !Ref ClusterName
+
+  ECSInstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: [ec2.amazonaws.com]
+            Action: ['sts:AssumeRole']
+      Path: /
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+        - arn:aws:iam::aws:policy/AWSCloudMapFullAccess
+
+  ECSInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Path: /
+      Roles: [ !Ref ECSInstanceRole ]
+
+  ECSLaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      LaunchTemplateName: !Sub "${ClusterName}-lt"
+      LaunchTemplateData:
+        ImageId: !Ref ECSAMI
+        InstanceType: !Ref InstanceType
+        IamInstanceProfile:
+          Arn: !GetAtt ECSInstanceProfile.Arn
+        KeyName: !Ref KeyName
+        SecurityGroupIds: [ !Ref SecurityGroupId ]
+        UserData:
+          Fn::Base64: !Sub |
+            #!/bin/bash
+            echo ECS_CLUSTER=${ClusterName} >> /etc/ecs/ecs.config
+
+  ECSAutoScalingGroup:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      VPCZoneIdentifier: !Split [",", !Ref SubnetIds]
+      LaunchTemplate:
+        LaunchTemplateId: !Ref ECSLaunchTemplate
+        Version: !GetAtt ECSLaunchTemplate.LatestVersionNumber
+      MinSize: 2
+      MaxSize: 4
+      DesiredCapacity: 2
+
+Outputs:
+  ECSClusterName:
+    Description: "Name of the ECS cluster"
+    Value: !Ref OtelECSCluster
+    Export:
+      Name: !Sub "${AWS::StackName}-cluster-name"
+  ECSInstanceRoleArn:
+    Description: "ARN of the ECS instance role"
+    Value: !GetAtt ECSInstanceRole.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-instance-role-arn" 
