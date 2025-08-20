@@ -62,7 +62,7 @@ aws servicediscovery create-private-dns-namespace \
 ```bash
 aws cloudformation deploy \
   --stack-name otel-ecs-cluster \
-  --template-file step2-ecs-cluster.yaml \
+  --template-file ecs-cluster.yaml \
   --capabilities CAPABILITY_IAM \
   --parameter-overrides \
     ClusterName=otel-cluster \
@@ -79,7 +79,7 @@ aws cloudformation deploy \
 # Use NAMESPACE_ID from step 1
 aws cloudformation deploy \
   --stack-name otel-load-balancer \
-  --template-file step3-load-balancer.yaml \
+  --template-file load-balancer-agents.yaml \
   --capabilities CAPABILITY_IAM \
   --parameter-overrides \
     ClusterName=otel-cluster \
@@ -98,7 +98,7 @@ aws cloudformation deploy \
 # Use NAMESPACE_ID from step 1
 aws cloudformation deploy \
   --stack-name otel-sampling-agents \
-  --template-file step4-sampling-agents.yaml \
+  --template-file sampling-agents.yaml \
   --capabilities CAPABILITY_IAM \
   --parameter-overrides \
     ClusterName=otel-cluster \
@@ -171,11 +171,11 @@ If you need to customize the OpenTelemetry Collector configuration, you can modi
 
 #### **Step-by-Step Templates**
 
-**Load Balancer (`step3-load-balancer.yaml`):**
+**Load Balancer (`load-balancer-agents.yaml`):**
 - **Location**: Lines ~80-200 (search for `OTEL_CONFIG`)
 - **What to modify**: Load balancer configuration including spanmetrics connector
 
-**Sampling Agents (`step4-sampling-agents.yaml`):**
+**Sampling Agents (`sampling-agents.yaml`):**
 - **Location**: Lines ~80-150 (search for `OTEL_CONFIG`)
 - **What to modify**: Tail sampling policies and processing configuration
 
