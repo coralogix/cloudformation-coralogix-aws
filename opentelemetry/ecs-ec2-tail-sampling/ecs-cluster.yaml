@@ -22,6 +22,35 @@ Parameters:
   SecurityGroupId:
     Type: AWS::EC2::SecurityGroup::Id
     Description: Security group for ECS tasks/instances
+  ECSInstanceRoleArn:
+    Type: String
+    Description: |
+      ARN of an existing IAM role for ECS instances.
+      If provided, this role will be used instead of creating a new one.
+      Must have ECS, Cloud Map, and S3 permissions (if using S3 configs).
+    Default: ""
+  S3ConfigBucket:
+    Type: String
+    Description: |
+      S3 bucket name containing configuration files.
+      If provided, S3 permissions will be added to the ECS instance role.
+      Leave empty if not using S3 configuration.
+    Default: ""
+
+Conditions:
+  UseCustomInstanceRole:
+    Fn::Not:
+      - Fn::Equals:
+          - !Ref ECSInstanceRoleArn
+          - ""
+  CreateInstanceRole:
+    Fn::Not:
+      - Condition: UseCustomInstanceRole
+  UseS3Config:
+    Fn::Not:
+      - Fn::Equals:
+          - !Ref S3ConfigBucket
+          - ""
 
 Resources:
   OtelECSCluster:
@@ -31,6 +60,7 @@ Resources:
 
   ECSInstanceRole:
     Type: AWS::IAM::Role
+    Condition: CreateInstanceRole
     Properties:
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
@@ -44,12 +74,28 @@ Resources:
         - arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role
         - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
         - arn:aws:iam::aws:policy/AWSCloudMapFullAccess
+      Policies: !If
+        - UseS3Config
+        - - PolicyName: S3ConfigAccess
+            PolicyDocument:
+              Version: '2012-10-17'
+              Statement:
+                - Effect: Allow
+                  Action:
+                    - s3:GetObject
+                    - s3:GetObjectVersion
+                  Resource: !Sub "arn:aws:s3:::${S3ConfigBucket}/*"
+        - !Ref AWS::NoValue
 
   ECSInstanceProfile:
     Type: AWS::IAM::InstanceProfile
     Properties:
       Path: /
-      Roles: [ !Ref ECSInstanceRole ]
+      Roles: 
+        - !If
+          - UseCustomInstanceRole
+          - !Select [1, !Split ["/", !Ref ECSInstanceRoleArn]]  # Extract role name from ARN
+          - !Ref ECSInstanceRole
 
   ECSLaunchTemplate:
     Type: AWS::EC2::LaunchTemplate
@@ -86,6 +132,9 @@ Outputs:
       Name: !Sub "${AWS::StackName}-cluster-name"
   ECSInstanceRoleArn:
     Description: "ARN of the ECS instance role"
-    Value: !GetAtt ECSInstanceRole.Arn
+    Value: !If
+      - UseCustomInstanceRole
+      - !Ref ECSInstanceRoleArn
+      - !GetAtt ECSInstanceRole.Arn
     Export:
       Name: !Sub "${AWS::StackName}-instance-role-arn" 
