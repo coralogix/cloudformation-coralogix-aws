@@ -45,7 +45,7 @@ aws s3 cp examples/agent-config.yaml s3://your-bucket/configs/agent-config.yaml
 aws s3 cp examples/sampling-config.yaml s3://your-bucket/configs/sampling-config.yaml
 ```
 
-#### 2. Deploy using CloudFormation template 
+#### 2. Deploy using CloudFormation template ([`otel-tail-sampling.yaml`](otel-tail-sampling.yaml)) 
 
 ```bash
 aws cloudformation deploy \
@@ -185,7 +185,7 @@ aws s3 cp examples/receiver-config.yaml s3://your-bucket/configs/receiver-config
 aws s3 cp examples/gateway-config.yaml s3://your-bucket/configs/gateway-config.yaml
 ```
 
-#### 2. Deploy to Existing Cluster
+#### 2. Deploy to Existing Cluster ([`otel-complete-cluster.yaml`](otel-complete-cluster.yaml))
 
 Deploy OpenTelemetry services to your existing ECS cluster:
 
@@ -394,21 +394,25 @@ These commands will deploy a complete telemetry infrastructure with agents sendi
    ```bash
    aws cloudformation deploy --stack-name otel-cloudmap --template-file individual-templates/cloudmap-namespace.yaml --capabilities CAPABILITY_NAMED_IAM --parameter-overrides VpcId=vpc-xxxxxxxxx
    ```
+   **Template**: [`individual-templates/cloudmap-namespace.yaml`](individual-templates/cloudmap-namespace.yaml)
 
 2. **Daemon Agent**:
    ```bash
    aws cloudformation deploy --stack-name otel-daemon --template-file individual-templates/otel-daemon-template.yaml --capabilities CAPABILITY_NAMED_IAM --parameter-overrides ClusterName=your-cluster S3ConfigBucket=your-bucket S3ConfigKey=configs/agent-config-to-receiver.yaml CoralogixRegion=EU2 CoralogixApiKey=your-api-key CDOTImageVersion=v0.5.0
    ```
+   **Template**: [`individual-templates/otel-daemon-template.yaml`](individual-templates/otel-daemon-template.yaml)
 
 3. **Receiver** (for central collector approach):
    ```bash
    aws cloudformation deploy --stack-name otel-receiver --template-file individual-templates/load-balancer-agents.yaml --capabilities CAPABILITY_NAMED_IAM --parameter-overrides ClusterName=your-cluster NamespaceId=ns-xxxxxxxxx SubnetIds="subnet-xxxxxxxxx,subnet-yyyyyyyyy" SecurityGroupId=sg-xxxxxxxxx CDOTImageVersion=v0.5.0 CoralogixRegion=EU2 CoralogixApiKey=your-api-key S3ConfigBucket=your-bucket ReceiverS3ConfigKey=configs/receiver-config-with-span-metrics.yaml ReceiverTaskCount=2
    ```
+   **Template**: [`individual-templates/load-balancer-agents.yaml`](individual-templates/load-balancer-agents.yaml)
 
 4. **Gateway**:
    ```bash
    aws cloudformation deploy --stack-name otel-gateway --template-file individual-templates/sampling-agents.yaml --capabilities CAPABILITY_NAMED_IAM --parameter-overrides ClusterName=your-cluster NamespaceId=ns-xxxxxxxxx Subnets="subnet-xxxxxxxxx,subnet-yyyyyyyyy" SecurityGroupId=sg-xxxxxxxxx CDOTImageVersion=v0.5.0 CoralogixRegion=EU2 CoralogixApiKey=your-api-key S3ConfigBucket=your-bucket GatewayS3ConfigKey=configs/gateway-config.yaml GatewayTaskCount=2
    ```
+   **Template**: [`individual-templates/sampling-agents.yaml`](individual-templates/sampling-agents.yaml)
 
 ### Template Features:
 
