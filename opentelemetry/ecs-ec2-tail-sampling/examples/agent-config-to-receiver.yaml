@@ -1,0 +1,301 @@
+# Comprehensive OpenTelemetry Configuration for Coralogix ECS EC2 Integration
+# 
+# This configuration is for local OTel collectors that send traces to sampling agents via load balancing exporter.
+
+# Sampling decisions are made by the sampling agents, not by this local collector.
+#
+# Environment Variables Used:
+# - ${CORALOGIX_DOMAIN}: Your Coralogix domain
+# - ${PRIVATE_KEY}: Your Coralogix API key  
+# - ${APP_NAME}: Application name
+# - ${SUB_SYS}: Subsystem name
+
+receivers:
+
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+        max_recv_msg_size_mib: 20
+      http:
+        endpoint: 0.0.0.0:4318
+
+  # ECS Container Metrics (enabled by default)
+  awsecscontainermetricsd:
+
+  # Prometheus metrics for the collector itself (enabled by default)
+  prometheus:
+    config:
+      scrape_configs:
+      - job_name: otel-collector-metrics
+        scrape_interval: 30s
+        static_configs:
+        - targets: ["localhost:8888"]
+
+  # Container logs from Docker (enabled by default)
+  filelog:
+    start_at: end
+    force_flush_period: 0
+    include:
+      - /hostfs/var/lib/docker/containers/*/*.log
+    include_file_name: false
+    include_file_path: true
+    operators:
+      - type: router
+        id: docker_log_json_parser
+        routes:
+          - output: json_parser
+            expr: 'body matches "^\\{\"log\".*\\}"'
+        default: move_log_file_path
+
+      - type: json_parser
+        parse_from: body
+        parse_to: body
+        output: recombine
+        timestamp:
+          parse_from: body.time
+          layout: '%Y-%m-%dT%H:%M:%S.%fZ'
+
+      - type: recombine
+        id: recombine
+        output: move_log_file_path
+        combine_field: body.log
+        source_identifier: attributes["log.file.path"]
+        is_last_entry: body.log endsWith "\n"
+        force_flush_period: 10s
+        on_error: send
+        combine_with: ""
+
+      - type: move
+        id: move_log_file_path
+        from: attributes["log.file.path"]
+        to: resource["log.file.path"]
+
+  # Host metrics (CPU, memory, filesystem, etc.) - enabled by default
+  hostmetrics:
+    root_path: /
+    collection_interval: 10s
+    scrapers:
+      cpu: { metrics: { system.cpu.utilization: { enabled: true } } }
+      filesystem:
+        exclude_fs_types: { fs_types: [autofs, binfmt_misc, bpf, cgroup2, configfs, debugfs, devpts, devtmpfs, fusectl, hugetlbfs, iso9660, mqueue, nsfs, overlay, proc, procfs, pstore, rpc_pipefs, securityfs, selinuxfs, squashfs, sysfs, tracefs], match_type: strict }
+
+        exclude_mount_points: { match_type: regexp, mount_points: [/dev/*, /proc/*, /sys/*, /run/k3s/containerd/*, /run/containerd/runc/*, /var/lib/docker/*, /var/lib/kubelet/*, /snap/*] }
+
+      memory: { metrics: { system.memory.utilization: { enabled: true } } }
+      process:
+        metrics:
+          process.cpu.utilization: { enabled: true }
+          process.memory.utilization: { enabled: true }
+          process.threads: { enabled: true }
+        mute_process_exe_error: true
+        mute_process_user_error: true
+
+processors:
+  # ECS attributes for container logs (enabled by default)
+  ecsattributes/container-logs:
+    container_id:
+      sources:
+        - "log.file.path"
+
+  # Transform logs (enabled by default)
+  transform/logs:
+    error_mode: ignore
+    log_statements:
+      - context: resource
+        statements:
+          - set(attributes["cx_container_id"], attributes["docker.id"])
+          - set(attributes["aws_ecs_task_family"], attributes["aws.ecs.task.definition.family"])
+          - set(attributes["image_id"], attributes["image.id"])
+          - delete_key(attributes, "image.id")
+
+  # Entity event processing (enabled by default)
+  transform/entity-event:
+    error_mode: silent
+    log_statements:
+      - context: log
+        statements:
+          - set(attributes["otel.entity.id"]["host.id"], resource.attributes["host.id"])
+          - merge_maps(attributes, resource.attributes, "insert")
+      - context: resource
+        statements:
+          - keep_keys(attributes, [""])
+
+  # Prometheus metrics cleanup (enabled by default)
+  transform/prometheus:
+    error_mode: ignore
+    metric_statements:
+      - context: metric
+        statements:
+          - replace_pattern(name, "_total$", "")
+      - context: datapoint
+        statements:
+          - delete_key(attributes, "otel_scope_name") where resource.attributes["service.name"] == "cdot"
+          - delete_key(attributes, "service.name") where resource.attributes["service.name"] == "cdot"
+      - context: resource
+        statements:
+          - delete_key(attributes, "service.instance.id") where attributes["service.name"] == "cdot"
+          - delete_key(attributes, "service.name") where attributes["service.name"] == "cdot"
+
+  # Semantic conventions for HTTP methods (enabled by default)
+  transform/semconv:
+    error_mode: ignore
+    trace_statements:
+      - context: span
+        statements:
+          - set(attributes["http.method"], attributes["http.request.method"]) where attributes["http.request.method"] != nil
+
+  # Basic processing (enabled by default)
+  batch: { send_batch_max_size: 2048, send_batch_size: 1024, timeout: 1s }
+
+  # Resource metadata (enabled by default)
+  resource/metadata:
+    attributes:
+      - action: upsert
+        key: cx.otel_integration.name
+        value: coralogix-integration-ecs-ec2
+
+  # Resource detection for collector metrics (enabled by default)
+  resourcedetection/otel-collector:
+    detectors: [system, env, ecs, ec2]
+    override: false
+    timeout: 2s
+    system:
+      resource_attributes:
+        host.id: { enabled: false }
+        host.cpu.cache.l2.size: { enabled: true }
+        host.cpu.stepping: { enabled: true }
+        host.cpu.model.name: { enabled: true }
+        host.cpu.model.id: { enabled: true }
+        host.cpu.family: { enabled: true }
+        host.cpu.vendor.id: { enabled: true }
+        host.mac: { enabled: true }
+        host.ip: { enabled: true }
+        os.description: { enabled: true }
+
+  # Resource detection for entity events (enabled by default)
+  resourcedetection/entity:
+    detectors: [system, env, ecs, ec2]
+    override: false
+    timeout: 2s
+    system:
+      resource_attributes:
+        host.id: { enabled: false }
+        host.cpu.cache.l2.size: { enabled: true }
+        host.cpu.stepping: { enabled: true }
+        host.cpu.model.name: { enabled: true }
+        host.cpu.model.id: { enabled: true }
+        host.cpu.family: { enabled: true }
+        host.cpu.vendor.id: { enabled: true }
+        host.mac: { enabled: true }
+        host.ip: { enabled: true }
+        os.description: { enabled: true }
+
+exporters:
+  loadbalancing:
+    routing_key: "traceID"
+    protocol:
+      otlp:
+        tls:
+          insecure: true
+    resolver:
+      aws_cloud_map:
+        namespace: cx-otel
+        service_name: grpc-gateway
+        interval: 30s
+        port: 4317
+
+  # Coralogix exporter for traces, metrics, and logs (enabled by default)
+  coralogix:
+    domain: "${CORALOGIX_DOMAIN}"
+    private_key: "${PRIVATE_KEY}"
+    application_name: "${APP_NAME}"
+    subsystem_name: "${SUB_SYS}"
+    application_name_attributes:
+    - "aws.ecs.cluster"
+    - "aws.ecs.task.definition.family"
+    subsystem_name_attributes:
+    - "aws.ecs.container.name"
+    - "aws.ecs.docker.name"
+    - "docker.name"
+    timeout: 30s
+
+  # Resource catalog exporter (enabled by default)
+  coralogix/resource_catalog:
+    application_name: resource
+    domain: ${CORALOGIX_DOMAIN}
+    private_key: ${PRIVATE_KEY}
+    logs:
+      headers:
+        X-Coralogix-Distribution: ecs-ec2-integration/1.0.0
+        x-coralogix-ingress: metadata-as-otlp-logs/v1
+    subsystem_name: catalog
+    timeout: 30s
+
+extensions:
+  # Health check extension (enabled by default)
+  health_check: {}
+  # Pprof extension for debugging (enabled by default)
+  pprof: {}
+
+service:
+  # Extensions (enabled by default)
+  extensions:
+    - health_check
+    - pprof
+
+  # Pipeline configurations
+  pipelines:
+    # Container logs pipeline (enabled by default)
+    logs/container-logs:
+      receivers: [filelog]
+      processors: [ecsattributes/container-logs, resource/metadata, transform/logs, batch]
+      exporters: [coralogix]
+
+    # Container metrics pipeline (enabled by default)
+    metrics/container-metrics:
+      receivers: [awsecscontainermetricsd]
+      processors: [batch]
+      exporters: [coralogix]
+
+    # OTLP logs pipeline (enabled by default)
+    logs/otlp:
+      receivers: [otlp]
+      processors: [resource/metadata, batch]
+      exporters: [coralogix]
+
+    # OTLP metrics pipeline (enabled by default)
+    metrics/otlp:
+      receivers: [otlp]
+      processors: [resource/metadata, batch]
+      exporters: [coralogix]
+
+    # Traces pipeline - sends to load balancer via load balancing exporter
+    traces:
+      receivers: [otlp]
+      processors: [resource/metadata, transform/semconv, batch]
+      exporters: [loadbalancing]
+
+    # Resource catalog pipeline (enabled by default)
+    logs/resource_catalog:
+      receivers: [hostmetrics]
+      processors: [resourcedetection/entity, transform/entity-event, batch]
+      exporters: [coralogix/resource_catalog]
+
+    # Collector metrics pipeline (enabled by default)
+    metrics/otel-collector:
+      receivers: [prometheus, hostmetrics]
+      processors: [resourcedetection/otel-collector, resource/metadata, transform/prometheus, batch]
+      exporters: [coralogix]
+
+  telemetry:
+    logs:
+      encoding: json
+      level: warn
+    metrics:
+      readers:
+        - pull:
+            exporter:
+              prometheus:
+                host: 0.0.0.0
+                port: 8888

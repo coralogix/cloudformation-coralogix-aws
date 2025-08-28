@@ -1,412 +1,430 @@
-# Coralogix OpenTelemetry Tail Sampling for ECS-EC2 - Example Deployment
+# Tail Sampling with OpenTelemetry using AWS ECS EC2
 
-This CloudFormation template provides an example of how to deploy a complete OpenTelemetry tail sampling solution on Amazon ECS with EC2 launch type. The solution enables intelligent trace sampling based on trace characteristics and provides a scalable architecture for processing high-volume telemetry data.
+This tutorial demonstrates how to configure an AWS ECS EC2 cluster, deploy OpenTelemetry to collect logs, metrics, and traces, and enable intelligent trace sampling. We will cover four deployment approaches:
 
-## Overview
+1. **[ECS Cluster with Tail Sampling](#ecs-cluster-with-tail-sampling)**: Deploy agents and gateway directly to your application cluster
+2. **[Central Collector Cluster for Tail Sampling](#central-collector-cluster-for-tail-sampling)**: Deploy a dedicated telemetry cluster separate from your applications
+3. **[Verification using Telemetrygen](#verification-using-telemetrygen)**: Test and verify your deployment with sample traces
+4. **[Individual Templates](#individual-templates)**: Deploy components individually for granular control
 
-The ECS OpenTelemetry Tail Sampling solution consists of the following components:
+## ECS Cluster with Tail Sampling
 
-- **Load Balancer (Gateway)**: Receives traces from ECS applications via OTLP protocol and distributes them across sampling agents using trace ID routing for consistent sampling decisions
-- **Sampling Agents**: Perform tail sampling decisions and forward selected traces to Coralogix
-- **AWS Cloud Map**: Provides service discovery for the Load Balancer to dynamically discover and route traces to Sampling Agents, enabling automatic scaling and failover of sampling instances. This is the mechanism that allows traces from ECS applications to reach the Load Balancer endpoint (`grpc-lb.cx-otel:4317`)
+### How it Works
+
+The AWS ECS EC2 OpenTelemetry Integration consists of the following components:
+
+**OpenTelemetry Agent.** The Agent is deployed as a daemon service on each ECS instance within the cluster and collects telemetry data from the applications running on that instance. The agent is configured to send the logs and metrics to Coralogix and Traces to OpenTelemetry Gateway. The agent ensures that traces with the same ID are sent to the same gateway. This allows tail sampling to be performed on the traces correctly, even if they span multiple applications and instances.
+
+**OpenTelemetry Gateway.** The Gateway is responsible for receiving telemetry data from the agents and forwarding it to the Coralogix backend. The Gateway is also responsible for performing tail sampling decisions and load balancing the telemetry data to the Coralogix backend.
 
 ## Prerequisites
 
-- Amazon ECS cluster with EC2 launch type
-- VPC with public and private subnets
-- Coralogix Send-Your-Data API key
-- **For S3 Configuration**: S3 bucket with OpenTelemetry configuration files (See examples in examples/ folder)
-- **For Existing Clusters**: ECS instance role with required permissions (see IAM Requirements below)
-
-### IAM Requirements
-
-#### For New Clusters (Created by Templates)
-The templates automatically create an ECS instance role with the following permissions:
-- `AmazonEC2ContainerServiceforEC2Role` - ECS container service permissions
-- `AmazonSSMManagedInstanceCore` - SSM access for instance management
-- `AWSCloudMapFullAccess` - Cloud Map service discovery permissions
-- **S3 Permissions** (when using S3 configuration):
-  - `s3:GetObject` and `s3:GetObjectVersion` on your S3 bucket
-
-#### For Existing Clusters
-If using an existing ECS cluster, ensure the instance role has these permissions:
-```json
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Action": [
-        "ecs:*",
-        "ec2:*",
-        "elasticloadbalancing:*",
-        "ecr:GetAuthorizationToken",
-        "ecr:BatchCheckLayerAvailability",
-        "ecr:GetDownloadUrlForLayer",
-        "ecr:BatchGetImage",
-        "logs:*"
-      ],
-      "Resource": "*"
-    },
-    {
-      "Effect": "Allow",
-      "Action": [
-        "servicediscovery:*"
-      ],
-      "Resource": "*"
-    },
-    {
-      "Effect": "Allow",
-      "Action": [
-        "s3:GetObject",
-        "s3:GetObjectVersion"
-      ],
-      "Resource": "arn:aws:s3:::your-config-bucket/*"
-    }
-  ]
-}
-```
+- **Existing AWS ECS Cluster**: EC2-based cluster with instances running
+- **S3 Bucket**: For storing OpenTelemetry configuration files
+- **Send-Your-Data API Key**: Your Coralogix [Send-Your-Data API key](../../../user-guides/account-management/api-keys/send-your-data-api-key/index.md)
+- **Coralogix Domain**: Your [Coralogix domain](../../../user-guides/account-management/account-settings/coralogix-domain/index.md) (e.g., `eu2.coralogix.com`, `us2.coralogix.com`)
+- **Application and Subsystem Names**: [Application and subsystem names](../../../user-guides/account-management/account-settings/application-and-subsystem-names/index.md) for organizing your data in Coralogix
 
 ## Deployment Options
 
-### Option 1: Complete Cluster Deployment (Recommended)
+### Option 1: ECS Cluster with Tail Sampling
 
-Deploy the entire tail sampling stack including CloudMap, Autoscaling group, Task Definitions, Gateways and Receivers in one step.
+Deploy OpenTelemetry agents and gateway directly to your application cluster. This approach is suitable when you want to keep telemetry processing close to your applications.
+
+**Quick Start:**
+
+#### 1. Prepare Configuration Files
+
+Upload your OpenTelemetry configuration files to S3:
 
 ```bash
-# Using built-in template configuration
-aws cloudformation deploy \
-  --stack-name otel-tail-sampling \
-  --template-file otel-complete-cluster.yaml \
-  --capabilities CAPABILITY_IAM \
-  --parameter-overrides \
-    VpcId=vpc-xxxxxxxxx \
-    SubnetIds="subnet-xxxxxxxxx,subnet-yyyyyyyyy" \
-    SecurityGroupId=sg-xxxxxxxxx \
-    KeyName=your-key-pair \
-    ECSAMI=ami-xxxxxxxxx \
-    ImageVersion=x.x.x \
-    CoralogixDomain=coralogix.com \
-    CoralogixPrivateKey=your-private-key \
-    ApplicationName=my-app \
-    SubsystemName=production \
-    EnableSpanMetrics=true \
-    LoadBalancerTaskCount=1 \
-    SamplingTaskCount=1
+# Agent configuration (for daemon)
+aws s3 cp examples/agent-config.yaml s3://your-bucket/configs/agent-config.yaml
 
-# Using S3 configuration files
+# Sampling configuration (for sampling agents)
+aws s3 cp examples/sampling-config.yaml s3://your-bucket/configs/sampling-config.yaml
+```
+
+#### 2. Deploy using CloudFormation template 
+
+```bash
 aws cloudformation deploy \
   --stack-name otel-tail-sampling \
-  --template-file otel-complete-cluster.yaml \
-  --capabilities CAPABILITY_IAM \
+  --template-file otel-tail-sampling.yaml \
+  --capabilities CAPABILITY_NAMED_IAM \
   --parameter-overrides \
+    ClusterName=your-existing-cluster \
     VpcId=vpc-xxxxxxxxx \
     SubnetIds="subnet-xxxxxxxxx,subnet-yyyyyyyyy" \
     SecurityGroupId=sg-xxxxxxxxx \
-    KeyName=your-key-pair \
-    ECSAMI=ami-xxxxxxxxx \
-    ImageVersion=x.x.x \
-    CoralogixDomain=coralogix.com \
-    CoralogixPrivateKey=your-private-key \
-    ApplicationName=my-app \
-    SubsystemName=production \
-    ConfigSource=s3 \
-    S3ConfigBucket=your-config-bucket \
-    LbS3ConfigKey=configs/lb-config-with-spanmetrics.yaml \
+    CoralogixRegion=EU2 \
+    CoralogixApiKey=your-api-key \
+    CDOTImageVersion=image-version\
+    S3ConfigBucket=your-bucket \
+    AgentS3ConfigKey=configs/agent-config.yaml \
     SamplingS3ConfigKey=configs/sampling-config.yaml \
-    EnableSpanMetrics=true \
-    LoadBalancerTaskCount=1 \
-    SamplingTaskCount=1
+    ApplicationName=my-app \
+    SubsystemName=production \
+    SamplingTaskCount=2 \
+    TaskExecutionRoleArn=if-not-provided-template-creates-it
 ```
 
-### Option 2: Step-by-Step Deployment
+### Option 2: Central Collector Cluster for Tail Sampling
 
-For more control over the deployment process, you can deploy each component individually:
+Deploy a dedicated telemetry cluster separate from your application workloads. This approach provides centralized telemetry processing and is ideal for multi-cluster environments.
 
-#### Step 1: Create Cloud Map Namespace
+**See the [Central Collector Cluster for Tail Sampling](#central-collector-cluster-for-tail-sampling) section below for detailed instructions.**
+
+## Sampling Policies
+
+For detailed information about available sampling policies and configuration options, see the [OpenTelemetry Tail Sampling Processor documentation](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/processor/tailsamplingprocessor).
+
+## Service Discovery
+
+The solution uses AWS CloudMap for service discovery:
+
+- **Namespace**: `cx-otel`
+- **Service**: `grpc-gateway`
+- **DNS**: `grpc-gateway.cx-otel`
+
+The agent automatically discovers sampling agents using the loadbalancing exporter.
+
+### Scaling
+
+Adjust the number of sampling agents based on your workload:
 
 ```bash
-aws servicediscovery create-private-dns-namespace \
-  --name cx-otel \
-  --vpc vpc-xxxxxxxxx \
-  --description "Cloud Map namespace for OpenTelemetry services"
+aws ecs update-service \
+  --cluster your-cluster \
+  --service coralogix-otel-sampling \
+  --desired-count 4
 ```
 
-**Note**: Save the returned `Id` - you'll need it for subsequent steps.
+### External IAM Roles
 
-#### Step 2: Deploy ECS Cluster Infrastructure
+Use existing IAM roles instead of creating new ones. The role must have the following permissions:
+
+**Required Policies:**
+- `AmazonECSTaskExecutionRolePolicy` (AWS managed policy)
+- Custom policy for S3 read access to your configuration bucket
+- Custom policy for CloudMap service discovery
+
+**Example Role Policy:**
+```json
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "s3:GetObject",
+                "s3:GetObjectVersion"
+            ],
+            "Resource": "arn:aws:s3:::your-config-bucket/*"
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "servicediscovery:DiscoverInstances",
+                "servicediscovery:ListInstances",
+                "servicediscovery:ListServices",
+                "servicediscovery:ListNamespaces"
+            ],
+            "Resource": "*"
+        }
+    ]
+}
+```
+
+**Usage:**
+```bash
+--parameter-overrides \
+  TaskExecutionRoleArn=arn:aws:iam::ACCOUNT:role/existing-role
+```
+
+## Central Collector Cluster for Tail Sampling
+
+This section describes how to deploy OpenTelemetry services to an existing ECS cluster for centralized tail sampling. This approach separates the telemetry collection infrastructure from your application workloads, providing centralized telemetry processing and intelligent sampling capabilities.
+
+### Architecture
+
+The central collector deployment consists of:
+
+- **Receiver Services**: Collect telemetry data from applications and route traces to the gateway
+- **Gateway Services**: Perform tail sampling and forward to Coralogix
+- **CloudMap**: Service discovery for dynamic load balancing
+
+**Traces Flow**: Applications → Receiver → Gateway → Coralogix
+
+### Prerequisites
+
+- **Existing AWS ECS Cluster**: EC2-based cluster with instances running
+- **S3 Bucket**: For storing OpenTelemetry configuration files
+- **Send-Your-Data API Key**: Your Coralogix [Send-Your-Data API key](../../../user-guides/account-management/api-keys/send-your-data-api-key/index.md)
+- **Coralogix Domain**: Your [Coralogix domain](../../../user-guides/account-management/account-settings/coralogix-domain/index.md) (e.g., `eu2.coralogix.com`, `us2.coralogix.com`)
+- **Application and Subsystem Names**: [Application and subsystem names](../../../user-guides/account-management/account-settings/application-and-subsystem-names/index.md) for organizing your data in Coralogix
+
+### Important Configuration Note
+
+**⚠️ Spanmetrics Configuration**: When using the central collector approach, spanmetrics should be configured on either the agents/receivers OR the gateway, but not both. Configuring spanmetrics on both components can lead to duplicate metrics and incorrect data.
+
+- **Option A**: Configure spanmetrics on agents/receivers (recommended for most use cases)
+- **Option B**: Configure spanmetrics on the gateway (use when you need centralized span processing)
+
+### Deployment Steps
+
+#### 1. Prepare Configuration Files
+
+Upload your OpenTelemetry configuration files to S3:
+
+```bash
+# Receiver configuration
+aws s3 cp examples/receiver-config.yaml s3://your-bucket/configs/receiver-config.yaml
+
+# Gateway configuration (with tail sampling)
+aws s3 cp examples/gateway-config.yaml s3://your-bucket/configs/gateway-config.yaml
+```
+
+#### 2. Deploy to Existing Cluster
+
+Deploy OpenTelemetry services to your existing ECS cluster:
 
 ```bash
 aws cloudformation deploy \
-  --stack-name otel-ecs-cluster \
-  --template-file ecs-cluster.yaml \
-  --capabilities CAPABILITY_IAM \
+  --stack-name otel-complete-cluster \
+  --template-file otel-complete-cluster.yaml \
+  --capabilities CAPABILITY_NAMED_IAM \
   --parameter-overrides \
     ClusterName=otel-cluster \
-    InstanceType=t3.medium \
+    VpcId=vpc-xxxxxxxxx \
+    SubnetIds="subnet-xxxxxxxxx,subnet-yyyyyyyyy" \
+    SecurityGroupId=sg-xxxxxxxxx \
     KeyName=your-key-pair \
     ECSAMI=ami-xxxxxxxxx \
-    SubnetIds="subnet-xxxxxxxxx,subnet-yyyyyyyyy" \
-    SecurityGroupId=sg-xxxxxxxxx
-```
-
-#### Step 3: Deploy Load Balancer Service
-
-```bash
-# Use NAMESPACE_ID from step 1
-# Using built-in template configuration
-aws cloudformation deploy \
-  --stack-name otel-load-balancer \
-  --template-file load-balancer-agents.yaml \
-  --parameter-overrides \
-    ClusterName=otel-cluster \
-    NamespaceId=$NAMESPACE_ID \
-    SubnetIds="subnet-xxxxxxxxx,subnet-yyyyyyyyy" \
-    SecurityGroupId=sg-xxxxxxxxx \
-    CoralogixDomain=coralogix.com \
-    CoralogixPrivateKey=your-private-key \
-    ImageVersion=x.x.x \
-    Memory=1024 \
-    LoadBalancerTaskCount=1
-
-# Using S3 configuration
-aws cloudformation deploy \
-  --stack-name otel-load-balancer \
-  --template-file load-balancer-agents.yaml \
-  --parameter-overrides \
-    ClusterName=otel-cluster \
-    NamespaceId=$NAMESPACE_ID \
-    SubnetIds="subnet-xxxxxxxxx,subnet-yyyyyyyyy" \
-    SecurityGroupId=sg-xxxxxxxxx \
-    CoralogixDomain=coralogix.com \
-    CoralogixPrivateKey=your-private-key \
-    ImageVersion=x.x.x \
-    Memory=1024 \
-    ConfigSource=s3 \
-    S3ConfigBucket=your-config-bucket \
-    S3ConfigKey=configs/lb-config-with-spanmetrics.yaml \
-    LoadBalancerTaskCount=1
-```
-
-#### Step 4: Deploy Sampling Agents
-
-```bash
-# Use NAMESPACE_ID from step 1
-# Using built-in template configuration
-aws cloudformation deploy \
-  --stack-name otel-sampling-agents \
-  --template-file sampling-agents.yaml \
-  --parameter-overrides \
-    ClusterName=otel-cluster \
-    NamespaceId=$NAMESPACE_ID \
-    SubnetIds="subnet-xxxxxxxxx,subnet-yyyyyyyyy" \
-    SecurityGroupId=sg-xxxxxxxxx \
-    ImageVersion=x.x.x \
-    Memory=1024 \
-    CoralogixDomain=coralogix.com \
-    CoralogixPrivateKey=your-private-key \
+    CoralogixRegion=EU2 \
+    CoralogixApiKey=your-api-key \
+    CDOTImageVersion=Image-version \
+    S3ConfigBucket=your-bucket \
+    ReceiverS3ConfigKey=configs/receiver-config.yaml \
+    GatewayS3ConfigKey=configs/gateway-config.yaml \
     ApplicationName=my-app \
-    SubsystemName=sampling \
-    SamplingTaskCount=1
-
-# Using S3 configuration
-aws cloudformation deploy \
-  --stack-name otel-sampling-agents \
-  --template-file sampling-agents.yaml \
-  --parameter-overrides \
-    ClusterName=otel-cluster \
-    NamespaceId=$NAMESPACE_ID \
-    SubnetIds="subnet-xxxxxxxxx,subnet-yyyyyyyyy" \
-    SecurityGroupId=sg-xxxxxxxxx \
-    ImageVersion=x.x.x \
-    Memory=1024 \
-    CoralogixDomain=coralogix.com \
-    CoralogixPrivateKey=your-private-key \
-    ApplicationName=my-app \
-    SubsystemName=sampling \
-    ConfigSource=s3 \
-    S3ConfigBucket=your-config-bucket \
-    S3ConfigKey=configs/sampling-config.yaml \
-    SamplingTaskCount=1
+    SubsystemName=production \
+    ReceiverTaskCount=2 \
+    GatewayTaskCount=1 \
+    TaskExecutionRoleArn=if-not-provided-template-creates-it
 ```
 
-## Configuration Options
+**Key Features:**
+- **Load Balancing**: Routes traces to multiple gateway instances
+- **Trace ID Routing**: Ensures traces with the same ID go to the same gateway
+- **Service Discovery**: Automatically discovers gateway instances via CloudMap
 
-### Configuration Source
+### Service Discovery
 
-The templates support two configuration sources:
+The solution uses AWS CloudMap for service discovery:
 
-#### Option 1: Built-in Template Configuration (Default)
-- Configuration is embedded directly in the CloudFormation templates
-- Environment variables are substituted at runtime
-- No external dependencies required
+- **Namespace**: `cx-otel`
+- **Receiver Service**: `grpc-receiver.cx-otel`
+- **Gateway Service**: `grpc-gateway.cx-otel`
 
-#### Option 2: S3 Configuration Files
-- Configuration files stored in S3 bucket
-- Supports dynamic configuration updates without template changes
-- Requires S3 bucket with proper permissions
+### Connecting Applications
 
-**Example Configuration Files:**
-- [`examples/lb-config-with-spanmetrics.yaml`](examples/lb-config-with-spanmetrics.yaml) - Load Balancer configuration with span metrics enabled
-- [`examples/lb-config-no-spanmetrics.yaml`](examples/lb-config-no-spanmetrics.yaml) - Load Balancer configuration without span metrics
-- [`examples/sampling-config.yaml`](examples/sampling-config.yaml) - Sampling agents configuration with tail sampling policies
+To connect your applications to the central collector cluster:
 
-### Tail Sampling Configuration
+1. **Update Application Configuration**: Point your application's OTLP exporter to the receiver service
+2. **Use Service Discovery**: Applications can discover receivers using the CloudMap DNS name
+3. **Load Balancing**: Multiple receivers provide high availability and load distribution
 
-The sampling agents are configured with tail sampling policies. Here is the default Basic Probabilistic Sampling configuration used in this template:
+### Enabling Other Clusters to Send Data
+
+To enable other ECS clusters or applications to send telemetry data to the central collector cluster:
+
+#### Method 1: Cross-Cluster Service Discovery
+
+1. **Share CloudMap Namespace**: Ensure both clusters can access the same CloudMap namespace
+2. **Update Application Configuration**: Point applications to the receiver service:
+   ```bash
+   --otlp-endpoint=grpc-receiver.cx-otel:4317
+   ```
+3. **Network Connectivity**: Ensure VPC peering or transit gateway for cross-cluster communication
+
+#### Method 2: Load Balancer Endpoint
+
+1. **Create Application Load Balancer**: Expose the receiver service via ALB
+2. **Update Security Groups**: Allow traffic from other clusters
+3. **Use ALB DNS Name**: Point applications to the load balancer endpoint
+
+#### Method 3: VPC Endpoints
+
+1. **Create VPC Endpoints**: For ECS and CloudMap services
+2. **Cross-Account Access**: If clusters are in different AWS accounts
+3. **IAM Permissions**: Ensure proper permissions for cross-cluster access
+
+#### Configuration Example
+
+For applications in other clusters, update their OpenTelemetry configuration:
 
 ```yaml
-processors:
-  tail_sampling:
-    decision_wait: 10s
-    num_traces: 5000
-    policies:
-      [
-        {
-          name: sampling-policy,
-          type: probabilistic,
-          probabilistic: { sampling_percentage: 25 },
-        }
-      ]
+exporters:
+  otlp:
+    endpoint: grpc-receiver.cx-otel:4317
+    tls:
+      insecure: true
 ```
 
-### Sampling Policies
+## Verification using Telemetrygen
 
-You can customize the sampling policies based on your requirements:
+To verify that your OpenTelemetry deployment is working correctly and traces are reaching Coralogix, you can deploy a telemetrygen task that generates test traces.
 
-- **Probabilistic Sampling**: Random sampling based on percentage
-- **Error-based Sampling**: Sample traces with errors
-- **Latency-based Sampling**: Sample traces exceeding latency thresholds
-- **Composite Policies**: Combine multiple sampling criteria
+### Deploying Telemetrygen Task
 
+#### 1. Create Task Definition
 
-### Modifying the inline OpenTelemetry Configuration
+Create a task definition for telemetrygen that connects to your receiver service:
 
-If you need to customize the OpenTelemetry Collector configuration, it's recommended to use S3 configuration files for easier management. However, you can also modify the embedded configuration directly in the CloudFormation templates:
+```json
+{
+    "compatibilities": [
+        "EXTERNAL",
+        "EC2"
+    ],
+    "containerDefinitions": [
+        {
+            "command": [
+                "traces",
+                "--otlp-endpoint=grpc-receiver.cx-otel:4317",
+                "--otlp-insecure",
+                "--rate=10",
+                "--duration=1h"
+            ],
+            "cpu": 256,
+            "environment": [],
+            "essential": true,
+            "image": "ghcr.io/open-telemetry/opentelemetry-collector-contrib/telemetrygen:latest",
+            "logConfiguration": {
+                "logDriver": "awslogs",
+                "options": {
+                    "awslogs-group": "/ecs/telemetrygen",
+                    "awslogs-region": "us-east-1",
+                    "awslogs-stream-prefix": "ecs"
+                }
+            },
+            "memory": 512,
+            "mountPoints": [],
+            "name": "telemetrygen",
+            "portMappings": [
+                {
+                    "containerPort": 8080,
+                    "hostPort": 0,
+                    "protocol": "tcp"
+                }
+            ],
+            "systemControls": [],
+            "volumesFrom": []
+        }
+    ],
+    "cpu": "256",
+    "executionRoleArn": "arn:aws:iam::ACCOUNT:role/ecsTaskExecutionRole",
+    "family": "telemetrygen-task",
+    "memory": "512",
+    "networkMode": "bridge",
+    "placementConstraints": [],
+    "requiresCompatibilities": [
+        "EC2"
+    ],
+    "volumes": []
+}
+```
 
-#### **Complete Cluster Template (`otel-complete-cluster.yaml`)**
-
-**Load Balancer Configuration:**
-- **Location**: Lines ~200-300 (search for `OTEL_CONFIG`)
-- **What to modify**: Receivers, processors, exporters, connectors, and pipelines for the load balancer service
-
-**Sampling Agents Configuration:**
-- **Location**: Lines ~400-500 (search for `OTEL_CONFIG`)
-- **What to modify**: Tail sampling policies, processors, and exporters for the sampling agents
-
-#### **Step-by-Step Templates**
-
-**Load Balancer (`load-balancer-agents.yaml`):**
-- **Location**: Lines ~80-200 (search for `OTEL_CONFIG`)
-- **What to modify**: Load balancer configuration including spanmetrics connector
-
-**Sampling Agents (`sampling-agents.yaml`):**
-- **Location**: Lines ~80-150 (search for `OTEL_CONFIG`)
-- **What to modify**: Tail sampling policies and processing configuration
-
-### Span Metrics Configuration
-
-**Important**: Choose one approach for span metrics to avoid duplicate metrics generation.
-
-#### Option 1: Span Metrics in Load Balancer (Recommended for centralized processing)
-- Set `EnableSpanMetrics=true` in the CloudFormation parameters
-- **Disable span metrics in your ECS OTEL collector configuration**
-- All span metrics are generated centrally in the Load Balancer
-- Benefits: Single point of processing, consistent aggregation, centralized configuration
-
-#### Option 2: Span Metrics in ECS Collectors (Recommended for distributed processing)
-- Set `EnableSpanMetrics=false` in the CloudFormation parameters
-- **Enable span metrics in your ECS OTEL collector configuration**
-- Each ECS instance generates its own span metrics
-- Benefits: Local processing, better fault tolerance, lower latency
-
-**Note**: Both approaches will preserve the same resource attributes and span metadata. The choice depends on your operational preferences and architecture requirements.
-
-
-## Parameters
-
-### Complete Cluster Template Parameters
-
-| Parameter | Description | Default | Required |
-|-----------|-------------|---------|----------|
-| VpcId | VPC ID where resources will be deployed | | Yes |
-| SubnetIds | Comma-separated list of subnet IDs | | Yes |
-| SecurityGroupId | Security group ID for ECS tasks | | Yes |
-| KeyName | EC2 key pair name | | Yes |
-| ECSAMI | ECS-optimized AMI ID | | Yes |
-| CoralogixDomain | Coralogix domain (e.g., coralogix.com) | | Yes |
-| CoralogixPrivateKey | Coralogix Send-Your-Data API key | | Yes |
-| ApplicationName | Application name for telemetry | my-app | No |
-| SubsystemName | Subsystem name for telemetry | production | No |
-| InstanceType | EC2 instance type | t3.medium | No |
-| DesiredCapacity | Desired number of EC2 instances | 2 | No |
-| MaxSize | Maximum number of EC2 instances | 4 | No |
-| MinSize | Minimum number of EC2 instances | 1 | No |
-| EnableSpanMetrics | Enable span metrics generation in Load Balancer | false | No |
-| LoadBalancerTaskCount | Number of Load Balancer tasks to run | 1 | No |
-| SamplingTaskCount | Number of Sampling Agent tasks to run | 1 | No |
-| **Configuration Source Parameters** |
-| ConfigSource | Configuration source: 'template' or 's3' | template | No |
-| S3ConfigBucket | S3 bucket name for configuration files | | Required if ConfigSource=s3 |
-| LbS3ConfigKey | S3 key for Load Balancer configuration file | | Required if ConfigSource=s3 |
-| SamplingS3ConfigKey | S3 key for Sampling configuration file | | Required if ConfigSource=s3 |
-| ECSInstanceRoleArn | ARN of existing ECS instance role | | No |
-
-### Docker Image Tags
-
-**Important**: The `ImageVersion` parameter is required and must be explicitly provided. We recommend using a specific version tag rather than `latest` for production deployments.
-
-- **Recommended**: Use the official Coralogix supported version from the [Helm chart](https://github.com/coralogix/opentelemetry-helm-charts/blob/main/charts/opentelemetry-collector/Chart.yaml#L15)
-- **All Available Tags**: Browse all available Docker image tags at [Docker Hub](https://hub.docker.com/r/otel/opentelemetry-collector-contrib/tags)
-
-
-### Step-by-Step Template Parameters
-
-Each step template has its own set of parameters. Refer to the individual template files for detailed parameter descriptions.
-
-## Using Existing ECS Clusters
-
-The individual service templates (`load-balancer-agents.yaml` and `sampling-agents.yaml`) can be deployed to existing ECS clusters. Ensure your existing cluster meets these requirements:
-
-### Prerequisites for Existing Clusters
-
-1. **ECS Instance Role Permissions**: The cluster's instance role must have the permissions listed in the IAM Requirements section above
-2. **Cloud Map Namespace**: Access to the Cloud Map namespace specified in `NamespaceId`
-3. **Network Access**: Subnets and security groups must allow required traffic
-4. **ECS Capacity**: Sufficient ECS capacity to run the services
-
-### Deployment to Existing Cluster
+#### 2. Register Task Definition
 
 ```bash
-# Deploy Load Balancer to existing cluster
-aws cloudformation deploy \
-  --stack-name coralogix-lb-service \
-  --template-file load-balancer-agents.yaml \
-  --parameter-overrides \
-    ClusterName=your-existing-cluster \
-    NamespaceId=ns-xxxxx \
-    SubnetIds="subnet-xxx,subnet-yyy" \
-    SecurityGroupId=sg-xxx \
-    ImageVersion=x.x.x \
-    CoralogixDomain=eu2.coralogix.com \
-    CoralogixPrivateKey=your-key \
-    ConfigSource=s3 \
-    S3ConfigBucket=your-bucket \
-    S3ConfigKey=configs/lb-config.yaml
-
-# Deploy Sampling to existing cluster  
-aws cloudformation deploy \
-  --stack-name coralogix-sampling-service \
-  --template-file sampling-agents.yaml \
-  --parameter-overrides \
-    ClusterName=your-existing-cluster \
-    NamespaceId=ns-xxxxx \
-    SubnetIds="subnet-xxx,subnet-yyy" \
-    SecurityGroupId=sg-xxx \
-    ImageVersion=x.x.x \
-    CoralogixDomain=eu2.coralogix.com \
-    CoralogixPrivateKey=your-key \
-    ConfigSource=s3 \
-    S3ConfigBucket=your-bucket \
-    S3ConfigKey=configs/sampling-config.yaml
+aws ecs register-task-definition --cli-input-json file://telemetrygen-task-definition.json
 ```
+
+#### 3. Run Telemetrygen Task
+
+```bash
+aws ecs run-task \
+  --cluster your-cluster-name \
+  --task-definition telemetrygen-task \
+  --launch-type EC2 \
+  --count 1
+```
+
+### Configuration Options
+
+#### For Complete Cluster Deployment
+
+When using the complete cluster template (`otel-complete-cluster.yaml`), use the receiver service:
+
+```bash
+--otlp-endpoint=grpc-receiver.cx-otel:4317
+```
+
+#### For Tail Sampling Deployment
+
+When using the tail sampling template (`otel-complete-tail-sampling.yaml`), use the agent service:
+
+```bash
+--otlp-endpoint=grpc-sampling.cx-otel:4317
+```
+
+
+**Verify in Coralogix**: Check your Coralogix dashboard for incoming traces
+   - Look for traces with service name matching your configuration
+   - Verify trace sampling is working as expected
+
+## Individual Templates
+
+For more granular control over your deployment, you can use individual CloudFormation templates located in the `individual-templates/` directory:
+
+### Available Templates:
+
+- **`cloudmap-namespace.yaml`**: Creates the CloudMap namespace for service discovery
+- **`otel-daemon-template.yaml`**: Deploys the OpenTelemetry agent as a daemon service
+- **`load-balancer-agents.yaml`**: Deploys the receiver service (for central collector approach)
+- **`sampling-agents.yaml`**: Deploys the gateway service for tail sampling
+
+### Example Deployment:
+
+These commands will deploy a complete telemetry infrastructure with agents sending logs and metrics directly to Coralogix, and traces to the Receiver for load balancing, then to the Gateway for tail sampling decisions.
+
+1. **CloudMap Namespace** (if not using complete template):
+   ```bash
+   aws cloudformation deploy --stack-name otel-cloudmap --template-file individual-templates/cloudmap-namespace.yaml --capabilities CAPABILITY_NAMED_IAM --parameter-overrides VpcId=vpc-xxxxxxxxx
+   ```
+
+2. **Daemon Agent**:
+   ```bash
+   aws cloudformation deploy --stack-name otel-daemon --template-file individual-templates/otel-daemon-template.yaml --capabilities CAPABILITY_NAMED_IAM --parameter-overrides ClusterName=your-cluster S3ConfigBucket=your-bucket S3ConfigKey=configs/agent-config-to-receiver.yaml CoralogixRegion=EU2 CoralogixApiKey=your-api-key CDOTImageVersion=v0.5.0
+   ```
+
+3. **Receiver** (for central collector approach):
+   ```bash
+   aws cloudformation deploy --stack-name otel-receiver --template-file individual-templates/load-balancer-agents.yaml --capabilities CAPABILITY_NAMED_IAM --parameter-overrides ClusterName=your-cluster NamespaceId=ns-xxxxxxxxx SubnetIds="subnet-xxxxxxxxx,subnet-yyyyyyyyy" SecurityGroupId=sg-xxxxxxxxx CDOTImageVersion=v0.5.0 CoralogixRegion=EU2 CoralogixApiKey=your-api-key S3ConfigBucket=your-bucket ReceiverS3ConfigKey=configs/receiver-config-with-span-metrics.yaml ReceiverTaskCount=2
+   ```
+
+4. **Gateway**:
+   ```bash
+   aws cloudformation deploy --stack-name otel-gateway --template-file individual-templates/sampling-agents.yaml --capabilities CAPABILITY_NAMED_IAM --parameter-overrides ClusterName=your-cluster NamespaceId=ns-xxxxxxxxx Subnets="subnet-xxxxxxxxx,subnet-yyyyyyyyy" SecurityGroupId=sg-xxxxxxxxx CDOTImageVersion=v0.5.0 CoralogixRegion=EU2 CoralogixApiKey=your-api-key S3ConfigBucket=your-bucket GatewayS3ConfigKey=configs/gateway-config.yaml GatewayTaskCount=2
+   ```
+
+### Template Features:
+
+All individual templates support:
+- **External IAM Roles**: Use existing roles via `TaskExecutionRoleArn` parameter
+- **Conditional Resource Creation**: IAM roles are only created when external roles are not provided
+- **Flexible Configuration**: Each component can be deployed independently
+- **Service Discovery**: Automatic CloudMap integration for load balancing
+
+## Support
+
+For issues and questions:
+
+- **Documentation**: [Coralogix OpenTelemetry Documentation](https://coralogix.com/docs/opentelemetry/)
+- **Community**: [Coralogix Community](https://community.coralogix.com/)
+
+## License
+
+This project is licensed under the Apache 2.0 License - see the [LICENSE](LICENSE) file for details.

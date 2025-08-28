@@ -7,5 +7,4 @@
 
 ### 1.0.0 / 2025-08-21
 * [Added] Initial release of ECS EC2 Tail Sampling CloudFormation templates
-* [Added] Complete cluster deployment template (`otel-complete-cluster.yaml`)
-* [Added] Step-by-step deployment templates
+* [Added] Example folder with example config files

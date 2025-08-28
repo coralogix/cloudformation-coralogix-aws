@@ -1,11 +1,10 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: |
-  OpenTelemetry Services for Existing ECS Cluster with CloudMap, Receivers, and Gateway.
+  OpenTelemetry Tail Sampling Infrastructure on ECS EC2.
   This template deploys:
   1. CloudMap namespace for service discovery
-  2. OTel receivers for telemetry collection
-  3. OTel gateway for centralized processing
-
+  2. OTel agents (daemon) for telemetry collection
+  3. OTel gateway agents for tail sampling and processing
 
 Metadata:
   AWS::CloudFormation::Interface:
@@ -22,7 +21,7 @@ Metadata:
           default: "OpenTelemetry Configuration Location"
         Parameters:
           - S3ConfigBucket
-          - ReceiverS3ConfigKey
+          - AgentS3ConfigKey
           - GatewayS3ConfigKey
       
       - Label:
@@ -40,7 +39,7 @@ Metadata:
       - Label:
           default: "Deployment Configuration"
         Parameters:
-          - ReceiverTaskCount
+          - AgentTaskCount
           - GatewayTaskCount
           - TaskExecutionRoleArn
       
@@ -62,8 +61,8 @@ Metadata:
         default: "CDOT Image Version"
       S3ConfigBucket:
         default: "S3 Bucket Name"
-      ReceiverS3ConfigKey:
-        default: "Receiver S3 Config Key"
+      AgentS3ConfigKey:
+        default: "Agent S3 Config Key"
       GatewayS3ConfigKey:
         default: "Gateway S3 Config Key"
       ApplicationName:
@@ -74,8 +73,8 @@ Metadata:
         default: "Custom Image (overrides CDOTImageVersion)"
       Memory:
         default: "Memory (MiB)"
-      ReceiverTaskCount:
-        default: "Receiver Task Count"
+      AgentTaskCount:
+        default: "Agent Task Count"
       GatewayTaskCount:
         default: "Gateway Task Count"
       TaskExecutionRoleArn:
@@ -88,13 +87,15 @@ Metadata:
         default: "Security Group ID"
 
 Parameters:
+
   ClusterName:
     Type: String
-    Description: Name of the existing ECS cluster
+    Default: otel-cluster
+    Description: Name of the ECS cluster
 
   VpcId:
     Type: AWS::EC2::VPC::Id
-    Description: Existing VPC for CloudMap namespace and ECS services
+    Description: Existing VPC for the CloudMap namespace and ECS services
 
   SubnetIds:
     Type: String
@@ -146,11 +147,11 @@ Parameters:
     AllowedPattern: ".+"
     ConstraintDescription: "S3 bucket name is required."
 
-  ReceiverS3ConfigKey:
+  AgentS3ConfigKey:
     Type: String
     Description: |
-      S3 object key for the Receiver configuration file.
-      Example: 'configs/receiver-config.yaml'
+      S3 object key for the Agent configuration file.
+      Example: 'configs/agent-config.yaml'
     AllowedPattern: ".+"
     ConstraintDescription: "S3 object key is required."
 
@@ -185,14 +186,14 @@ Parameters:
     Default: 1024
     Description: Memory for ECS tasks (MiB)
 
-  ReceiverTaskCount:
+  AgentTaskCount:
     Type: Number
-    Default: 2
-    Description: Number of Receiver tasks to run
+    Default: 1
+    Description: Number of Agent tasks to run (daemon service)
 
   GatewayTaskCount:
     Type: Number
-    Default: 1
+    Default: 2
     Description: Number of Gateway tasks to run
 
   TaskExecutionRoleArn:
@@ -233,26 +234,12 @@ Mappings:
       Domain: cx498.coralogix.com
 
 Resources:
-  # CloudMap Namespace
   OtelCloudMapNamespace:
     Type: AWS::ServiceDiscovery::PrivateDnsNamespace
     Properties:
       Name: cx-otel
       Vpc: !Ref VpcId
       Description: "Cloud Map namespace for OpenTelemetry services"
-
-  # CloudMap Services
-  OtelReceiverCloudMapService:
-    Type: AWS::ServiceDiscovery::Service
-    Properties:
-      Name: grpc-receiver
-      NamespaceId: !Ref OtelCloudMapNamespace
-      DnsConfig:
-        DnsRecords:
-          - Type: A
-            TTL: 60
-      HealthCheckCustomConfig:
-        FailureThreshold: 1
 
   OtelGatewayCloudMapService:
     Type: AWS::ServiceDiscovery::Service
@@ -302,7 +289,7 @@ Resources:
                   - servicediscovery:ListNamespaces
                 Resource: "*"
 
-  OtelReceiverTaskDefinition:
+  OtelAgentTaskDefinition: 
     Type: AWS::ECS::TaskDefinition
     Properties:
       ExecutionRoleArn: !If
@@ -313,48 +300,73 @@ Resources:
         - UseExternalRole
         - !Ref OtelTaskExecutionRole
         - !Ref TaskExecutionRoleArn
-      Family: opentelemetry-receiver
-      RequiresCompatibilities: [EC2]
-      NetworkMode: awsvpc
+      Family: opentelemetry-agent
+      RequiresCompatibilities:
+        - EC2
+      NetworkMode: host
+      Volumes:
+        - Name: hostfs
+          Host:
+            SourcePath: "/var/lib/docker/"
+        - Name: docker-socket
+          Host:
+            SourcePath: /var/run/docker.sock
 
       ContainerDefinitions:
-        - Name: coralogix-otel-receiver
+        - Name: coralogix-otel-agent
           Cpu: 0
           Memory: !Ref Memory
-          Command: ["--config", !Sub "s3://${S3ConfigBucket}.s3.${AWS::Region}.amazonaws.com/${ReceiverS3ConfigKey}"]
+          Command: ["--config", !Sub "s3://${S3ConfigBucket}.s3.${AWS::Region}.amazonaws.com/${AgentS3ConfigKey}"]
           Image: !If
             - UseImage
             - !Ref Image
             - !Sub "coralogixrepo/coralogix-otel-collector:${CDOTImageVersion}"
           Essential: true
+
           PortMappings:
             - ContainerPort: 4317
               Name: grpc
               Protocol: tcp
               AppProtocol: grpc
+            
             - ContainerPort: 4318
               Name: http
               Protocol: tcp
+
             - ContainerPort: 8888
               Name: metrics
               Protocol: tcp
+
             - ContainerPort: 1777
               Name: pprof
               Protocol: tcp
+
           Privileged: true
+
+          MountPoints:
+            - SourceVolume: hostfs
+              ContainerPath: "/hostfs/var/lib/docker"
+              ReadOnly: True
+            - SourceVolume: docker-socket
+              ContainerPath: /var/run/docker.sock
+
           Environment:
             - Name: CORALOGIX_DOMAIN
               Value: !FindInMap [CoralogixRegionMap, !Ref CoralogixRegion, Domain]
+           
             - Name: PRIVATE_KEY
               Value: !Ref CoralogixApiKey
+
             - Name: APP_NAME
               Value: !Ref ApplicationName
+
             - Name: SUB_SYS
               Value: !Ref SubsystemName
+
           LogConfiguration:
             LogDriver: awslogs
             Options:
-              awslogs-group: "/ecs/opentelemetry-receiver"
+              awslogs-group: "/ecs/opentelemetry-agent"
               mode: "non-blocking"
               awslogs-create-group: "true"
               max-buffer-size: "25m"
@@ -420,24 +432,30 @@ Resources:
               awslogs-region: "us-east-1"
               awslogs-stream-prefix: "ecs"
 
-  OtelReceiverService:
-    Type: AWS::ECS::Service
+  OtelAgentService:
+    Type: 'AWS::ECS::Service'
     Properties:
       Cluster: !Ref ClusterName
       LaunchType: EC2
-      NetworkConfiguration:
-        AwsvpcConfiguration:
-          SecurityGroups: [!Ref SecurityGroupId]
-          Subnets: !Split [",", !Ref SubnetIds]
-      ServiceName: coralogix-otel-receiver
-      ServiceRegistries:
-        - RegistryArn: !GetAtt OtelReceiverCloudMapService.Arn
-      SchedulingStrategy: REPLICA
-      DesiredCount: !Ref ReceiverTaskCount
+      ServiceName: coralogix-otel-agent
+      SchedulingStrategy: DAEMON
+      DeploymentConfiguration:
+        MaximumPercent: 100
+        MinimumHealthyPercent: 0
+        DeploymentCircuitBreaker:
+          Enable: true
+          Rollback: true
       DeploymentController:
         Type: ECS
+      ServiceConnectConfiguration:
+        Enabled: false
+      PlacementStrategies: []
+      PlacementConstraints: []
+      Tags:
+        - Key: 'ecs:service:stackId'
+          Value: !Ref 'AWS::StackId'
       EnableECSManagedTags: true
-      TaskDefinition: !Ref OtelReceiverTaskDefinition
+      TaskDefinition: !Ref OtelAgentTaskDefinition
 
   OtelGatewayService:
     Type: AWS::ECS::Service
@@ -471,26 +489,20 @@ Outputs:
     Export:
       Name: !Sub "${AWS::StackName}-namespace-name"
 
-  ReceiverServiceDiscoveryName:
-    Description: "Service discovery DNS name for receivers"
-    Value: !Sub "grpc-receiver.cx-otel"
-    Export:
-      Name: !Sub "${AWS::StackName}-receiver-dns"
-
   GatewayServiceDiscoveryName:
-    Description: "Service discovery DNS name for gateway"
+    Description: "Service discovery DNS name for sampling agents"
     Value: !Sub "grpc-gateway.cx-otel"
     Export:
       Name: !Sub "${AWS::StackName}-gateway-dns"
 
-  OtelReceiverServiceArn:
-    Description: "Receiver service ARN"
-    Value: !Ref OtelReceiverService
+  OtelAgentServiceArn:
+    Description: "Agent service ARN"
+    Value: !Ref OtelAgentService
     Export:
-      Name: !Sub "${AWS::StackName}-receiver-service-arn"
+      Name: !Sub "${AWS::StackName}-agent-service-arn"
 
   OtelGatewayServiceArn:
     Description: "Gateway service ARN"
     Value: !Ref OtelGatewayService
     Export:
-      Name: !Sub "${AWS::StackName}-gateway-service-arn" 
+      Name: !Sub "${AWS::StackName}-gateway-service-arn"

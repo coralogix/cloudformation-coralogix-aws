@@ -35,7 +35,7 @@ exporters:
     resolver:
       aws_cloud_map:
         namespace: cx-otel
-        service_name: grpc-sampling
+        service_name: grpc-gateway
         interval: 30s
         port: 4317
   coralogix:
