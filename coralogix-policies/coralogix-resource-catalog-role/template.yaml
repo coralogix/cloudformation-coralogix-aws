@@ -66,15 +66,17 @@ Resources:
           - Effect: Allow
             Principal:
               AWS: !Sub
-                - "arn:aws:iam::${aws_account_id}:role/inventory-manager-${CxEnvId}"
+                - "arn:aws:iam::${aws_account_id}:role/coralogix-ingestion-${role_suffix}"
                 - aws_account_id: !If
-                    - IsCustomAccountId
-                    - !Ref CustomAccountId
+                    - IsCustomAWSAccountId
+                    - !Ref CustomAWSAccountId
                     - !FindInMap [CoralogixEnvironment, !Ref CoralogixRegion, "ID"]
-                  CxEnvId: !If
-                    - IsCustomCoralogixEnvId
-                    - !Ref CustomCoralogixEnvId
-                    - !FindInMap [CoralogixEnvironment, !Ref CoralogixRegion, "CxEnvId"]
+                  role_suffix:
+                    !FindInMap [
+                      CoralogixEnvironment,
+                      !Ref CoralogixRegion,
+                      "RoleSuffix",
+                    ]
             Action:
               - sts:AssumeRole
       Policies:
