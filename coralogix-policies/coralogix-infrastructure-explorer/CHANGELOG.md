@@ -1,6 +1,10 @@
 # Changelog
 
-## resource catalog
+## infrastructure explorer
+
+### 0.0.4 / 3.9.2025
+* [update] Normalize naming to infrastructure explorer
+* [update] Add external id and make it similar to metrics integration policy
 
 ### 0.0.3 / 30.9.2024
 * [update] Add ec2:DescribeNetworkInterfaces
