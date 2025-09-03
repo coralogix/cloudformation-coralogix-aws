@@ -1,4 +1,4 @@
-# Resource catalog role
+# Infrastructure explorer policy and role
 
 The module will create a role with an inline policy to allow Coralogix integration to scrape AWS infrastructure metadata.
 
