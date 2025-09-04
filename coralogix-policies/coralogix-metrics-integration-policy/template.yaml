@@ -4,7 +4,7 @@ Parameters:
   ExternalIdSecret:
     Description: "ExternalIdSecret for sts:AssumeRole"
     Type: "String"
-    AllowedPattern: "[\\w+=,.:\\/-]*"
+    AllowedPattern: "[\\w+=,.:\\/-]+"
   CoralogixRegion:
     Type: String
     Default: EU1
