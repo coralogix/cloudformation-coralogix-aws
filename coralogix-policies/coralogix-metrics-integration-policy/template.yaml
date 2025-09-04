@@ -136,3 +136,6 @@ Outputs:
   CoralogixAwsMetricsRoleArn:
     Description: The ARN of the Coralogix AWS Metrics role.
     Value: !GetAtt CoralogixAwsMetricsRole.Arn
+  ExternalId:
+    Description: The ExternalId of the Coralogix AWS Metrics role.
+    Value: !Sub "${ExternalIdSecret}@${CoralogixCompanyId}"
