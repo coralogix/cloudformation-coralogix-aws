@@ -17,3 +17,9 @@ Run the following command to deploy the integration:
 ```sh
 aws cloudformation deploy --capabilities CAPABILITY_IAM  CAPABILITY_NAMED_IAM --template-file template.yaml --stack-name <the name of the stack that will be deploy in aws> --parameter-overrides CoralogixRegion=<coralogix account region> RoleName=<name of the role> ExternalIdSecret=<external id secret part> CoralogixCompanyId=<coralogix company id>
 ```
+
+Get the ARN and ExternalId of the role:
+
+```sh
+aws cloudformation describe-stacks --stack-name <the name of the stack that will be deploy in aws> --query "Stacks[0].Outputs" --output table
+```

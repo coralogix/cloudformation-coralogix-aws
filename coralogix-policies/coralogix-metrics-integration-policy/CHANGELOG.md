@@ -2,6 +2,13 @@
 
 ## AwsMetrics
 
+### 4.9.2025 Add output to the role that the module will create
+
+- Add output `ExternalId` to the role that the module will create
+- Add validation to `ExternalIdSecret`, must not be empty
+- Improve readme with example of how to get the ARN and ExternalId of the role
+
+
 ### 22.1.2025 - Breaking changes to be able to tie role to specific company
 
 - Add validation to `ExternalIdSecret`, must be a valid pattern of `[\w+=,.:\/-]*`
