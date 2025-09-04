@@ -5,7 +5,7 @@
 ### 4.9.2025 Add output to the role that the module will create
 
 - Add output `ExternalId` to the role that the module will create
-- Add validation to `ExternalIdSecret`, must not be empty`
+- Add validation to `ExternalIdSecret`, must not be empty
 - Improve readme with example of how to get the ARN and ExternalId of the role
 
 
