@@ -193,7 +193,7 @@ Parameters:
 
   GatewayTaskCount:
     Type: Number
-    Default: 2
+    Default: 1
     Description: Number of Gateway tasks to run
 
   TaskExecutionRoleArn:
@@ -370,7 +370,7 @@ Resources:
               mode: "non-blocking"
               awslogs-create-group: "true"
               max-buffer-size: "25m"
-              awslogs-region: "us-east-1"
+              awslogs-region: !Ref AWS::Region
               awslogs-stream-prefix: "ecs"
 
   OtelGatewayTaskDefinition:
@@ -429,7 +429,7 @@ Resources:
               mode: "non-blocking"
               awslogs-create-group: "true"
               max-buffer-size: "25m"
-              awslogs-region: "us-east-1"
+              awslogs-region: !Ref AWS::Region
               awslogs-stream-prefix: "ecs"
 
   OtelAgentService:
