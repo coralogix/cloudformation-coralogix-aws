@@ -203,6 +203,45 @@ To receive SNS messages directly to Coralogix, use the `SNSIntegrationTopicARN` 
 | Parameter              | Description                                                                              | Default Value | Required           |
 |------------------------|------------------------------------------------------------------------------------------|---------------|--------------------|
 | SNSIntegrationTopicArn | Provide the ARN of the SNS topic to which you want to subscribe for retrieving messages. |               | :heavy_check_mark: |
+| CreateSNSTopicPolicy   | Whether to create and manage the SNS topic policy. Set to 'false' if you want to manage the policy yourself and preserve existing permissions. | 'true' | :x: |
+
+#### Custom SNS Topic Policy Management
+
+Set `CreateSNSTopicPolicy = 'false'` to preserve existing SNS topic policies:
+
+```yaml
+Parameters:
+  CreateSNSTopicPolicy: 'false'
+  SNSIntegrationTopicArn: 'arn:aws:sns:us-east-1:123456789012:your-existing-sns-topic'
+  # ... other configuration
+```
+
+##### Required Permissions
+
+When `CreateSNSTopicPolicy = 'false'`, include this permission in your SNS topic policy:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": {
+        "Service": "s3.amazonaws.com"
+      },
+      "Action": "SNS:Publish",
+      "Resource": "arn:aws:sns:REGION:ACCOUNT-ID:TOPIC-NAME",
+      "Condition": {
+        "ArnLike": {
+          "aws:SourceArn": "arn:aws:s3:::YOUR-S3-BUCKET-NAME"
+        }
+      }
+    }
+  ]
+}
+```
+
+**Note**: This only applies to S3-based integrations (S3, CloudTrail, VpcFlow, CloudFront, S3Csv). Direct SNS integration (`IntegrationType = "Sns"`) does not create SNS topic policies.
 
 ### SQS configuration
 
