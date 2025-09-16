@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.3.12 / 2025-09-16
+### 💡 Enhancements 💡
+- Added `CreateSNSTopicPolicy` parameter to allow users to preserve existing SNS topic policies when using SNS-based integrations (S3, CloudTrail, VpcFlow, CloudFront, S3Csv). Set to `false` to prevent the module from overwriting custom SNS topic policies.
+
 ## v1.3.11 / 2025-08-11
 ### 💡 Enhancements 💡
 - Add support for S3 bucket KMS key using `S3BucketKMSKeyARN`
