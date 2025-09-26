@@ -8,7 +8,7 @@
 * [FIX] Changed telemetry.metrics to new syntax
 * [UPDATE] spanmetric added to the config
 
-### 0.0.9 / 7 Oct 2025
+### 0.0.9 / 10 Jul 2025
 * [UPDATE] Change coralogix domains and endpoints to new format `<coralogix_region>.coralogix.com`.
 
 ### 0.0.8 / 25 Mar 2025
