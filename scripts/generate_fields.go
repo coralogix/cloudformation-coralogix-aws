@@ -28,15 +28,16 @@ type FieldsConfig struct {
 }
 
 type Field struct {
-	Name         string `yaml:"name"`
-	Visible      bool   `yaml:"visible"`
-	Required     bool   `yaml:"required"`
-	Predefined   bool   `yaml:"predefined"`
-	Type         string `yaml:"type"`
-	DefaultValue any    `yaml:"default_value"`
-	DisplayName  string `yaml:"display_name"`
-	TooltipText  string `yaml:"tooltip_text"`
-	Placeholder  string `yaml:"placeholder"`
+	Name         string   `yaml:"name"`
+	Visible      bool     `yaml:"visible"`
+	Required     bool     `yaml:"required"`
+	Predefined   bool     `yaml:"predefined"`
+	Type         string   `yaml:"type"`
+	DefaultValue any      `yaml:"default_value"`
+	DisplayName  string   `yaml:"display_name"`
+	TooltipText  string   `yaml:"tooltip_text"`
+	Placeholder  string   `yaml:"placeholder"`
+	Options      []string `yaml:"options,omitempty"`
 }
 
 func main() {
@@ -102,9 +103,21 @@ func main() {
 
 		fmt.Printf("Copied fields.yaml from %s to %s\n", latestFieldsFile, newFieldsFile)
 	} else {
-		// Create basic fields.yaml
-		existingFields = FieldsConfig{
-			Fields: []Field{
+		// No existing fields - generate all fields from template if it exists
+		existingFields = FieldsConfig{Fields: []Field{}}
+
+		// Check if template exists to generate initial fields
+		if _, err := os.Stat(newTemplateFile); err == nil {
+			fmt.Printf("No existing fields found. Generating all fields from template: %s\n", newTemplateFile)
+
+			// Generate all fields from template
+			if err := generateAllFieldsFromTemplate(newTemplateFile, &existingFields); err != nil {
+				fmt.Printf("Error generating fields from template: %v\n", err)
+				os.Exit(1)
+			}
+		} else {
+			// TODO: Create basic API key field as fallback
+			existingFields.Fields = []Field{
 				{
 					Name:         "ApiKey",
 					Visible:      true,
@@ -116,15 +129,15 @@ func main() {
 					TooltipText:  "Coralogix Send-Your-Data API Key",
 					Placeholder:  "Your API key",
 				},
-			},
+			}
 		}
 
 		if err := writeFieldsConfig(newFieldsFile, existingFields); err != nil {
-			fmt.Printf("Error creating basic fields file: %v\n", err)
+			fmt.Printf("Error creating fields file: %v\n", err)
 			os.Exit(1)
 		}
 
-		fmt.Printf("Created basic fields.yaml at %s\n", newFieldsFile)
+		fmt.Printf("Created fields.yaml at %s with %d fields\n", newFieldsFile, len(existingFields.Fields))
 	}
 
 	// Check for new parameters in template
@@ -190,10 +203,10 @@ func addMissingParameters(templateFile, fieldsFile string, existingFields Fields
 		existingFieldNames[field.Name] = true
 	}
 
-	// Find missing parameters
+	// Find missing parameters (excluding system fields)
 	var missingParams []string
 	for paramName := range template.Parameters {
-		if !existingFieldNames[paramName] {
+		if !existingFieldNames[paramName] && !shouldSkipField(paramName) {
 			missingParams = append(missingParams, paramName)
 		}
 	}
@@ -216,23 +229,140 @@ func addMissingParameters(templateFile, fieldsFile string, existingFields Fields
 
 		displayName := camelCaseToDisplayName(paramName)
 
+		// Determine field type based on CloudFormation parameter
+		fieldType := determineFieldType(paramName, param)
+
+		// Determine if field is required (no default value)
+		isRequired := param.Default == nil
+
+		// All fields are user-generated, not predefined
+		isPredefined := false
+
 		newField := Field{
 			Name:         paramName,
 			Visible:      true,
-			Required:     false,
-			Predefined:   false,
-			Type:         "text",
+			Required:     isRequired,
+			Predefined:   isPredefined,
+			Type:         fieldType,
 			DefaultValue: defaultValue,
 			DisplayName:  displayName,
 			TooltipText:  param.Description,
 			Placeholder:  displayName,
 		}
 
+		// Add options if AllowedValues exist
+		if len(param.AllowedValues) > 0 {
+			newField.Options = param.AllowedValues
+		}
+
 		existingFields.Fields = append(existingFields.Fields, newField)
+		fmt.Printf("Added new field: %s (type: %s)\n", paramName, fieldType)
 	}
 
-	// Write updated fields
 	return writeFieldsConfig(fieldsFile, existingFields)
+}
+
+func generateAllFieldsFromTemplate(templateFile string, fieldsConfig *FieldsConfig) error {
+	templateData, err := os.ReadFile(templateFile)
+	if err != nil {
+		return fmt.Errorf("reading template: %w", err)
+	}
+
+	var template CloudFormationTemplate
+	if err := yaml.Unmarshal(templateData, &template); err != nil {
+		return fmt.Errorf("parsing template: %w", err)
+	}
+
+	// Generate fields for all parameters (excluding system fields)
+	for paramName, param := range template.Parameters {
+		if shouldSkipField(paramName) {
+			fmt.Printf("Skipping system field: %s\n", paramName)
+			continue
+		}
+
+		defaultValue := ""
+		if param.Default != nil {
+			defaultValue = fmt.Sprintf("%v", param.Default)
+		}
+
+		displayName := camelCaseToDisplayName(paramName)
+		fieldType := determineFieldType(paramName, param)
+		isRequired := param.Default == nil
+
+		newField := Field{
+			Name:         paramName,
+			Visible:      true,
+			Required:     isRequired,
+			Predefined:   false,
+			Type:         fieldType,
+			DefaultValue: defaultValue,
+			DisplayName:  displayName,
+			TooltipText:  param.Description,
+			Placeholder:  displayName,
+		}
+
+		// Add options if AllowedValues exist
+		if len(param.AllowedValues) > 0 {
+			newField.Options = param.AllowedValues
+		}
+
+		fieldsConfig.Fields = append(fieldsConfig.Fields, newField)
+		fmt.Printf("Generated field: %s (type: %s)\n", paramName, fieldType)
+	}
+
+	return nil
+}
+
+func shouldSkipField(paramName string) bool {
+	// Fields that are system-managed and shouldn't be user inputs
+	systemFields := []string{
+		"CoralogixRegion", // Handled by system region logic
+		"CustomDomain",    // Handled by system domain logic
+		"LayerARN",        // System-managed layer
+		"CreateSecret",    // Internal system behavior
+	}
+
+	for _, systemField := range systemFields {
+		if paramName == systemField {
+			return true
+		}
+	}
+
+	return false
+}
+
+func determineFieldType(paramName string, param Parameter) string {
+	// If AllowedValues exist, it's a select field
+	if len(param.AllowedValues) > 0 {
+		return "select"
+	}
+
+	// Check for API key fields
+	paramLower := strings.ToLower(paramName)
+	if strings.Contains(paramLower, "apikey") || strings.Contains(paramLower, "api_key") {
+		return "api_key"
+	}
+
+	// Check CloudFormation type
+	switch param.Type {
+	case "Number":
+		return "number"
+	case "String":
+		// Check for boolean-like fields
+		if strings.Contains(paramLower, "enable") ||
+			strings.Contains(paramLower, "disable") ||
+			strings.Contains(paramLower, "use") ||
+			strings.Contains(paramLower, "store") {
+			// Check if it has true/false values in description
+			descLower := strings.ToLower(param.Description)
+			if strings.Contains(descLower, "true") && strings.Contains(descLower, "false") {
+				return "boolean"
+			}
+		}
+		return "text"
+	default:
+		return "text"
+	}
 }
 
 func camelCaseToDisplayName(s string) string {
@@ -250,5 +380,8 @@ func writeFieldsConfig(filename string, config FieldsConfig) error {
 		return fmt.Errorf("marshaling fields config: %w", err)
 	}
 
-	return os.WriteFile(filename, data, 0644)
+	// Add YAML header to match integration-definitions format
+	yamlContent := fmt.Sprintf("---\n%s", string(data))
+
+	return os.WriteFile(filename, []byte(yamlContent), 0644)
 }
