@@ -67,7 +67,6 @@ Metadata:
           default: SNS configuration
         Parameters:
           - SNSIntegrationTopicArn
-          - CreateSNSTopicPolicy
       - Label:
           default: SQS configuration
         Parameters:
@@ -257,13 +256,6 @@ Parameters:
     Description: The ARN of SNS topic to subscribe to retrieving messages
     # placeholder value to avoid cfn-lint issues
     Default: 'arn:aws:sns:us-east-1:123456789012:placeholder'
-  CreateSNSTopicPolicy:
-    Type: String
-    Description: Whether to create and manage the SNS topic policy. Set to 'false' if you want to manage the policy yourself and preserve existing permissions.
-    Default: 'true'
-    AllowedValues:
-      - 'true'
-      - 'false'
   KinesisStreamArn:
     Type: String
     Description: The ARN of Kinesis stream to subscribe to retrieving messages
@@ -622,13 +614,6 @@ Resources:
             Action:
               - 'sns:Publish'
             Resource: !Sub 'arn:aws:sns:${AWS::Region}:${AWS::AccountId}:*'
-          - Effect: Allow
-            Action:
-              - 'sns:SetTopicAttributes'
-              - 'sns:GetTopicAttributes'
-              - 'sns:AddPermission'
-              - 'sns:RemovePermission'
-            Resource: !Sub 'arn:aws:sns:${AWS::Region}:${AWS::AccountId}:*'
           - !If
             # S3 Policy
             - S3BucketNameIsSet
@@ -928,7 +913,6 @@ Resources:
         SQSTopicArn: !Ref SQSTopicArn
         SQSIntegrationTopicArn: !Ref SQSIntegrationTopicArn
         SNSIntegrationTopicArn: !Ref SNSIntegrationTopicArn
-        CreateSNSTopicPolicy: !Ref CreateSNSTopicPolicy
         KinesisStreamArn: !Ref KinesisStreamArn
         IntegrationType: !Ref IntegrationType
         CloudWatchLogGroupName: !Ref CloudWatchLogGroupName
