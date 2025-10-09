@@ -5,6 +5,10 @@
 <!-- ### version / full date -->
 <!-- * [Update/Bug fix] message that describes the changes that you apply -->
 
+### 1.0.7 / 2025-10-09
+- [Update] Split template into two versions: `template.yaml` (S3-only for UI integration) and `template-legacy.yaml` (full-featured for direct deployment)
+- [Update] Changed environment variable from `PRIVATE_KEY` to `CORALOGIX_PRIVATE_KEY` for consistency
+
 ### 1.0.6 / 2025-07-28
 - Added support for s3 provider to read otel config.
 - TaskRoleARN is created by the template for Parameter Store and S3.

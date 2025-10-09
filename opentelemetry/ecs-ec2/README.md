@@ -4,6 +4,13 @@ This CloudFormation template deploys an ECS Service and Task Definition for runn
 
 CloudFormation template to launch the Coralogix Distribution for OpenTelemetry ("CDOT") into an existing ECS Cluster. This CDOT deployment is able to collect Logs, Metrics and Traces. CDOT is deployed in the OTEL [Agent deployment](https://opentelemetry.io/docs/collector/deployment/agent/) pattern, as an ECS Daemon Service type, which runs an instance of the OpenTelemetry Collector agent on each node in a cluster.
 
+## Template Versions
+
+This repository contains two CloudFormation templates:
+
+- **`template.yaml`** - **S3-only configuration**  Uses S3 to store OpenTelemetry configuration files.
+- **`template-multi-config.yaml`** - **Full-featured template** with multiple configuration options (template, S3, Parameter Store) for direct user deployment.
+
 ## Image
 
 This solution uses the coralogixrepo/coralogix-otel-collector image which is a custom distribution of OpenTelemetry containing custom components developed by Coralogix. The image is available on [Docker Hub](https://hub.docker.com/r/coralogixrepo/coralogix-otel-collector). The ECS components are described [here](./components.md)
