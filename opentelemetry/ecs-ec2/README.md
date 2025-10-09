@@ -54,6 +54,13 @@ When enabled, database operation traces are processed separately with dedicated 
 - An existing ECS Cluster
 - [aws-cli]() (*if deploying via CLI*)
 
+## Template Versions
+
+This repository contains two CloudFormation templates:
+
+- **`template.yaml`** - **S3-only configuration**  Uses S3 to store OpenTelemetry configuration files.
+- **`template-legacy.yaml`** - **Full-featured template** with multiple configuration options (template, S3, Parameter Store) for direct user deployment.
+
 ## Parameters:
 
 | Parameter        | Description                                                                                                                                                                                                                          | Default Value                                                            | Required           |
