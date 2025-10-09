@@ -9,7 +9,7 @@ CloudFormation template to launch the Coralogix Distribution for OpenTelemetry (
 This repository contains two CloudFormation templates:
 
 - **`template.yaml`** - **S3-only configuration**  Uses S3 to store OpenTelemetry configuration files.
-- **`template-legacy.yaml`** - **Full-featured template** with multiple configuration options (template, S3, Parameter Store) for direct user deployment.
+- **`template-multi-config.yaml`** - **Full-featured template** with multiple configuration options (template, S3, Parameter Store) for direct user deployment.
 
 ## Image
 
