@@ -3,6 +3,11 @@
 
 file=$1
 
+if [[ $file == *"ecs-ec2"* ]]; then
+  echo "Skipping transformations for ecs-ec2 integration type."
+  exit 0
+fi
+
 file_contine_output=false
 if grep -q "Outputs" "$file"; then
     yq 'with_entries(select(.key | test("Outputs")))' $file >> outputs.yaml
