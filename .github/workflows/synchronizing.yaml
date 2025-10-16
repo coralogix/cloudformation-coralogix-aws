@@ -21,7 +21,7 @@ jobs:
       has_file_from_the_list_changed: ${{ env.has_template_from_the_list_changed }}
     name: upload files
     env:
-      integration_list: "firehose-logs,firehose-metrics,resource-metadata,aws-shipper-lambda,resource-metadata-sqs"
+      integration_list: "firehose-logs,firehose-metrics,resource-metadata,aws-shipper-lambda,resource-metadata-sqs,ecs-ec2"
     steps:
       - name: checkout when trigger is from push
         uses: actions/checkout@v4
@@ -154,12 +154,42 @@ jobs:
             elif [ "$line" == "firehose-logs" ];then
               mkdir -p integrations/shared/firehose-logs/v${template_version}
               mv template-directory/${line}-template.yaml integrations/shared/firehose-logs/v${template_version}/template.yaml
+            elif [ "$line" == "ecs-ec2" ]; then
+              current_time=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+              last_version=$(
+                awk '
+                  /^[[:space:]]*-[[:space:]]+revision:/ { if (rev && !testing) last=rev; rev=$NF; testing=0 }
+                  /[[:space:]]testing:[[:space:]]*true/  { testing=1 }
+                  END { if (rev && !testing) last=rev; if (last) print last; else exit 1 }
+                ' ./integrations/otel-agent-aws-ecs-ec2/manifest.yaml
+              )
+
+              major=$(echo "$last_version" | cut -d. -f1)
+              minor=$(echo "$last_version" | cut -d. -f2)
+              patch=$(echo "$last_version" | cut -d. -f3)
+
+              minor=$((minor + 1))
+              new_version="${major}.${minor}.${patch}"
+
+              mkdir -p integrations/otel-agent-aws-ecs-ec2/v${new_version}
+              cp integrations/otel-agent-aws-ecs-ec2/v$last_version/commands.yaml integrations/otel-agent-aws-ecs-ec2/v${new_version}/
+              cp integrations/otel-agent-aws-ecs-ec2/v$last_version/fields.yaml integrations/otel-agent-aws-ecs-ec2/v${new_version}/
+              mv template-directory/${line}-template.yaml integrations/otel-agent-aws-ecs-ec2/v${new_version}/template.yaml
+
+              echo "  - revision: ${new_version}
+                template:
+                  type: CloudFormation
+                  cloudformation: v${new_version}/template.yaml
+                  commands: v${new_version}/commands.yaml
+                field_definitions: v${new_version}/fields.yaml
+                published_at: $current_time" >> integrations/otel-agent-aws-ecs-ec2/manifest.yaml
+          
             else
               mkdir -p integrations/${line}/v${template_version}
               mv template-directory/${line}-template.yaml integrations/${line}/v${template_version}/template.yaml
             fi
             
-            if [ -f integrations/${line}/manifest.yaml ] && [ "$line" != "firehose-logs" ]; then
+            if [ -f integrations/${line}/manifest.yaml ] && [ "$line" != "firehose-logs" ] && [ "$line" != "ecs-ec2" ]; then
               echo "  - revision: ${template_version}
               template: !CloudFormationTemplate v${template_version}/template.yaml
               field_definitions: v${template_version}/fields.yaml" >> integrations/${line}/manifest.yaml
