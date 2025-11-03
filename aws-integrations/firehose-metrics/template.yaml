@@ -94,7 +94,7 @@ Parameters:
       - 'false'
 
 Metadata:
-  SemanticVersion: 0.0.6
+  SemanticVersion: 0.0.9
   AWS::CloudFormation::Interface: 
     ParameterGroups: 
       - Label: 
