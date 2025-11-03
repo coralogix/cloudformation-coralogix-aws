@@ -85,7 +85,7 @@ Parameters:
       - 'true'
       - 'false'
     Default: 'true'
-  IncludeLinkedAccounts:
+  IncludeLinkedAccountsMetrics:
     Type: String
     Description: Enable cross-account observability to include metrics from linked source accounts (requires CloudWatch OAM setup)
     Default: 'false'
@@ -119,7 +119,7 @@ Metadata:
           - EnableAddtionalStatistics
           - AddtionalStatisticsConfigurations
           - EnableMetricsTagsProcessors
-          - IncludeLinkedAccounts
+          - IncludeLinkedAccountsMetrics
           
 Mappings:
   CoralogixRegionMap:
@@ -492,7 +492,7 @@ Resources:
                       stream_params['StatisticsConfigurations'] = statistics_configurations_list
                   
                   # Add cross-account observability if enabled
-                  if properties.get('IncludeLinkedAccounts', 'false').lower() == 'true':
+                  if properties.get('IncludeLinkedAccountsMetrics', 'false').lower() == 'true':
                       stream_params['IncludeLinkedAccountsMetrics'] = True
                   
                   response_data = client.put_metric_stream(**stream_params)
@@ -516,7 +516,7 @@ Resources:
       IncludeNamespacesInput: !Ref IncludeNamespaces
       IncludeNamespacesMetricNamesInput: !Ref IncludeNamespacesMetricNames
       StatisticsConfigurationsInput: !If [IsAdditionalStatisticsEnabled, !Ref AddtionalStatisticsConfigurations, '' ]
-      IncludeLinkedAccounts: !Ref IncludeLinkedAccounts
+      IncludeLinkedAccountsMetrics: !Ref IncludeLinkedAccountsMetrics
 
 Outputs:
   BackupDataBucketName:

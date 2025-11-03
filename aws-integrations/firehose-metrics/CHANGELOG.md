@@ -6,7 +6,7 @@
 <!-- * [Update/Bug fix] message that describes the changes that you apply -->
 
 ### 0.0.9 / 3 Nov 2025
-* [Feature] Support for AWS CloudWatch Cross-Account Observability. Added `IncludeLinkedAccountsMetrics` configuration to CloudWatch Metric Stream for enabling centralized metrics monitoring from multiple AWS accounts via CloudWatch Observability Access Manager (OAM)
+* [Feature] Support for AWS CloudWatch Cross-Account Observability. Added `IncludeLinkedAccountsMetrics` parameter to enable centralized metrics monitoring from multiple AWS accounts via CloudWatch Observability Access Manager (OAM)
 
 ### 0.0.8 / 10 Jul 2025
 * [UPDATE] Change coralogix domains and endpoints to new format `<coralogix_region>.coralogix.com`.
