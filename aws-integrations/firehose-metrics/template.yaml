@@ -85,9 +85,16 @@ Parameters:
       - 'true'
       - 'false'
     Default: 'true'
+  IncludeLinkedAccountsMetrics:
+    Type: String
+    Description: Enable cross-account observability to include metrics from linked source accounts (requires CloudWatch OAM setup)
+    Default: 'false'
+    AllowedValues:
+      - 'true'
+      - 'false'
 
 Metadata:
-  SemanticVersion: 0.0.6
+  SemanticVersion: 0.0.9
   AWS::CloudFormation::Interface: 
     ParameterGroups: 
       - Label: 
@@ -112,6 +119,7 @@ Metadata:
           - EnableAddtionalStatistics
           - AddtionalStatisticsConfigurations
           - EnableMetricsTagsProcessors
+          - IncludeLinkedAccountsMetrics
           
 Mappings:
   CoralogixRegionMap:
@@ -470,17 +478,24 @@ Resources:
                     for namespace, metric_names in namespace_metrics_json.items():
                       include_filter_list.append({'Namespace': namespace.strip(), 'MetricNames': metric_names})
                   
+                  # Build the base parameters for put_metric_stream
+                  stream_params = {
+                      'Name': physical_id,
+                      'FirehoseArn': properties['FirehoseArn'],
+                      'RoleArn': properties['RoleArn'],
+                      'OutputFormat': properties['OutputFormat'],
+                      'IncludeFilters': include_filter_list
+                  }
+                  
+                  # Add optional parameters
                   if len(statistics_configurations_list) > 0:
-                    response_data = client.put_metric_stream(Name=physical_id, FirehoseArn=properties['FirehoseArn'],
-                                                              RoleArn=properties['RoleArn'],
-                                                              OutputFormat=properties['OutputFormat'],
-                                                              IncludeFilters=include_filter_list,
-                                                              StatisticsConfigurations=statistics_configurations_list)
-                  else:
-                    response_data = client.put_metric_stream(Name=physical_id, FirehoseArn=properties['FirehoseArn'],
-                                                              RoleArn=properties['RoleArn'],
-                                                              OutputFormat=properties['OutputFormat'],
-                                                              IncludeFilters=include_filter_list)
+                      stream_params['StatisticsConfigurations'] = statistics_configurations_list
+                  
+                  # Add cross-account observability if enabled
+                  if properties.get('IncludeLinkedAccountsMetrics', 'false').lower() == 'true':
+                      stream_params['IncludeLinkedAccountsMetrics'] = True
+                  
+                  response_data = client.put_metric_stream(**stream_params)
                                                           
                 cfnresponse.send(event, context, cfnresponse.SUCCESS, response_data, physical_id)
               except Exception as e:
@@ -501,6 +516,7 @@ Resources:
       IncludeNamespacesInput: !Ref IncludeNamespaces
       IncludeNamespacesMetricNamesInput: !Ref IncludeNamespacesMetricNames
       StatisticsConfigurationsInput: !If [IsAdditionalStatisticsEnabled, !Ref AddtionalStatisticsConfigurations, '' ]
+      IncludeLinkedAccountsMetrics: !Ref IncludeLinkedAccountsMetrics
 
 Outputs:
   BackupDataBucketName:
