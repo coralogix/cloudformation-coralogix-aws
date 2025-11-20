@@ -5,6 +5,9 @@
 <!-- ### version / full date -->
 <!-- * [Update/Bug fix] message that describes the changes that you apply -->
 
+### 0.0.10 / 20 Nov 2025
+* [Update] Migrate Lambda ZIP Package to the common serverless repo `coralogix-serverless-repo`
+
 ### 0.0.9 / 3 Nov 2025
 * [Feature] Support for AWS CloudWatch Cross-Account Observability. Added `IncludeLinkedAccountsMetrics` parameter to enable centralized metrics monitoring from multiple AWS accounts via CloudWatch Observability Access Manager (OAM)
 
