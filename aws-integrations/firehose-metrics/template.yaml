@@ -94,7 +94,7 @@ Parameters:
       - 'false'
 
 Metadata:
-  SemanticVersion: 0.0.9
+  SemanticVersion: 0.0.10
   AWS::CloudFormation::Interface: 
     ParameterGroups: 
       - Label: 
@@ -224,8 +224,8 @@ Resources:
     Type: 'AWS::Lambda::Function'
     Properties:
       Code:
-        S3Bucket: !Sub 'cx-cw-metrics-tags-lambda-processor-${AWS::Region}'
-        S3Key: bootstrap.zip
+        S3Bucket: !Sub 'coralogix-serverless-repo-${AWS::Region}'
+        S3Key: firehose-metrics-transformer.zip
       FunctionName: !Sub '${AWS::StackName}-metrics-transform'
       Handler: bootstrap
       Runtime: provided.al2
