@@ -20,7 +20,7 @@ In order to configure Fluentbit as a sidecar container in an ECS Fargate task, y
 
 When using the Fluentbit for AWS container image, you need to embed your configuration file in the Image itself. This is because the Fluentbit for AWS image already has a default configuration that is required for the integration to work. When we embed our configuration file in the image, it runs alongside the default configuration.
 
-Once your fluentbit image is created it needs to be pushed to ECR or any other publically accessible container registry.
+Once your fluentbit image is created it needs to be pushed to ECR or any other publicly accessible container registry.
 
 Create a configuration file. For example, extra.conf:
 
