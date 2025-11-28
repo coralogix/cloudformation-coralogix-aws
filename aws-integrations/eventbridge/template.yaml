@@ -17,10 +17,10 @@ Parameters:
     Type: String
     Default: " "
   CoralogixRegion:
-    Description: "The Coralogix location region, possible options are [ireland, stockholm, india, singapore, us]"
+    Description: "The Coralogix location region, possible options are [EU1, EU2, AP1, AP2, AP3, US1, US2]"
     Type: String
-    AllowedValues: [ireland, stockholm, india, singapore, us]
-    Default: "ireland"
+    AllowedValues: [EU1, EU2, AP1, AP2, AP3, US1, US2]
+    Default: "EU1"
   CustomUrl:
     Type: String
 
@@ -143,16 +143,20 @@ Conditions:
 
 Mappings:
   EndpointUrl:
-    us:
-      url: "https://aws-events.coralogix.us/aws/event"
-    singapore:
-      url: "https://aws-events.coralogixsg.com/aws/event"
-    ireland:
-      url: "https://aws-events.coralogix.com/aws/event"
-    india:
-      url: "https://aws-events.coralogix.in/aws/event"
-    stockholm:
-      url: "https://aws-events.eu2.coralogix.com/aws/event"
+    EU1:
+      url: "https://ingress.coralogix.com/aws/event-bridge"
+    EU2:
+      url: "https://ingress.eu2.coralogix.com/aws/event-bridge"
+    AP1:
+      url: "https://ingress.coralogixsg.com/aws/event-bridge"
+    AP2:
+      url: "https://ingress.coralogix.in/aws/event-bridge"
+    AP3:
+      url: "https://ingress.ap3.coralogix.com/aws/event-bridge"
+    US1:
+      url: "https://ingress.coralogix.us/aws/event-bridge"
+    US2:
+      url: "https://ingress.cx498.coralogix.com/aws/event-bridge"
 
 Outputs:
   EventBridgeRuleName:

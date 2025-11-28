@@ -1,6 +1,12 @@
 name: Publish
 
 on:
+  workflow_dispatch:
+    inputs:
+      refToBuild:
+        description: 'Branch, tag or commit SHA1'
+        required: true
+        type: string
   push:
     branches: [master]
     paths:
@@ -11,13 +17,22 @@ jobs:
     name: publish
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v3
+      - name: Checkout when triggered by commit
+        uses: actions/checkout@v4
+        if: "${{ inputs.refToBuild == null }}"
         with:
           persist-credentials: false
           fetch-depth: 0
+          
+      - name: checkout when trigger manually
+        uses: actions/checkout@v4
+        if: "${{ inputs.refToBuild != null }}"
+        with:
+          ref: ${{ inputs.refToBuild }}
+          persist-credentials: false
+          fetch-depth: 0
 
-      - uses: aws-actions/configure-aws-credentials@v2
+      - uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.PUBLISH_ACCESS_KEY }}
           aws-secret-access-key: ${{ secrets.PUBLISH_SECRET_ACCESS_KEY }}
@@ -25,7 +40,7 @@ jobs:
           
       - name: Get changed files
         id: changed-files
-        uses: tj-actions/changed-files@v37
+        uses: tj-actions/changed-files@v46.0.1
 
       - name: Upload integrations files to s3
         run: |

@@ -1,7 +1,7 @@
 # ECS EC2 Windows (Metrics)
 
 
-This template section provides an example template for deployin the Open Telemetry collector as a sidecar for collecting Metrics on ECS EC2 Windows. This template is not meant to be used in production as is, it is intended as a demonstration/example.
+This template section provides an example template for deploying the Open Telemetry collector as a sidecar for collecting Metrics on ECS EC2 Windows. This template is not meant to be used in production as is, it is intended as a demonstration/example.
 
 
 
@@ -21,6 +21,11 @@ This template section provides an example template for deployin the Open Telemet
 | ApplicationName | You application name                                                                                                                                                                                                                 |                                                                              | :heavy_check_mark: |
 | SubsystemName   | You Subsystem name                                                                                                                                                                                                                   | AWS Account ID                                                               | :heavy_check_mark: |
 | PrivateKey      | Your Coralogix Private Key                                                                                                                                                                                                           |                                                                              | :heavy_check_mark: |
+| HealthCheckEnabled     | Enable ECS container health check for the OTEL agent container. | false | |
+| HealthCheckInterval    | Health check interval (seconds)             | 30      |          |
+| HealthCheckTimeout     | Health check timeout (seconds)              | 5       |          |
+| HealthCheckRetries     | Health check retries                        | 3       |          |
+| HealthCheckStartPeriod | Health check start period (seconds)         | 60      |          |
 
 
 
@@ -40,8 +45,37 @@ For Windows, this receiver does not support being run as a daemonset, as such, e
 
 ### Open Telemetry Configuration
 
-The Open Telemetry configuration is embedded in this cloudformation template by default, however, you do have the option of specifying your own configuration my modifying the template. The  The Coralogix Open Telemetry distribution supports reading configration from S3 as well as an Envrionmentat Variable. Note that Environment variables can be raw strings or Base64 encoded. Configuration from S3 must be passed to the collector using the S3 URL of the object, for example `cdot --config s3://{your-bucket}.s3.{region}.amazonaws.com/{your-object-key}`, when using this feature in ECS, the host or task must have sufficient permissions to read S3 Objects.
+The Open Telemetry configuration is embedded in this CloudFormation template by default. However, you have the option of specifying your own configuration by modifying the template. The Coralogix Open Telemetry distribution supports reading configuration over HTTP as well as an Environment Variable. Note that Environment Variables must be raw strings. Base64 encoding is not supported.
+
+### ECS Container Health Check
+
+You can enable and customize the ECS container health check for the OTEL agent container using the following parameters:
+- `HealthCheckEnabled` (default: false)
+- `HealthCheckInterval` (default: 30)
+- `HealthCheckTimeout` (default: 5)
+- `HealthCheckRetries` (default: 3)
+- `HealthCheckStartPeriod` (default: 60)
+
+Example deployment with custom health check settings:
+
+```sh
+aws cloudformation deploy --template-file template.yaml --stack-name <stack_name> \
+    --region <region> \
+    --parameter-overrides \
+        ClusterName=<ecs cluster name> \
+        AppImage=<your-app-image> \
+        OtelImage=<otel-image> \
+        PrivateKey=<your-private-key> \
+        ApplicationName=<application name> \
+        SubsystemName=<subsystem name> \
+        CoralogixRegion=<coralogix-region> \
+        HealthCheckEnabled=true \
+        HealthCheckInterval=60 \
+        HealthCheckTimeout=10 \
+        HealthCheckRetries=5 \
+        HealthCheckStartPeriod=60
+```
 
 ### Image
 
-This example uses the [coralogixrepo/coralogix-otel-collector:0.1.0-windowsserver-1809](https://hub.docker.com/layers/coralogixrepo/coralogix-otel-collector/0.1.0-windowsserver-1809/images/sha256-c436b2b29501592449e2b72a2393f4825e7216bdd62d90cb5e14463a46fafd95?context=explore) image which is a custom distribution of Open Telemetry containing custom components developed by Coralogix. The image is available on [Docker Hub](https://hub.docker.com/r/coralogixrepo/coralogix-otel-collector). The ECS components are described [here](../ecs-ec2/components.md)
+This example uses the [coralogixrepo/coralogix-otel-collector:0.4.1-windowsserver-1809](https://hub.docker.com/layers/coralogixrepo/coralogix-otel-collector/0.4.1-windowsserver-1809/images/sha256-c436b2b29501592449e2b72a2393f4825e7216bdd62d90cb5e14463a46fafd95?context=explore) image which is a custom distribution of Open Telemetry containing custom components developed by Coralogix. The image is available on [Docker Hub](https://hub.docker.com/r/coralogixrepo/coralogix-otel-collector). The ECS components are described [here](../ecs-ec2/components.md)

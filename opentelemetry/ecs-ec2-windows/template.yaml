@@ -29,6 +29,34 @@ Parameters:
         - Singapore
         - US
 
+  HealthCheckEnabled:
+    Type: String
+    Description: Enable ECS container health check for the OTEL agent container.
+    AllowedValues: ["true", "false"]
+    Default: "false"
+
+  HealthCheckInterval:
+    Type: Number
+    Description: Health check interval (seconds). Only used if HealthCheckEnabled is true
+    Default: "30"
+
+  HealthCheckTimeout:
+    Type: Number
+    Description: Health check timeout (seconds). Only used if HealthCheckEnabled is true
+    Default: "5"
+
+  HealthCheckRetries:
+    Type: Number
+    Description: Health check retries. Only used if HealthCheckEnabled is true
+    Default: "3"
+
+  HealthCheckStartPeriod:
+    Type: Number
+    Description: Health check start period (seconds). Only used if HealthCheckEnabled is true
+    Default: "60"
+
+Conditions:
+  EnableHealthCheck: !Equals [!Ref HealthCheckEnabled, "true"]
 
 Mappings:
   CoralogixRegionMap:
@@ -120,7 +148,7 @@ Resources:
               awslogs-region: !Ref 'AWS::Region'
               awslogs-stream-prefix: "otel-collector"
               awslogs-create-group: "true"
-          # Command: ["--config", !Ref OTELS3Config]
+          Command: ["--config", "env:OTEL_CONFIG"]
           Environment:
             - Name: "CORALOGIX_DOMAIN"
               Value: !FindInMap [CoralogixRegionMap, !Ref CoralogixRegion, Domain]
@@ -135,42 +163,91 @@ Resources:
               Value: !Ref SubsystemName
             
             - Name: "OTEL_CONFIG"
-              Value: 
-                Fn::Base64: |
-                  receivers:
-                    awsecscontainermetricsd:
-                      sidecar: true
+              Value: |
+                receivers:
+                  awsecscontainermetricsd:
+                    sidecar: true
 
-                  processors:
-                    batch:
+                  prometheus:
+                    config:
+                      scrape_configs:
+                        - job_name: otel-collector-metrics
+                          scrape_interval: 30s
+                          static_configs:
+                            - targets: ["localhost:8888"]
 
-                  exporters:
-                    logging:
-                      verbosity: detailed
-                    coralogix:
-                      domain: "$CORALOGIX_DOMAIN"
-                      private_key: "$PRIVATE_KEY"
-                      application_name: "otel-collector-windows"
-                      subsystem_name: "ecs"
-                      application_name_attributes:
-                      - $ApplicationName
-                      - "container.name"
-                      subsystem_name_attributes:
-                      - $SubSystemName
-                      - "aws.ecs.task.family"
-                      timeout: 30s
+                processors:
+                  # remove unneeded labels from metrics added as of otel v0.119.0
+                  transform/prometheus:
+                    error_mode: ignore
+                    metric_statements:
+                      - context: metric
+                        statements:
+                          - replace_pattern(name, "_total$", "")
+                      - context: datapoint
+                        statements:
+                          - delete_key(attributes, "otel_scope_name") where resource.attributes["service.name"] == "cdot"
+                          - delete_key(attributes, "service.name") where resource.attributes["service.name"] == "cdot"
 
-                  service:
-                    pipelines:
-                      metrics:
-                        receivers:
-                          - awsecscontainermetricsd
-                        processors:
-                          - batch
-                        exporters:
-                          - coralogix
+                      - context: resource
+                        statements:
+                          - delete_key(attributes, "service.instance.id") where attributes["service.name"] == "cdot"
+                          - delete_key(attributes, "service.name") where attributes["service.name"] == "cdot"
 
 
+                  batch:
+
+                exporters:
+                  debug:
+                    verbosity: detailed
+                  coralogix:
+                    domain: "${CORALOGIX_DOMAIN}"
+                    private_key: "${PRIVATE_KEY}"
+                    application_name: "otel-collector-windows"
+                    subsystem_name: "ecs"
+                    application_name_attributes:
+                    - $ApplicationName
+                    - "container.name"
+                    subsystem_name_attributes:
+                    - $SubSystemName
+                    - "aws.ecs.task.family"
+                    timeout: 30s
+
+                service:
+                  telemetry:
+                    logs:
+                      level: warn
+
+                    metrics:
+                      readers:
+                        - pull:
+                            exporter:
+                              prometheus:
+                                host: 0.0.0.0
+                                port: 8888
+
+                  pipelines:
+                    metrics:
+                      receivers:
+                        - awsecscontainermetricsd
+                        - prometheus
+                      processors:
+                        - transform/prometheus
+                        - batch
+                      exporters:
+                        - coralogix
+
+          HealthCheck: !If
+            - EnableHealthCheck
+            - Command:
+                - "/healthcheck"
+              Interval: !Ref HealthCheckInterval
+              Timeout: !Ref HealthCheckTimeout
+              Retries: !Ref HealthCheckRetries
+              StartPeriod: !Ref HealthCheckStartPeriod
+            - !Ref AWS::NoValue
+
+        ### --- your app task definition goes here --- ###
         - Name: "win-app"
           Image: !Ref AppImage
           Essential: true

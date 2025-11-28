@@ -2,6 +2,19 @@
 # This code will take a template file and change it according to the requirements in the integration-definitions repo
 
 file=$1
+
+if [[ $file == *"ecs-ec2"* ]]; then
+  echo "Skipping transformations for ecs-ec2 integration type."
+  exit 0
+fi
+
+file_contine_output=false
+if grep -q "Outputs" "$file"; then
+    yq 'with_entries(select(.key | test("Outputs")))' $file >> outputs.yaml
+    yq eval --inplace 'del(.Outputs)' $file >> outputs.yaml
+    file_contine_output=true
+fi
+
 if grep -q "ParameterGroups" "$file"; then
     yq eval --inplace '.Metadata."AWS::CloudFormation::Interface".ParameterGroups[0].Parameters += "IntegrationId"' -i $file
 fi
@@ -10,6 +23,10 @@ if grep -q "ParameterLabels" "$file"; then
 fi
 
 yq eval --inplace '.Parameters += {"IntegrationId": {"Type": "String",  "Description": "The integration ID to register."}}' $file
+
+if [[ $file == *"aws-shipper-lambda"* ]]; then
+  cat ./custom_lambda_code.yaml >> $file
+fi
 
 echo "  # Used as a bridge because CF doesn't allow for conditional depends on clauses.
   NonNotifierResourcesAreReady:
@@ -28,6 +45,12 @@ while IFS= read -r resource; do
       no_condition_resource+=($resource)
     fi
 done <<< "$resources"
+if [[ $file == *"aws-shipper-lambda"* ]]; then
+  yq eval --inplace '.Conditions += {"IsApiKeySecretArn": "condition"}' $file
+  yq eval --inplace '.Conditions += {"GetSecret": "condition"}' $file
+  sed -i "s/GetSecret: condition/GetSecret: \!Or [\!Condition StoreAPIKeyInSecretsManager, \!Condition ApiKeyIsArn]/g" $file
+  sed -i "s/IsApiKeySecretArn: condition/IsApiKeySecretArn: \!Not [\!Equals [\!Ref ApiKey , \!Select [0,\!Split [\":\" , \!Ref ApiKey]]]]/g" $file
+fi
 
 echo "  IntegrationStatusNotifier:
     Type: Custom::IntegrationsServiceNotifier
@@ -36,24 +59,55 @@ echo "  IntegrationStatusNotifier:
 for resource in "${no_condition_resource[@]}"; do
   echo "      - $resource" >> $file
 done
+
+
 echo "
     Properties:
       #      {{AWS_ACCOUNT_ID}} is replaced during the template synchronisation
       ServiceToken: !Sub \"arn:aws:lambda:\${AWS::Region}:{{AWS_ACCOUNT_ID}}:function:integrations-custom-resource-notifier\"
-      IntegrationId: !Ref IntegrationId
+      IntegrationId: !Ref IntegrationId" >> $file
+if [[ $file == *"aws-shipper-lambda"* ]]; then
+  echo "      CoralogixDomain: !If
+        - IsCustomDomain
+        - !Ref CustomDomain
+        - !FindInMap [CoralogixRegionMap, !Ref CoralogixRegion, Domain]
+      CoralogixApiKey: !If [ ApiKeyIsArn, !GetAtt SecretRetrievalFunctionTrigger.SecretValue, !Ref ApiKey ]" >> $file
+  echo "
+      # Parameters to track
+      IntegrationName: !Ref \"AWS::StackName\"
+      SubsystemName: !Ref SubsystemName
+      ApplicationName: !Ref ApplicationName" >> $file
+elif [[ $file == *"firehose"* ]]; then
+  echo "
+      CoralogixDomain: !If
+        - IsCustomDomain
+        - !Ref CustomDomain
+        - !FindInMap [ CoralogixRegionMap, !Ref CoralogixRegion, LogUrl ]
+      CoralogixApiKey: !Ref ApiKey" >> $file
+  echo "
+      # Parameters to track
+      IntegrationName: !Ref \"AWS::StackName\"
+      SubsystemName: !Ref SubsystemName
+      ApplicationName: !Ref ApplicationName" >> $file
+elif [[ $file == *"resource-metadata"* ]]; then
+  echo "
       CoralogixDomain: !If
         - IsRegionCustomUrlEmpty
         - !Ref CustomDomain
-        - !FindInMap [ CoralogixRegionMap, !Ref CoralogixRegion, LogUrl ]
-      CoralogixApiKey: !Ref ApiKey
-
+        - !FindInMap [ CoralogixRegionMap, !Ref CoralogixRegion, MetadataUrl ]
+      CoralogixApiKey: !Ref ApiKey" >> $file
+  echo "
       # Parameters to track
-      IntegrationNameField: !Ref \"AWS::StackName\"
-      SubsystemField: !Ref SubsystemName
-      ApplicationNameField: !Ref ApplicationName" >> $file
+      IntegrationName: !Ref \"AWS::StackName\"" >> $file
+fi
 
 while IFS= read -r parameter; do
-  if [[ $parameter != "ApiKey" ]] && [[ $parameter != "IntegrationId" ]] && [[ $parameter != "ApplicationName" ]] && [[ $parameter != "SubsystemName" ]]; then
-    echo "      ${parameter}Field: !Ref $parameter" >> $file
+  if [[ $parameter != "ApiKey" ]] && [[ $parameter != "IntegrationId" ]] && [[ $parameter != "ApplicationName" ]] && [[ $parameter != "SubsystemName" ]] && [[ $parameter != "KafkaBrokers" ]] && [[ $parameter != "KafkaSubnets" ]] && [[ $parameter != "KafkaSecurityGroups" ]]; then
+    echo "      ${parameter}: !Ref $parameter" >> $file
   fi
 done <<< "$parameters"
+
+if $file_contine_output;then
+    cat outputs.yaml >> $file
+    rm outputs.yaml
+fi

@@ -2,11 +2,11 @@
 #Link to the repo: https://github.com/coralogix/coralogix-aws-serverless/tree/master/src/lambda-secretLayer
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
-Description: Lambda function layer for using SSM for PrivateKey safe keeping .
+Description: Lambda function layer for using Secret Manager for Data API Key safe keeping.
 Metadata:
   AWS::ServerlessRepo::Application:
     Name: Coralogix-Lambda-SSMLayer
-    Description: Lambda function layer for using SSM for PrivateKey safe keeping.
+    Description: Lambda function layer for using Secret Manager for Data API Key safe keeping.
     Author: Coralogix
     SpdxLicenseId: Apache-2.0
     LicenseUrl: LICENSE
@@ -17,13 +17,13 @@ Metadata:
       - lambda
       - extension
     HomePageUrl: https://coralogix.com
-    SemanticVersion: 1.0.2
+    SemanticVersion: 1.0.3
     SourceCodeUrl: https://github.com/coralogix/coralogix-aws-serverless
 Parameters:
   CompatibleRuntimes:
     Type: CommaDelimitedList
     Description: Lambda Layer Version compatible runtimes
-    Default: nodejs16.x, nodejs18.x, nodejs14.x
+    Default: nodejs16.x, nodejs18.x, nodejs14.x, nodejs20.x
   RetentionPolicy:
     Type: String
     Description: Lambda Layer Version retention policy
@@ -36,7 +36,7 @@ Resources:
     Type: AWS::Serverless::LayerVersion
     Properties:
       LayerName: coralogix-ssmlayer
-      Description: Lambda function layer for using SSM for PrivateKey safe keeping
+      Description: Lambda function layer for using Secret Manager for Data API Key safe keeping
       LicenseInfo: Apache-2.0
       ContentUri:
         Bucket: !Sub 'coralogix-serverless-repo-${AWS::Region}'
@@ -50,7 +50,7 @@ Resources:
         Ref: RetentionPolicy
 Outputs:
   LambdaLayerVersionArn:
-    Description: Lambda Layer version ARN for coralogix-ssmlayer
+    Description: Lambda Layer version ARN for coralogix-SMlayer
     Value:
       Ref: LambdaLayer
     Export:

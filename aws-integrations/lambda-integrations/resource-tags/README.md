@@ -1,9 +1,11 @@
-# Coralogix Resource Tags
+# DEPRECATED
 
 This template were created automatically from coralogix/coralogix-aws-serverless.
 To make a change in the template go to the link below.
 
 https://github.com/coralogix/coralogix-aws-serverless/tree/master/src/resource-tags
+
+## Coralogix Resource Tags
 
 This application collect AWS resource tags and sends them to your **Coralogix** account.
 
