@@ -1,0 +1,143 @@
+Parameters:
+  Principal:
+    Type: String
+    Description: The AWS account ID or Role ARN of the principal who will assume the role
+    ConstraintDescription: "Must be a valid AWS account ID or a valid Role ARN"
+
+Resources:
+  CoralogixCSPMExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: Coralogix-CSPM-Execution-Role
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS:
+                Ref: Principal
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: CoralogixCSPMPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: CSPM
+                Resource: ["*"]
+                Effect: Allow
+                Action:
+                  - access-analyzer:Get*
+                  - access-analyzer:List*
+                  - acm:Describe*
+                  - apigateway:Get*
+                  - application-autoscaling:Describe*
+                  - autoscaling-plans:Describe*
+                  - autoscaling-plans:GetScalingPlanResourceForecastData
+                  - autoscaling:Describe*
+                  - autoscaling:GetPredictiveScalingForecast
+                  - backup:List*
+                  - backup:Get*
+                  - cloudformation:BatchDescribeTypeConfigurations
+                  - cloudformation:Describe*
+                  - cloudformation:DetectStack*
+                  - cloudformation:EstimateTemplateCost
+                  - cloudformation:Get*
+                  - cloudformation:List*
+                  - cloudformation:ValidateTemplate
+                  - cloudfront:DescribeFunction
+                  - cloudfront:Get*
+                  - cloudfront:List*
+                  - cloudtrail:Describe*
+                  - cloudtrail:Get*
+                  - cloudtrail:List*
+                  - cloudtrail:LookupEvents
+                  - cloudwatch:Describe*
+                  - cloudwatch:Get*
+                  - cloudwatch:List*
+                  - dms:Describe*
+                  - dax:DescribeClusters
+                  - dynamodb:ListTables
+                  - ec2:Describe*
+                  - ec2:ExportClientVpn*
+                  - ec2:Get*
+                  - ec2:List*
+                  - ec2:Search*
+                  - ec2messages:Get*
+                  - ecr:Describe*
+                  - ecr:GetRepositoryPolicy
+                  - ecs:Describe*
+                  - ecs:List*
+                  - efs:Describe*
+                  - eks:Describe*
+                  - eks:List*
+                  - elasticache:Describe*
+                  - elasticache:List*
+                  - elasticloadbalancing:Describe*
+                  - elasticfilesystem:List*
+                  - elasticfilesystem:Get*
+                  - elasticfilesystem:Describe*
+                  - elasticmapreduce:Describe*
+                  - elasticmapreduce:Get*
+                  - elasticmapreduce:List*
+                  - elasticmapreduce:ViewEventsFromAllClustersInConsole
+                  - emr-containers:Describe*
+                  - emr-containers:List*
+                  - emr-serverless:Get*
+                  - emr-serverless:List*
+                  - es:Describe*
+                  - es:Get*
+                  - es:List*
+                  - fsx:DescribeFileSystems
+                  - guardduty:ListDetectors
+                  - iam:Generate*
+                  - iam:Get*
+                  - iam:List*
+                  - iam:Simulate*
+                  - imagebuilder:Get*
+                  - imagebuilder:List*
+                  - kms:Describe*
+                  - kms:Get*
+                  - kms:List*
+                  - lambda:Get*
+                  - lambda:List*
+                  - network-firewall:Describe*
+                  - network-firewall:List*
+                  - organizations:Describe*
+                  - organizations:List*
+                  - opensearch:Describe*
+                  - rds:Describe*
+                  - redshift:Describe*
+                  - redshift:List*
+                  - redshift:ViewQueries*
+                  - rolesanywhere:Get*
+                  - rolesanywhere:list*
+                  - route53:Get*
+                  - route53:List*
+                  - route53:TestDNSAnswer
+                  - route53domains:CheckDomain*
+                  - route53domains:Get*
+                  - route53domains:List*
+                  - route53domains:ViewBilling
+                  - s3:Describe*
+                  - s3:List*
+                  - s3:Get*
+                  - securityhub:Describe*
+                  - servicequotas:Get*
+                  - servicequotas:List*
+                  - ses:Describe*
+                  - ses:Get*
+                  - ses:List*
+                  - sqs:Get*
+                  - sqs:List*
+                  - ssm:Describe*
+                  - ssm:Get*
+                  - ssm:List*
+                  - sts:Get*
+                  - tag:Get*
+                  - waf-regional:Get*
+                  - waf-regional:List*
+                  - waf:Get*
+                  - waf:List*
+                  - wafv2:Describe*
+                  - wafv2:Get*
+                  - wafv2:List*,
