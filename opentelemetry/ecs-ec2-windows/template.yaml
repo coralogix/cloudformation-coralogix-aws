@@ -55,8 +55,18 @@ Parameters:
     Description: Health check start period (seconds). Only used if HealthCheckEnabled is true
     Default: "60"
 
+  TaskRoleArn:
+    Type: String
+    Default: ""
+    Description: |
+      Optional ARN of the task role (IAM role) that the container can assume.
+      If not provided, the task will run without a task role (null).
+      This is separate from the execution role which is used by ECS to pull images and retrieve secrets.
+    AllowedPattern: "^$|^arn:aws:iam::[0-9]{12}:role/.*$"
+
 Conditions:
   EnableHealthCheck: !Equals [!Ref HealthCheckEnabled, "true"]
+  UseCustomTaskRole: !Not [!Equals [!Ref TaskRoleArn, ""]]
 
 Mappings:
   CoralogixRegionMap:
@@ -133,7 +143,10 @@ Resources:
       Cpu: "1024"
       Memory: "2048"
       ExecutionRoleArn: !GetAtt ECSTaskExecutionRole.Arn
-      TaskRoleArn: !GetAtt ECSTaskExecutionRole.Arn
+      TaskRoleArn: !If
+        - UseCustomTaskRole
+        - !Ref TaskRoleArn
+        - !Ref AWS::NoValue
       NetworkMode: bridge
 
       
@@ -153,7 +166,7 @@ Resources:
             - Name: "CORALOGIX_DOMAIN"
               Value: !FindInMap [CoralogixRegionMap, !Ref CoralogixRegion, Domain]
             
-            - Name: "PRIVATE_KEY"
+            - Name: "CORALOGIX_PRIVATE_KEY"
               Value: !Ref PrivateKey
 
             - Name: "ApplicationName"
@@ -202,7 +215,7 @@ Resources:
                     verbosity: detailed
                   coralogix:
                     domain: "${CORALOGIX_DOMAIN}"
-                    private_key: "${PRIVATE_KEY}"
+                    private_key: "${CORALOGIX_PRIVATE_KEY}"
                     application_name: "otel-collector-windows"
                     subsystem_name: "ecs"
                     application_name_attributes:
