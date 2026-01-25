@@ -35,6 +35,11 @@ Metadata:
           - HealthCheckTimeout
           - HealthCheckRetries
           - HealthCheckStartPeriod
+      
+      - Label:
+          default: "IAM Role Configuration"
+        Parameters:
+          - TaskRoleArn
     
     ParameterLabels:
       S3ConfigBucket:
@@ -64,6 +69,8 @@ Metadata:
         default: "Health Check Retries"
       HealthCheckStartPeriod:
         default: "Health Check Start Period (seconds)"
+      TaskRoleArn:
+        default: "Task Role ARN (optional)"
 
 Parameters:
   S3ConfigBucket:
@@ -156,9 +163,19 @@ Parameters:
     Description: Health check start period (seconds). Only used if HealthCheckEnabled is true
     Default: "10"
 
+  TaskRoleArn:
+    Type: String
+    Description: |
+      Optional ARN of the task role (IAM role) that the container can assume.
+      If not provided, a minimal task role with S3 read permissions will be auto-created.
+      This is separate from the execution role which is used by ECS to pull images and retrieve secrets.
+    Default: ""
+
 Conditions:
   UseImage: !Not [!Equals [!Ref Image, "none"]]
   EnableHealthCheck: !Equals [!Ref HealthCheckEnabled, "true"]
+  UseCustomTaskRole: !Not [!Equals [!Ref TaskRoleArn, ""]]
+  CreateTaskRole: !Equals [!Ref TaskRoleArn, ""]
 
 
 
@@ -191,7 +208,10 @@ Resources:
     Type: AWS::ECS::TaskDefinition
     Properties:
       ExecutionRoleArn: !Ref OtelTaskExecutionRole
-      TaskRoleArn: !Ref OtelTaskExecutionRole
+      TaskRoleArn: !If
+        - UseCustomTaskRole
+        - !Ref TaskRoleArn
+        - !Ref OtelTaskRole
       Family: opentelemetry
       RequiresCompatibilities:
         - EC2
@@ -266,7 +286,7 @@ Resources:
             - Name: CORALOGIX_PRIVATE_KEY
               Value: !Ref CoralogixApiKey
 
-  # IAM Role for S3 access
+  # IAM Role for task execution (ECS infrastructure operations)
   OtelTaskExecutionRole:
     Type: AWS::IAM::Role
     Properties:
@@ -294,6 +314,31 @@ Resources:
                 Action:
                   - s3:ListBucket
                 Resource: !Sub "arn:aws:s3:::${S3ConfigBucket}"
+
+  # IAM Role for task runtime (container operations - minimal permissions)
+  # Only created if no custom task role is provided
+  OtelTaskRole:
+    Type: AWS::IAM::Role
+    Condition: CreateTaskRole
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-otel-task-role"
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: S3ReadAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:GetObjectVersion
+                Resource: !Sub "arn:aws:s3:::${S3ConfigBucket}/*"
 
   ECSService:
     Type: 'AWS::ECS::Service'
