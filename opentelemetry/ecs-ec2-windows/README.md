@@ -21,6 +21,7 @@ This template section provides an example template for deploying the Open Teleme
 | ApplicationName | You application name                                                                                                                                                                                                                 |                                                                              | :heavy_check_mark: |
 | SubsystemName   | You Subsystem name                                                                                                                                                                                                                   | AWS Account ID                                                               | :heavy_check_mark: |
 | PrivateKey      | Your Coralogix Private Key                                                                                                                                                                                                           |                                                                              | :heavy_check_mark: |
+| TaskRoleArn     | Optional ARN of the task role (IAM role) that the container can assume. If not provided, the task will run without a task role (null). This is separate from the execution role which is used by ECS to pull images and retrieve secrets. | "" | |
 | HealthCheckEnabled     | Enable ECS container health check for the OTEL agent container. | false | |
 | HealthCheckInterval    | Health check interval (seconds)             | 30      |          |
 | HealthCheckTimeout     | Health check timeout (seconds)              | 5       |          |
@@ -28,6 +29,15 @@ This template section provides an example template for deploying the Open Teleme
 | HealthCheckStartPeriod | Health check start period (seconds)         | 60      |          |
 
 
+
+### IAM Role Management
+
+This template separates execution and task IAM roles for security:
+
+- **Execution Role** (`ECSTaskExecutionRole`): Used by the ECS agent for infrastructure operations (pulling images, sending logs, retrieving secrets). This role has broader permissions needed for ECS operations.
+- **Task Role** (`TaskRoleArn`): Optional IAM role used by the container at runtime. If not provided, the task runs without a task role (null). This follows the principle of least privilege - the container doesn't need AWS permissions for this deployment since it only sends metrics to Coralogix.
+
+**Note:** Since this template doesn't require AWS service access at runtime (no S3 config, no CloudMap discovery), the task role can be omitted. If you need to add AWS permissions for your specific use case, provide a custom `TaskRoleArn` with minimal required permissions.
 
 ### How it works
 
@@ -66,6 +76,7 @@ aws cloudformation deploy --template-file template.yaml --stack-name <stack_name
         AppImage=<your-app-image> \
         OtelImage=<otel-image> \
         PrivateKey=<your-private-key> \
+        TaskRoleArn=<optional-task-role-arn> \
         ApplicationName=<application name> \
         SubsystemName=<subsystem name> \
         CoralogixRegion=<coralogix-region> \

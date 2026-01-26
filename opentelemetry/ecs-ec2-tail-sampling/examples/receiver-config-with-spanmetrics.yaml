@@ -40,7 +40,7 @@ exporters:
         port: 4317
   coralogix:
     domain: "${CORALOGIX_DOMAIN}"
-    private_key: "${PRIVATE_KEY}"
+    private_key: "${CORALOGIX_PRIVATE_KEY}"
     application_name: "${APP_NAME}"
     subsystem_name: "${SUB_SYS}"
     application_name_attributes:

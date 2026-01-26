@@ -4,6 +4,10 @@
 <!-- To add a new entry write: -->
 <!-- ### version / full date -->
 <!-- * [Update/Bug fix] message that describes the changes that you apply -->
+### 1.1.0 / 2026-01-25
+* [Security] Added TaskRoleArn parameter to separate execution and task IAM roles, following principle of least privilege
+* [Update] Standardized to use CORALOGIX_PRIVATE_KEY environment variable instead of PRIVATE_KEY
+
 ### 1.0.3 / 2025-05-20
 - Added healthcheck to ECS task.
 

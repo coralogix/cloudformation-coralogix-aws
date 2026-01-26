@@ -136,9 +136,20 @@ Parameters:
       Leave empty to create new roles.
     AllowedPattern: "^$|^arn:aws:iam::[0-9]{12}:role/.*$"
 
+  TaskRoleArn:
+    Type: String
+    Default: ""
+    Description: |
+      Optional ARN of the task role (IAM role) that the container can assume.
+      If not provided, a minimal task role with S3 read permissions will be auto-created.
+      This is separate from the execution role which is used by ECS to pull images and retrieve secrets.
+    AllowedPattern: "^$|^arn:aws:iam::[0-9]{12}:role/.*$"
+
 Conditions:
   UseImage: !Not [!Equals [!Ref Image, "none"]]
   UseExternalRole: !Equals [!Ref TaskExecutionRoleArn, ""]
+  UseCustomTaskRole: !Not [!Equals [!Ref TaskRoleArn, ""]]
+  CreateTaskRole: !Equals [!Ref TaskRoleArn, ""]
 
 Mappings:
   CoralogixRegionMap:
@@ -173,9 +184,9 @@ Resources:
         - !Ref OtelTaskExecutionRole
         - !Ref TaskExecutionRoleArn
       TaskRoleArn: !If
-        - UseExternalRole
-        - !Ref OtelTaskExecutionRole
-        - !Ref TaskExecutionRoleArn
+        - UseCustomTaskRole
+        - !Ref TaskRoleArn
+        - !Ref OtelTaskRole
       Family: opentelemetry-daemon
       RequiresCompatibilities:
         - EC2
@@ -237,8 +248,7 @@ Resources:
           Environment:
             - Name: CORALOGIX_DOMAIN
               Value: !FindInMap [CoralogixRegionMap, !Ref CoralogixRegion, Domain]
-           
-            - Name: PRIVATE_KEY
+            - Name: CORALOGIX_PRIVATE_KEY
               Value: !Ref CoralogixApiKey
 
             - Name: APP_NAME
@@ -262,6 +272,42 @@ Resources:
             Action: sts:AssumeRole
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+      Policies:
+        - PolicyName: S3ReadAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:GetObjectVersion
+                Resource: !Sub "arn:aws:s3:::${S3ConfigBucket}/*"
+        - PolicyName: CloudMapDiscovery
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - servicediscovery:DiscoverInstances
+                  - servicediscovery:ListInstances
+                  - servicediscovery:ListServices
+                  - servicediscovery:ListNamespaces
+                Resource: "*"
+
+  # IAM Role for task runtime (container operations - minimal permissions)
+  # Only created if no custom task role is provided
+  OtelTaskRole:
+    Type: AWS::IAM::Role
+    Condition: CreateTaskRole
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-otel-task-role"
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
       Policies:
         - PolicyName: S3ReadAccess
           PolicyDocument:
