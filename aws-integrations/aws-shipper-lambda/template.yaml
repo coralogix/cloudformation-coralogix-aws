@@ -24,7 +24,7 @@ Metadata:
       - kinesis
       - cloudfront
     HomePageUrl: https://coralogix.com
-    SemanticVersion: 1.3.15
+    SemanticVersion: 1.4.0
     SourceCodeUrl: https://github.com/coralogix/coralogix-aws-shipper
   AWS::CloudFormation::Interface:
     ParameterGroups:
@@ -157,6 +157,16 @@ Parameters:
     Type: String
     Description: |
       Add custom metadata to the log message. Expects comma separated values. Options are key1=value1,key2=value2
+    Default: ''
+  StarlarkScript:
+    Type: String
+    Description: |
+      Starlark transformation script. Auto-detects the source type:
+      - Raw script: Multi-line Starlark code (e.g., def transform(event):\n    return [event])
+      - S3 path: s3://bucket/key/transform.star
+      - HTTP/HTTPS URL: https://example.com/transform.star
+      - Base64 encoded: Single-line base64-encoded script
+      Must define a transform(event) function.
     Default: ''
   BlockingPattern:
     Type: String
@@ -501,6 +511,10 @@ Conditions:
   # TelemetryModeIsLogs: !Equals [!Ref TelemetryMode, logs]
   TelemetryModeIsMetrics: !Equals [!Ref TelemetryMode, metrics]
   EnableLogGroupTagsIsTrue: !Equals [!Ref EnableLogGroupTags, 'true']
+  StarlarkScriptIsSet: !Not [!Equals [!Ref StarlarkScript, '']]
+  StarlarkScriptIsS3: !And
+    - !Not [!Equals [!Ref StarlarkScript, '']]
+    - !Not [!Equals [!Select [0, !Split ["s3://", !Ref StarlarkScript]], !Ref StarlarkScript]]
   CpuArchIsx8664:
     Fn::Equals:
       - Ref: CpuArch
@@ -655,6 +669,15 @@ Resources:
               Action:
                 - 's3:GetObject'
               Resource: arn:aws:s3:::*
+            - !Ref AWS::NoValue
+          - !If
+            # S3 Policy for Starlark Script (only when STARLARK_SCRIPT starts with s3://)
+            # Note: Grants access to all S3 buckets. Users can restrict this manually if needed.
+            - StarlarkScriptIsS3
+            - Effect: Allow
+              Action:
+                - 's3:GetObject'
+              Resource: 'arn:aws:s3:::*/*'
             - !Ref AWS::NoValue
           - !If
             # KMS Policy for S3 bucket encryption
@@ -896,6 +919,7 @@ Resources:
           METRICS_BATCH_MAX_SIZE: !Ref MetricsBatchMaxSize
           ENABLE_LOG_GROUP_TAGS: !Ref EnableLogGroupTags
           LOG_GROUP_TAGS_CACHE_TTL_SECONDS: !Ref LogGroupTagsCacheTTLSeconds
+          STARLARK_SCRIPT: !If [StarlarkScriptIsSet, !Ref StarlarkScript, !Ref 'AWS::NoValue']
   SNSNotificationSubscription:
     DependsOn: CustomResourceFunction
     Type: AWS::SNS::Subscription
