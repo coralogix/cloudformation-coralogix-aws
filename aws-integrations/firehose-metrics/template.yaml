@@ -228,7 +228,7 @@ Resources:
         S3Key: firehose-metrics-transformer.zip
       FunctionName: !Sub '${AWS::StackName}-metrics-transform'
       Handler: bootstrap
-      Runtime: provided.al2
+      Runtime: provided.al2023
       Architectures: 
       - arm64
       Role: !GetAtt LambdaProcessorRole.Arn

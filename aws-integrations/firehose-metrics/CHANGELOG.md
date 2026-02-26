@@ -5,6 +5,9 @@
 <!-- ### version / full date -->
 <!-- * [Update/Bug fix] message that describes the changes that you apply -->
 
+### 0.0.11 / 26 Feb 2026
+* [Update] Change Lambda runtime from `provided.al2` to `provided.al2023` in firehose metrics template to align with AWS deprecation timeline.
+
 ### 0.0.10 / 20 Nov 2025
 * [Update] Migrate Lambda ZIP Package to the common serverless repo `coralogix-serverless-repo`
 
