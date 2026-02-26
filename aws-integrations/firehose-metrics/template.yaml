@@ -120,7 +120,7 @@ Parameters:
     Default: '/tmp'
 
 Metadata:
-  SemanticVersion: 0.0.10
+a  SemanticVersion: 0.0.11
   AWS::CloudFormation::Interface: 
     ParameterGroups: 
       - Label: 
