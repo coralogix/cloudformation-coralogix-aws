@@ -30,6 +30,11 @@ For a more detailed description of the settigns and architecture of this AWS Kin
 | AddtionalStatisticsConfigurations | A json list of additional statistics to include to the metric stream following [MetricStream StatisticsConfiguration](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-cloudwatch-metricstream-metricstreamstatisticsconfiguration.html). <br>JSON stringify the input to avoid format errors. | "p50","p75","p95","p99" of the following <br>- AWS/EBS:[VolumeTotalReadTime,VolumeTotalWriteTime]<br>- AWS/ELB:[Latency,Duration], <br>- AWS/Lambda:[PostRuntimeExtensionsDuration]<br>- AWS/S3:[FirstByteLatency,TotalRequestLatency] | |
 | EnableMetricsTagsProcessors | Enable the lambda metrics tags processor function. Set to false to remove the processor | true | |
 | IncludeLinkedAccountsMetrics | Enable cross-account observability to include metrics from linked source accounts (requires CloudWatch OAM setup between monitoring and source accounts) | false | |
+| CrossAccountEnabled | Enable Lambda cross-account tag enrichment. When true, Lambda assumes per-account roles from `CrossAccountRoles`. | false | |
+| CrossAccountRoles | JSON map of source account IDs to role ARNs used for tag enrichment. Example: `{"597078901540":"arn:aws:iam::597078901540:role/CoralogixMetricsReader"}` | {} | |
+| FileCacheEnabled | Enable local file cache for resource discovery in Lambda. | true | |
+| FileCacheExpiration | Cache expiration in Go duration format (for example `1h`, `30m`). | 1h | |
+| FileCachePath | Existing directory path for Lambda cache files. Use `/tmp` in Lambda. | /tmp | |
 
 ## Optional Parameters
 | Parameter | Description | Default Value | Required |
@@ -37,6 +42,10 @@ For a more detailed description of the settigns and architecture of this AWS Kin
 | CloudwatchRetentionDays | Days of retention in Cloudwatch retention days | 1 | |
 
 ## Notes:
+
+* For cross-account enrichment, each linked account role (for example `CoralogixMetricsReader`) must trust the monitoring account Lambda role and allow `sts:AssumeRole`:
+  - Principal: `arn:aws:iam::<monitoring-account-id>:role/<stack-name>-lambda`
+  - Action: `sts:AssumeRole`
 
 * `LambdaMetricsTagsProcessors` lambda function code is deployed to the following s3 regions: [ _us-east-1 us-east-2 us-west-1 us-west-2 ap-south-1 ap-northeast-2 ap-southeast-1 ap-southeast-2 ap-northeast-1 ca-central-1 eu-central-1 eu-west-1 eu-west-2 eu-west-3 eu-north-1 eu-south-1 sa-east-1_ ]. If you are using a different region, please contact Coralogix support.
 
