@@ -1,5 +1,20 @@
 # Changelog
 
+## v1.4.2 / 2026-02-24
+### 🧰 Bug fixes 🧰
+- Fixed issue when deploying CloudWatch integration where `PutSubscriptionFilter` would fail because the Lambda invoke permission was not created for log groups not covered by a prefix-based permission. Permissions are now added individually for uncovered log groups and propagation delay increased from 1s to 15s.
+
+### 💡 Enhancements 💡
+- Added `Outputs` section to SAR template exposing `LambdaArn` for programmatic consumption
+
+## v1.4.1 / 2026-02-23
+### 🧰 Bug fixes 🧰
+- Replaced custom `print()` Starlark helper with Starlark's native `LibraryExtension::Print`. The `print()` built-in now writes directly to stderr, which is captured by Lambda and visible in CloudWatch Logs without requiring `LogLevel=DEBUG`.
+
+## v1.4.0 / 2026-02-11
+### 💡 Enhancements 💡
+- Add Starlark scripting support for log transformation. Users can define a `transform(event)` function in a Starlark script to unnest, filter, enrich, or modify logs before shipping. Scripts can be loaded from S3, HTTP/HTTPS URLs, base64-encoded strings, or inline. Includes built-in `parse_json`, `to_json`, and `print` helpers. Fail-open behavior ensures original logs are preserved on transform errors and on script resolution/compilation failures (transient S3/HTTP issues, IAM, or invalid script).
+
 ## v1.3.15 / 2026-02-09
 ### 💡 Enhancements 💡
 - Update Rust dependencies and lockfile to address security advisories.
