@@ -104,8 +104,22 @@ Parameters:
     Description: JSON map of linked account IDs to IAM role ARNs used for cross-account tag enrichment.
     Default: '{}'
 
+Rules:
+  CrossAccountRolesRequiresEnabled:
+    Assertions:
+      - Assert: !Or
+          - !Equals [!Ref CrossAccountRoles, '{}']
+          - !Equals [!Ref CrossAccountEnabled, 'true']
+        AssertDescription: CrossAccountRoles can only be set when CrossAccountEnabled is true.
+  CrossAccountEnabledRequiresRoles:
+    Assertions:
+      - Assert: !Or
+          - !Equals [!Ref CrossAccountEnabled, 'false']
+          - !Not [!Equals [!Ref CrossAccountRoles, '{}']]
+        AssertDescription: CrossAccountRoles must be set when CrossAccountEnabled is true.
+
 Metadata:
-a  SemanticVersion: 0.0.11
+  SemanticVersion: 0.0.11
   AWS::CloudFormation::Interface: 
     ParameterGroups: 
       - Label: 
