@@ -5,7 +5,7 @@
 <!-- ### version / full date -->
 <!-- * [Update/Bug fix] message that describes the changes that you apply -->
 
-### 0.0.12 / Feb 27 2026 
+### 0.0.12 / 27 Feb 2026 
 * [Feature] Add cross-account tag enrichment support. New `CrossAccountEnabled` and `CrossAccountRoles` parameters allow the Lambda processor to assume roles in linked accounts and enrich metrics with resource tags via AWS OAM.
 
 ### 0.0.11 / 26 Feb 2026
