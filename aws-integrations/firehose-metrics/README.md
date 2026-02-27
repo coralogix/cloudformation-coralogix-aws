@@ -31,10 +31,7 @@ For a more detailed description of the settigns and architecture of this AWS Kin
 | EnableMetricsTagsProcessors | Enable the lambda metrics tags processor function. Set to false to remove the processor | true | |
 | IncludeLinkedAccountsMetrics | Enable cross-account observability to include metrics from linked source accounts (requires CloudWatch OAM setup between monitoring and source accounts) | false | |
 | CrossAccountEnabled | Enable Lambda cross-account tag enrichment. When true, Lambda assumes per-account roles from `CrossAccountRoles`. | false | |
-| CrossAccountRoles | JSON map of source account IDs to role ARNs used for tag enrichment. Example: `{"597078901540":"arn:aws:iam::597078901540:role/CoralogixMetricsReader"}` | {} | |
-| FileCacheEnabled | Enable local file cache for resource discovery in Lambda. | true | |
-| FileCacheExpiration | Cache expiration in Go duration format (for example `1h`, `30m`). | 1h | |
-| FileCachePath | Existing directory path for Lambda cache files. Use `/tmp` in Lambda. | /tmp | |
+| CrossAccountRoles | JSON map of source account IDs to role ARNs used for tag enrichment. Example: `{"123456789123":"arn:aws:iam::123456789123:role/CoralogixMetricsReader"}` | {} | |
 
 ## Optional Parameters
 | Parameter | Description | Default Value | Required |
