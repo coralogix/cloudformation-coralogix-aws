@@ -92,6 +92,31 @@ Parameters:
     AllowedValues:
       - 'true'
       - 'false'
+  CrossAccountEnabled:
+    Type: String
+    Description: Enable cross-account tag enrichment in the Lambda processor.
+    Default: 'false'
+    AllowedValues:
+      - 'true'
+      - 'false'
+  CrossAccountRoles:
+    Type: String
+    Description: JSON map of linked account IDs to IAM role ARNs used for cross-account tag enrichment.
+    Default: '{}'
+
+Rules:
+  CrossAccountRolesRequiresEnabled:
+    Assertions:
+      - Assert: !Or
+          - !Equals [!Ref CrossAccountRoles, '{}']
+          - !Equals [!Ref CrossAccountEnabled, 'true']
+        AssertDescription: CrossAccountRoles can only be set when CrossAccountEnabled is true.
+  CrossAccountEnabledRequiresRoles:
+    Assertions:
+      - Assert: !Or
+          - !Equals [!Ref CrossAccountEnabled, 'false']
+          - !Not [!Equals [!Ref CrossAccountRoles, '{}']]
+        AssertDescription: CrossAccountRoles must be set when CrossAccountEnabled is true.
 
 Metadata:
   SemanticVersion: 0.0.11
@@ -120,6 +145,8 @@ Metadata:
           - AddtionalStatisticsConfigurations
           - EnableMetricsTagsProcessors
           - IncludeLinkedAccountsMetrics
+          - CrossAccountEnabled
+          - CrossAccountRoles
           
 Mappings:
   CoralogixRegionMap:
@@ -146,6 +173,7 @@ Conditions:
   IsCustomDomain: !Equals [ !Ref CoralogixRegion, "Custom"]
   IsAdditionalStatisticsEnabled: !Not [!Equals [ !Ref EnableAddtionalStatistics, "false" ]]
   IsMetricsTagLambdaProcessorEnabled: !Equals [ !Ref EnableMetricsTagsProcessors, "true" ]
+  IsCrossAccountEnabled: !Equals [ !Ref CrossAccountEnabled, "true" ]
 
 Resources:
   BackupDataBucket:
@@ -210,6 +238,14 @@ Resources:
           - storagegateway:ListTagsForResource
           Resource:
           - '*'
+        - !If
+          - IsCrossAccountEnabled
+          - Effect: Allow
+            Action:
+            - sts:AssumeRole
+            Resource:
+            - '*'
+          - !Ref 'AWS::NoValue'
         - Effect: Allow
           Action:
           - logs:CreateLogGroup
@@ -236,6 +272,8 @@ Resources:
       MemorySize: 512
       Environment:
         Variables:
+          CROSS_ACCOUNT_ENABLED: !Ref CrossAccountEnabled
+          CROSS_ACCOUNT_ROLES: !Ref CrossAccountRoles
           FILE_CACHE_PATH: "/tmp"
   FirehoseMetricsRole:
     Type: AWS::IAM::Role
