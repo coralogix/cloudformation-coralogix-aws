@@ -1,0 +1,28 @@
+server:
+  endpoint: "https://ingress.${env:CORALOGIX_DOMAIN}/opamp/v1"
+  headers:
+    Authorization: "Bearer ${env:CORALOGIX_PRIVATE_KEY}"
+  tls:
+    insecure_skip_verify: false
+
+capabilities:
+  reports_effective_config: true
+  reports_own_metrics: true
+  reports_own_logs: true
+  reports_own_traces: true
+  reports_health: true
+  accepts_remote_config: true
+  reports_remote_config: true
+
+agent:
+  executable: /cdot
+  passthrough_logs: true
+  config_files:
+    - /otel-config/collector-config.yaml
+
+storage:
+  directory: /etc/otelcol-contrib/supervisor-data/
+
+telemetry:
+  logs:
+    level: info
