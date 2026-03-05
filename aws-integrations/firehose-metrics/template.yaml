@@ -119,7 +119,7 @@ Rules:
         AssertDescription: CrossAccountRoles must be set when CrossAccountEnabled is true.
 
 Metadata:
-  SemanticVersion: 0.0.12
+  SemanticVersion: 0.0.13
   AWS::CloudFormation::Interface: 
     ParameterGroups: 
       - Label: 
@@ -244,7 +244,7 @@ Resources:
             Action:
             - sts:AssumeRole
             Resource:
-            - '*'
+            - 'arn:aws:iam::*:role/*'
           - !Ref 'AWS::NoValue'
         - Effect: Allow
           Action:
