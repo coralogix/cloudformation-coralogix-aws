@@ -4,6 +4,12 @@
 <!-- To add a new entry write: -->
 <!-- ### version / full date -->
 <!-- * [Update/Bug fix] message that describes the changes that you apply -->
+
+### 1.0.0 / 11 Mar 2026
+### 🛑 Breaking changes 🛑
+* [FEAT] Transition from Parameter Store to S3 configuration
+* [UPDATE] Updated example CF to match new S3 configuration
+
 ### 0.0.11 / 09 Oct 2025
 * [FIX] Changed telemetry.metrics to new syntax
 * [UPDATE] DB spanmetric added to the config
