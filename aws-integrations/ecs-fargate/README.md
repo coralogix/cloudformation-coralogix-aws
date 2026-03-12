@@ -39,5 +39,7 @@ aws cloudformation deploy --template-file ecs-fargate-cf.yaml \
     --capabilities "CAPABILITY_NAMED_IAM" \
     --parameter-overrides \
         CoralogixApiKey=<your-private-key> \
-        CoralogixRegion=<coralogix-region>
+        CoralogixRegion=<coralogix-region> \
+        S3ConfigBucket=<example-s3-bucket> \
+        S3ConfigKey=<example-s3-config-object>
 ```
