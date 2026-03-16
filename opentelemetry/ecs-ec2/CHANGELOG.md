@@ -5,6 +5,12 @@
 <!-- ### version / full date -->
 <!-- * [Update/Bug fix] message that describes the changes that you apply -->
 
+### 1.0.8 / 2026-03-16
+- [Update] Added conditional profiling deployment using `ProfilingEnabled` with separate profiling task/service resources.
+- [Update] Added profiling-specific parameters: `ProfilingS3ConfigBucket`, `ProfilingS3ConfigKey`, and `ProfilingMemory`.
+- [Update] Added profiling task startup command and mounts for `debugfs`/`tracefs` with `service.profilesSupport` enabled.
+- [Update] Extended IAM S3 read permissions (`GetObject`, `GetObjectVersion`, `ListBucket`) to support both config and profiling S3 buckets.
+
 ### 1.0.7 / 2025-10-09
 - [Update] Split template into two versions: `template.yaml` (S3-only for UI integration) and `template-legacy.yaml` (full-featured for direct deployment)
 - [Update] Changed environment variable from `PRIVATE_KEY` to `CORALOGIX_PRIVATE_KEY` for consistency
