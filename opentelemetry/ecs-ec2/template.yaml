@@ -20,6 +20,15 @@ Metadata:
         Parameters:
           - S3ConfigBucket
           - S3ConfigKey
+
+          - ProfilingS3ConfigBucket
+          - ProfilingS3ConfigKey
+
+      - Label:
+          default: "Profiling Configuration"
+        Parameters:
+          - ProfilingEnabled
+          - ProfilingMemory
       
       - Label:
           default: "Container Configuration"
@@ -46,6 +55,14 @@ Metadata:
         default: "S3 Bucket Name"
       S3ConfigKey:
         default: "S3 Object Key (file path)"
+      ProfilingS3ConfigBucket:
+        default: "Profiling S3 Bucket Name"
+      ProfilingS3ConfigKey:
+        default: "Profiling S3 Object Key (file path)"
+      ProfilingEnabled:
+        default: "Enable Profiling Collector"
+      ProfilingMemory:
+        default: "Profiling Memory (MiB)"
 
       ClusterName:
         default: "ECS Cluster Name"
@@ -89,6 +106,20 @@ Parameters:
     AllowedPattern: ".+"
     ConstraintDescription: "S3 object key is required."
 
+  ProfilingS3ConfigBucket:
+    Type: String
+    Description: |
+      S3 bucket name containing the profiling configuration file.
+      Used only when ProfilingEnabled is true.
+    Default: ""
+
+  ProfilingS3ConfigKey:
+    Type: String
+    Description: |
+      S3 object key (file path) for the profiling configuration file.
+      Used only when ProfilingEnabled is true.
+    Default: ""
+
   ClusterName:
     Description: |
       Name of the ECS Cluster onto which to deploy the OTEL Daemon Service.
@@ -117,6 +148,18 @@ Parameters:
       Note that you cluster must have sufficient memory available to support the given value.
     Type: Number
     Default: "2048"
+
+  ProfilingMemory:
+    Description: |
+      The amount of memory (in MiB) used by the profiling task.
+    Type: Number
+    Default: "512"
+
+  ProfilingEnabled:
+    Type: String
+    Description: Enable separate profiling collector service.
+    AllowedValues: ["true", "false"]
+    Default: "false"
 
   CoralogixRegion:
       Type: String
@@ -176,6 +219,7 @@ Conditions:
   EnableHealthCheck: !Equals [!Ref HealthCheckEnabled, "true"]
   UseCustomTaskRole: !Not [!Equals [!Ref TaskRoleArn, ""]]
   CreateTaskRole: !Equals [!Ref TaskRoleArn, ""]
+  EnableProfiling: !Equals [!Ref ProfilingEnabled, "true"]
 
 
 
@@ -309,11 +353,15 @@ Resources:
                 Action:
                   - s3:GetObject
                   - s3:GetObjectVersion
-                Resource: !Sub "arn:aws:s3:::${S3ConfigBucket}/*"
+                Resource:
+                  - !Sub "arn:aws:s3:::${S3ConfigBucket}/*"
+                  - !Sub "arn:aws:s3:::${ProfilingS3ConfigBucket}/*"
               - Effect: Allow
                 Action:
                   - s3:ListBucket
-                Resource: !Sub "arn:aws:s3:::${S3ConfigBucket}"
+                Resource:
+                  - !Sub "arn:aws:s3:::${S3ConfigBucket}"
+                  - !Sub "arn:aws:s3:::${ProfilingS3ConfigBucket}"
 
   # IAM Role for task runtime (container operations - minimal permissions)
   # Only created if no custom task role is provided
@@ -338,7 +386,15 @@ Resources:
                 Action:
                   - s3:GetObject
                   - s3:GetObjectVersion
-                Resource: !Sub "arn:aws:s3:::${S3ConfigBucket}/*"
+                Resource:
+                  - !Sub "arn:aws:s3:::${S3ConfigBucket}/*"
+                  - !Sub "arn:aws:s3:::${ProfilingS3ConfigBucket}/*"
+              - Effect: Allow
+                Action:
+                  - s3:ListBucket
+                Resource:
+                  - !Sub "arn:aws:s3:::${S3ConfigBucket}"
+                  - !Sub "arn:aws:s3:::${ProfilingS3ConfigBucket}"
 
   ECSService:
     Type: 'AWS::ECS::Service'
@@ -363,4 +419,110 @@ Resources:
         - Key: 'ecs:service:stackId'
           Value: !Ref 'AWS::StackId'
       EnableECSManagedTags: true
-      TaskDefinition: !Ref OtelTaskDefinition 
+      TaskDefinition: !Ref OtelTaskDefinition
+
+  ProfilingTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Condition: EnableProfiling
+    Properties:
+      ExecutionRoleArn: !Ref OtelTaskExecutionRole
+      TaskRoleArn: !If
+        - UseCustomTaskRole
+        - !Ref TaskRoleArn
+        - !Ref OtelTaskRole
+      Family: opentelemetry-profiling
+      RequiresCompatibilities:
+        - EC2
+      NetworkMode: bridge
+      Volumes:
+        - Name: hostfs
+          Host:
+            SourcePath: "/var/lib/docker/"
+
+        - Name: docker-socket
+          Host:
+            SourcePath: /var/run/docker.sock
+
+        - Name: tracefs
+          Host:
+            SourcePath: /sys/kernel/tracing
+
+        - Name: debugfs
+          Host:
+            SourcePath: /sys/kernel/debug
+
+      ContainerDefinitions:
+        - Name: coralogix-otel-profiling-agent
+          Cpu: 0
+          Memory: !Ref ProfilingMemory
+          EntryPoint:
+            - sh
+            - -c
+          Command:
+            - !Sub "mkdir -p /sys/kernel/debug /sys/kernel/tracing && mount -t debugfs debugfs /sys/kernel/debug 2>/dev/null || true; mount -t tracefs tracefs /sys/kernel/tracing 2>/dev/null || true; exec /cdot --feature-gates=service.profilesSupport --config s3://${ProfilingS3ConfigBucket}.s3.${AWS::Region}.amazonaws.com/${ProfilingS3ConfigKey}"
+          Image: !If
+            - UseImage
+            - !Ref Image
+            - !Sub "coralogixrepo/coralogix-otel-collector:${CDOTImageVersion}"
+
+          Essential: true
+          HealthCheck: !If
+            - EnableHealthCheck
+            - Command:
+                - "/healthcheck"
+              Interval: !Ref HealthCheckInterval
+              Timeout: !Ref HealthCheckTimeout
+              Retries: !Ref HealthCheckRetries
+              StartPeriod: !Ref HealthCheckStartPeriod
+            - !Ref AWS::NoValue
+
+          Privileged: true
+
+          MountPoints:
+            - SourceVolume: hostfs
+              ContainerPath: "/hostfs/var/lib/docker"
+              ReadOnly: True
+
+            - SourceVolume: docker-socket
+              ContainerPath: /var/run/docker.sock
+
+            - SourceVolume: tracefs
+              ContainerPath: /sys/kernel/tracing
+              ReadOnly: True
+
+            - SourceVolume: debugfs
+              ContainerPath: /sys/kernel/debug
+              ReadOnly: True
+
+          Environment:
+            - Name: CORALOGIX_DOMAIN
+              Value: !FindInMap [CoralogixRegionMap, !Ref CoralogixRegion, Domain]
+
+            - Name: CORALOGIX_PRIVATE_KEY
+              Value: !Ref CoralogixApiKey
+
+  ProfilingECSService:
+    Type: 'AWS::ECS::Service'
+    Condition: EnableProfiling
+    Properties:
+      Cluster: !Ref ClusterName
+      LaunchType: EC2
+      ServiceName: coralogix-otel-profiling-agent
+      SchedulingStrategy: DAEMON
+      DeploymentConfiguration:
+        MaximumPercent: 100
+        MinimumHealthyPercent: 0
+        DeploymentCircuitBreaker:
+          Enable: true
+          Rollback: true
+      DeploymentController:
+        Type: ECS
+      ServiceConnectConfiguration:
+        Enabled: false
+      PlacementStrategies: []
+      PlacementConstraints: []
+      Tags:
+        - Key: 'ecs:service:stackId'
+          Value: !Ref 'AWS::StackId'
+      EnableECSManagedTags: true
+      TaskDefinition: !Ref ProfilingTaskDefinition
