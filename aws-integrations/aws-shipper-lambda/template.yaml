@@ -82,6 +82,7 @@ Metadata:
         Parameters:
           - NotificationEmail
           - BlockingPattern
+          - LogStreamFilter
           - SamplingRate
           - AddMetadata
           - CustomMetadata
@@ -171,6 +172,13 @@ Parameters:
   BlockingPattern:
     Type: String
     Description: Regular expression to detect lines that should be excluded from sent to Coralogix
+    Default: ''
+  LogStreamFilter:
+    Type: String
+    Description: |
+      Regular expression to filter CloudWatch log events by log stream name.
+      Only events from matching log streams will be shipped to Coralogix.
+      Example: "^develop/.*" to only ship logs from develop branch streams.
     Default: ''
   SamplingRate:
     Type: Number
@@ -460,6 +468,7 @@ Conditions:
   DLQEnabled: !Equals [!Ref EnableDLQ, 'true']
   IsKafkaIntegration: !Equals [!Ref IntegrationType, 'Kafka']
   BlockPatternNotSet: !Equals [!Ref BlockingPattern, '']
+  LogStreamFilterNotSet: !Equals [!Ref LogStreamFilter, '']
   CSVDelimiterUse: !Equals [!Ref IntegrationType, 'S3Csv']
   NewlinePatternNotSet: !Equals [!Ref NewlinePattern, '']
   AddMetadataNotSet: !Equals [!Ref AddMetadata, '']
@@ -891,6 +900,10 @@ Resources:
             - BlockPatternNotSet
             - !Ref AWS::NoValue
             - !Ref BlockingPattern
+          LOG_STREAM_FILTER: !If
+            - LogStreamFilterNotSet
+            - !Ref AWS::NoValue
+            - !Ref LogStreamFilter
           CSV_DELIMITER: !If
             - CSVDelimiterUse
             - !Ref CSVDelimiter
@@ -965,6 +978,7 @@ Resources:
         CustomMetadata: !Ref CustomMetadata
         NewlinePattern: !Ref NewlinePattern
         BlockingPattern: !Ref BlockingPattern
+        LogStreamFilter: !Ref LogStreamFilter
         SamplingRate: !Ref SamplingRate
         LogLevel: !Ref LogLevel
         S3BucketName: !Ref S3BucketName
