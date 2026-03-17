@@ -5,6 +5,11 @@
 <!-- ### version / full date -->
 <!-- * [Update/Bug fix] message that describes the changes that you apply -->
 
+### 1.0.9 / 2026-03-17
+- [Update] Removed `template-multi-config.yaml`; template now uses S3-only configuration (aligned with Coralogix UI deployment flow).
+- [Update] Removed `examples` folder and `comprehensive-config.yaml`; canonical config is maintained in the [telemetry-shippers integration chart](https://github.com/coralogix/telemetry-shippers/tree/master/otel-ecs-ec2).
+- [Update] README now links to integration chart config and reflects S3-only template parameters.
+
 ### 1.0.8 / 2026-03-16
 - [Update] Added conditional profiling deployment using `ProfilingEnabled` with separate profiling task/service resources.
 - [Update] Added profiling-specific parameters: `ProfilingS3ConfigBucket`, `ProfilingS3ConfigKey`, and `ProfilingMemory`.
