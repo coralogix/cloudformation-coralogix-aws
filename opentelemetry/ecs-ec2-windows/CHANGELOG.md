@@ -4,6 +4,15 @@
 <!-- To add a new entry write: -->
 <!-- ### version / full date -->
 <!-- * [Update/Bug fix] message that describes the changes that you apply -->
+### 2.0.0 / 2026-03-18
+* [Update] Aligned template with Terraform module ecs-ec2-windows: Daemon ECS service only (removed sidecar app example)
+* [Update] Switched to awsvpc network mode with required SubnetIds and SecurityGroupIds; Windows Server 2022 Core, X86_64
+* [Update] Added config sources: template (default), s3, parameter-store; optional Service Discovery registry ARN
+* [Update] Task definition: volumes C:\ and C:\ProgramData\Amazon\ECS; container command uses --feature-gates=service.profilesSupport
+* [Update] Optional CloudWatch log group creation; optional task execution role and task role (S3 read when config from S3)
+* [Update] Coralogix regions EU1, EU2, AP1, AP2, AP3, US1, US2, custom (CustomDomain); API key from parameter or Secrets Manager
+* [Update] Health check uses Windows command CMD /C exit 0; added sampling and span-metrics parameters for template config
+
 ### 1.1.0 / 2026-01-25
 * [Security] Added TaskRoleArn parameter to separate execution and task IAM roles, following principle of least privilege
 * [Update] Standardized to use CORALOGIX_PRIVATE_KEY environment variable instead of PRIVATE_KEY
