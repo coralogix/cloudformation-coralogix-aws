@@ -121,6 +121,9 @@ Resources:
         BlockPublicPolicy: true
         IgnorePublicAcls: true
         RestrictPublicBuckets: true
+      Tags:
+        - Key: aws-apn-id
+          Value: "pc:d69qgozzky3nktjixw65qcret"
       BucketEncryption:
         Fn::If:
           - IsLogsKmsNotEmpty
@@ -180,6 +183,9 @@ Resources:
         BlockPublicPolicy: true
         IgnorePublicAcls: true
         RestrictPublicBuckets: true
+      Tags:
+        - Key: aws-apn-id
+          Value: "pc:d69qgozzky3nktjixw65qcret"
       BucketEncryption:
         Fn::If:
           - IsMetricsKmsNotEmpty 
