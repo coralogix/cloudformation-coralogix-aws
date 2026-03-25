@@ -2,6 +2,9 @@
 
 ## s3-archive
 
+### 0.0.8 / 25.3.2026
+* [update] Add tag to archive buckets, to allow tracking the existing coralogix resource. 
+
 ### 0.0.7 / 10.7.2025
 * [fix] Fix bug with missing dependencies for resource `aws_role_region`
 
