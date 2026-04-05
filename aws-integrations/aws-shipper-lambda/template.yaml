@@ -1,5 +1,7 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Transform: AWS::Serverless-2016-10-31
+Transform:
+  - AWS::Serverless-2016-10-31
+  - AWS::LanguageExtensions
 Description: |
   Send logs and metrics to Coralogix from AWS (S3, Cloudtrail, Cloudwatch, msk, SNS, SQS, Kinesis and more)
   Please report any issues to: github.com/coralogix/coralogix-aws-shipper/issues
@@ -463,6 +465,24 @@ Mappings:
       Domain: us2.coralogix.com
     Custom:
       Domain: ""
+  # Maps vanity domains (dots replaced with dashes) to region-prefixed Private Link domains.
+  # Used with AWS::LanguageExtensions to resolve: Fn::FindInMap with Fn::Join/Fn::Split as key.
+  # Truly custom domains not in this map fall back to DefaultValue (the raw CustomDomain).
+  VanityToPrivateLinkDomainMap:
+    coralogix-us:
+      Domain: us1.coralogix.com
+    cx498-coralogix-com:
+      Domain: us2.coralogix.com
+    coralogix-com:
+      Domain: eu1.coralogix.com
+    eu2-coralogix-com:
+      Domain: eu2.coralogix.com
+    coralogix-in:
+      Domain: ap1.coralogix.com
+    coralogixsg-com:
+      Domain: ap2.coralogix.com
+    ap3-coralogix-com:
+      Domain: ap3.coralogix.com
 Conditions:
   # DLQ conditions
   DLQEnabled: !Equals [!Ref EnableDLQ, 'true']
@@ -863,7 +883,11 @@ Resources:
               - IsPrivateLink
               - !Sub
                 - https://ingress.private.${domain}
-                - domain: !Ref CustomDomain
+                - domain: !FindInMap
+                    - VanityToPrivateLinkDomainMap
+                    - !Join ['-', !Split ['.', !Ref CustomDomain]]
+                    - Domain
+                    - DefaultValue: !Ref CustomDomain
               - !Sub
                 - https://ingress.${domain}
                 - domain: !Ref CustomDomain
@@ -1030,7 +1054,11 @@ Resources:
             - IsPrivateLink
             - !Sub
               - https://ingress.private.${domain}
-              - domain: !Ref CustomDomain
+              - domain: !FindInMap
+                  - VanityToPrivateLinkDomainMap
+                  - !Join ['-', !Split ['.', !Ref CustomDomain]]
+                  - Domain
+                  - DefaultValue: !Ref CustomDomain
             - !Sub
               - https://ingress.${domain}
               - domain: !Ref CustomDomain
