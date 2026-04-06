@@ -5,6 +5,12 @@
 <!-- ### version / full date -->
 <!-- * [Update/Bug fix] message that describes the changes that you apply -->
 
+### 1.0.10 / 2026-04-06
+- [Bug fix] Fixed IAM S3 policies granting wildcard access when profiling is disabled (empty bucket param resolved to `arn:aws:s3:::/*`).
+- [Update] Profiling S3 bucket ARNs are now conditionally included in IAM policies only when `ProfilingEnabled` is true.
+- [Update] Added CloudFormation Rules to validate `ProfilingS3ConfigBucket` and `ProfilingS3ConfigKey` are non-empty when profiling is enabled.
+- [Update] Moved profiling S3 parameters into the "Profiling Configuration" parameter group for consistency.
+
 ### 1.0.9 / 2026-03-17
 - [Update] Removed `template-multi-config.yaml`; template now uses S3-only configuration (aligned with Coralogix UI deployment flow).
 - [Update] Removed `examples` folder and `comprehensive-config.yaml`; canonical config is maintained in the [telemetry-shippers integration chart](https://github.com/coralogix/telemetry-shippers/tree/master/otel-ecs-ec2).

@@ -21,13 +21,12 @@ Metadata:
           - S3ConfigBucket
           - S3ConfigKey
 
-          - ProfilingS3ConfigBucket
-          - ProfilingS3ConfigKey
-
       - Label:
           default: "Profiling Configuration"
         Parameters:
           - ProfilingEnabled
+          - ProfilingS3ConfigBucket
+          - ProfilingS3ConfigKey
           - ProfilingMemory
       
       - Label:
@@ -214,6 +213,15 @@ Parameters:
       This is separate from the execution role which is used by ECS to pull images and retrieve secrets.
     Default: ""
 
+Rules:
+  ProfilingS3ConfigRequired:
+    RuleCondition: !Equals [!Ref ProfilingEnabled, "true"]
+    Assertions:
+      - Assert: !Not [!Equals [!Ref ProfilingS3ConfigBucket, ""]]
+        AssertDescription: "ProfilingS3ConfigBucket is required when ProfilingEnabled is true."
+      - Assert: !Not [!Equals [!Ref ProfilingS3ConfigKey, ""]]
+        AssertDescription: "ProfilingS3ConfigKey is required when ProfilingEnabled is true."
+
 Conditions:
   UseImage: !Not [!Equals [!Ref Image, "none"]]
   EnableHealthCheck: !Equals [!Ref HealthCheckEnabled, "true"]
@@ -355,13 +363,19 @@ Resources:
                   - s3:GetObjectVersion
                 Resource:
                   - !Sub "arn:aws:s3:::${S3ConfigBucket}/*"
-                  - !Sub "arn:aws:s3:::${ProfilingS3ConfigBucket}/*"
+                  - !If
+                    - EnableProfiling
+                    - !Sub "arn:aws:s3:::${ProfilingS3ConfigBucket}/*"
+                    - !Ref AWS::NoValue
               - Effect: Allow
                 Action:
                   - s3:ListBucket
                 Resource:
                   - !Sub "arn:aws:s3:::${S3ConfigBucket}"
-                  - !Sub "arn:aws:s3:::${ProfilingS3ConfigBucket}"
+                  - !If
+                    - EnableProfiling
+                    - !Sub "arn:aws:s3:::${ProfilingS3ConfigBucket}"
+                    - !Ref AWS::NoValue
 
   # IAM Role for task runtime (container operations - minimal permissions)
   # Only created if no custom task role is provided
@@ -388,13 +402,19 @@ Resources:
                   - s3:GetObjectVersion
                 Resource:
                   - !Sub "arn:aws:s3:::${S3ConfigBucket}/*"
-                  - !Sub "arn:aws:s3:::${ProfilingS3ConfigBucket}/*"
+                  - !If
+                    - EnableProfiling
+                    - !Sub "arn:aws:s3:::${ProfilingS3ConfigBucket}/*"
+                    - !Ref AWS::NoValue
               - Effect: Allow
                 Action:
                   - s3:ListBucket
                 Resource:
                   - !Sub "arn:aws:s3:::${S3ConfigBucket}"
-                  - !Sub "arn:aws:s3:::${ProfilingS3ConfigBucket}"
+                  - !If
+                    - EnableProfiling
+                    - !Sub "arn:aws:s3:::${ProfilingS3ConfigBucket}"
+                    - !Ref AWS::NoValue
 
   ECSService:
     Type: 'AWS::ECS::Service'
