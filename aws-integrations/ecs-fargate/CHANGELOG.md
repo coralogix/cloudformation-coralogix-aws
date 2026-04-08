@@ -5,6 +5,9 @@
 <!-- ### version / full date -->
 <!-- * [Update/Bug fix] message that describes the changes that you apply -->
 
+### 1.0.1 / 08 Apr 2026
+* [FEAT] Add support for GovCloud deployments to example CF
+
 ### 1.0.0 / 11 Mar 2026
 ### 🛑 Breaking changes 🛑
 * [FEAT] Transition from Parameter Store to S3 configuration

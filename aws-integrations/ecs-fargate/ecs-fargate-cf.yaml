@@ -9,6 +9,7 @@ Metadata:
       - Label:
           default: "Basic Configuration"
         Parameters:
+          - AwsPlatform
           - CoralogixRegion
           - CoralogixApiKey
       
@@ -34,6 +35,8 @@ Metadata:
           - HealthCheckStartPeriod
     
     ParameterLabels:
+      AwsPlatform:
+        default: "AWS platform (Standard or GovCloud)"
       S3ConfigBucket:
         default: "S3 Bucket Name"
       S3ConfigKey:
@@ -59,6 +62,16 @@ Metadata:
         default: "Health Check Start Period (seconds)"
 
 Parameters:
+  AwsPlatform:
+    Type: String
+    Description: >-
+      Standard AWS (commercial regions) or AWS GovCloud (us-gov-west-1 / us-gov-east-1).
+      Must match where you deploy this stack; validation uses the stack partition.
+    AllowedValues:
+      - Standard
+      - AWSGovCloud
+    Default: Standard
+
   S3ConfigBucket:
     Type: String
     Description: |
@@ -132,6 +145,29 @@ Parameters:
     Type: Number
     Description: Health check start period (seconds). Only used if HealthCheckEnabled is true
     Default: "10"
+
+Rules:
+  AwsPlatformMatchesGovCloud:
+    RuleCondition: !Equals [!Ref AwsPlatform, AWSGovCloud]
+    Assertions:
+      - Assert:
+          Fn::Equals:
+            - Ref: AWS::Partition
+            - aws-us-gov
+        AssertDescription: >-
+          AwsPlatform AWSGovCloud requires deploying this stack in an AWS GovCloud region
+          (partition aws-us-gov).
+  AwsPlatformMatchesStandard:
+    RuleCondition: !Equals [!Ref AwsPlatform, Standard]
+    Assertions:
+      - Assert:
+          Fn::Not:
+            - Fn::Equals:
+                - Ref: AWS::Partition
+                - aws-us-gov
+        AssertDescription: >-
+          AwsPlatform Standard is for non-GovCloud partitions. Use AWSGovCloud when
+          deploying to us-gov-west-1 or us-gov-east-1.
 
 Conditions:
   EnableHealthCheck: !Equals [!Ref HealthCheckEnabled, "true"]
@@ -256,7 +292,7 @@ Resources:
               Service: ecs-tasks.amazonaws.com
             Action: 'sts:AssumeRole'
       ManagedPolicyArns:
-        - 'arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy'
+        - !Sub 'arn:${AWS::Partition}:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy'
       Policies:
         - PolicyName: S3ReadAccess
           PolicyDocument:
@@ -266,11 +302,11 @@ Resources:
                 Action:
                   - s3:GetObject
                   - s3:GetObjectVersion
-                Resource: !Sub "arn:aws:s3:::${S3ConfigBucket}/*"
+                Resource: !Sub "arn:${AWS::Partition}:s3:::${S3ConfigBucket}/*"
               - Effect: Allow
                 Action:
                   - s3:ListBucket
-                Resource: !Sub "arn:aws:s3:::${S3ConfigBucket}"
+                Resource: !Sub "arn:${AWS::Partition}:s3:::${S3ConfigBucket}"
       RoleName: !Sub 'cx-ECSTaskExecutionRole-${AWS::StackName}'
 
   ECSTaskRole:
@@ -293,4 +329,4 @@ Resources:
                 Action:
                   - s3:GetObject
                   - s3:GetObjectVersion
-                Resource: !Sub "arn:aws:s3:::${S3ConfigBucket}/*"
+                Resource: !Sub "arn:${AWS::Partition}:s3:::${S3ConfigBucket}/*"
