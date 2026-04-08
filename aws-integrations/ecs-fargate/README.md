@@ -20,6 +20,7 @@ It does demonstrate which permissions are required, at a minimum, to deploy our 
 |------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------|--------------------|
 | Image            | The OpenTelemetry Collector Image to use.                                                                      | otel/opentelemetry-collector-contrib:0.147.0                                                                     |                    |
 | Memory           | The amount of memory to allocate to the OpenTelemetry container.<br>*Assigning too much memory can lead to the ECS Service not being deployed. Make sure that values are within the range of what is available on your ECS Cluster* | 2048                                                                     |                    |
+| AwsPlatform      | Commercial AWS or AWS GovCloud. Must match the partition where you deploy this stack (the template validates the stack partition). GovCloud uses us-gov-west-1 / us-gov-east-1.<br>*Allowed Values:* Standard, AWSGovCloud | Standard |                    |
 | CoralogixRegion  | The region of your Coralogix Account                                                                                                                                                                                                 | *Allowed Values:* <br>- EU1<br>- EU2<br>- AP1<br>- AP2<br>- AP3<br>- US1<br>- US2 | :heavy_check_mark: |
 | CoralogixApiKey  | The Send-Your-Data API key for your Coralogix account. See: https://coralogix.com/docs/send-your-data-api-key/                                                                                                                       |                                                                          | :heavy_check_mark: |
 | S3ConfigBucket   | S3 bucket name containing the configuration file. |                                                                          | :heavy_check_mark: |
@@ -43,3 +44,5 @@ aws cloudformation deploy --template-file ecs-fargate-cf.yaml \
         S3ConfigBucket=<example-s3-bucket> \
         S3ConfigKey=<example-s3-config-object>
 ```
+
+For AWS GovCloud, include `AwsPlatform=AWSGovCloud` in `--parameter-overrides`. For commercial regions, `Standard` is the default and does not need to be set.
