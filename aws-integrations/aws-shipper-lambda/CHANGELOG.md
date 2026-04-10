@@ -1,10 +1,5 @@
 # Changelog
 
-## v1.4.7 / 2026-04-05
-### 🧰 Bug fixes 🧰
-- **Private Link + Custom domain**: Private ingress must use the region-prefixed Coralogix domain in the hostname, e.g. `https://ingress.private.ap1.coralogix.com`, not the team login suffix alone (e.g. `ingress.private.coralogix.in`). See [Coralogix Endpoints](https://coralogix.com/docs/integrations/coralogix-endpoints/) and [PrivateLink endpoints and deployment](https://coralogix.com/docs/integrations/aws/aws-privatelink/endpoints-deployment/). When `CoralogixRegion` is `Custom` and Private Link is enabled, `CORALOGIX_ENDPOINT` now maps known vanity `CustomDomain` values to the matching `*.coralogix.com` domain so `ingress.private.${domain}` matches documented Private DNS. Previously the template substituted `CustomDomain` directly, producing incorrect hostnames. Unlisted domains still use `CustomDomain` unchanged. Requires the `AWS::LanguageExtensions` transform for `Fn::FindInMap` with `DefaultValue` and a dynamic map key.
-- **Transform order + SAR version**: `AWS::LanguageExtensions` is listed before `AWS::Serverless-2016-10-31` so extended `Fn::FindInMap` resolves before SAM processing (otherwise vanity-to-region mapping can fall back to raw `CustomDomain` in deployed stacks). `SemanticVersion` is set to **1.4.7** to match this release.
-
 ## v1.4.6 / 2026-03-17
 ### 💡 Enhancements 💡
 - **Kinesis batching performance fix**: Kinesis records are now collected and sent in a single batched API call instead of being processed sequentially. This significantly improves throughput for high-volume Kinesis streams (e.g., 700 records now result in ~1 API call instead of ~700).
