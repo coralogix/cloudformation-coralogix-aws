@@ -7,6 +7,9 @@ on:
       - master
     paths:
       - 'opentelemetry/ecs-ec2/README.md'
+      - 'aws-integrations/eventbridge/README.md'
+      - 'aws-integrations/firehose-logs/README.md'
+      - 'aws-integrations/firehose-metrics/README.md'
 
 jobs:
   trigger_action:
