@@ -2,6 +2,10 @@
 
 ## coralogix-eventbridge-policy
 
+### 0.0.6 / 19.05.2026
+* [update] Allow EventBridge global endpoint ARNs (`endpoint/<name>`) in addition to event bus ARNs.
+* [update] Accept a comma-separated list of ARNs in `EventBusArn` so the policy can grant `events:PutEvents` on multiple targets.
+
 ### 0.0.5 / 02.09.2024
 * [update] Add support for new region ap3.
 
