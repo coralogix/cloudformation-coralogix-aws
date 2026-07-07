@@ -2,7 +2,7 @@ AWSTemplateFormatVersion: 2010-09-09
 Description: Creates an IAM role allowing Coralogix to collect metrics from your AWS account.
 
 Metadata:
-  SemanticVersion: 1.0.0
+  SemanticVersion: 2.0.0
   AWS::CloudFormation::Interface:
     ParameterGroups:
       - Label:
@@ -42,9 +42,9 @@ Parameters:
   RoleName:
     Type: String
     Default: coralogix-cloud-account
-    Description: The name of the IAM role that will be created.
+    Description: The name of the main IAM role that will be created. Static Firehose service roles use this name with -fh and -ms suffixes.
     AllowedPattern: '[\w+=,.@-]+'
-    MaxLength: 64
+    MaxLength: 56
   ExternalIdSecret:
     Type: String
     Default: ""
@@ -110,10 +110,65 @@ Conditions:
   IsCustomEndpoint: !Equals [!Ref CoralogixRegion, CustomEndpoint]
 
 Resources:
+  CoralogixFirehoseServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${RoleName}-fh"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: firehose.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Policies:
+        - PolicyName: CoralogixS3BackupAccess
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:AbortMultipartUpload
+                  - s3:GetBucketLocation
+                  - s3:GetObject
+                  - s3:ListBucket
+                  - s3:ListBucketMultipartUploads
+                  - s3:PutObject
+                Resource:
+                  - !Sub arn:${AWS::Partition}:s3:::cx-*
+                  - !Sub arn:${AWS::Partition}:s3:::cx-*/*
+
+  CoralogixMetricStreamsServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${RoleName}-ms"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: streams.metrics.cloudwatch.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Policies:
+        - PolicyName: CoralogixFirehosePutAccess
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - firehose:PutRecord
+                  - firehose:PutRecordBatch
+                Resource: !Sub arn:${AWS::Partition}:firehose:*:${AWS::AccountId}:deliverystream/cx-*
+
   CoralogixAwsMetricsRole:
     Type: AWS::IAM::Role
     Properties:
       RoleName: !Ref RoleName
+      Tags:
+        - Key: CoralogixCloudAccountTemplateVersion
+          Value: "2"
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -146,12 +201,53 @@ Resources:
               - !Ref "AWS::NoValue"
       ManagedPolicyArns:
         - !Sub arn:${AWS::Partition}:iam::aws:policy/ReadOnlyAccess
-        - !Sub arn:${AWS::Partition}:iam::aws:policy/AmazonKinesisFirehoseFullAccess
-        - !Sub arn:${AWS::Partition}:iam::aws:policy/AmazonS3FullAccess
         - !Sub arn:${AWS::Partition}:iam::aws:policy/AWSResourceExplorerFullAccess
-        - !Sub arn:${AWS::Partition}:iam::aws:policy/CloudWatchFullAccess
-        - !Sub arn:${AWS::Partition}:iam::aws:policy/CloudWatchFullAccessV2
-        - !Sub arn:${AWS::Partition}:iam::aws:policy/IAMFullAccess
+      Policies:
+        - PolicyName: CoralogixCloudAccountResourceManagement
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: ManageCoralogixFirehoseDeliveryStreams
+                Effect: Allow
+                Action:
+                  - firehose:CreateDeliveryStream
+                  - firehose:DeleteDeliveryStream
+                  - firehose:UpdateDestination
+                Resource: !Sub arn:${AWS::Partition}:firehose:*:${AWS::AccountId}:deliverystream/cx-*
+              - Sid: ManageCoralogixMetricStreams
+                Effect: Allow
+                Action:
+                  - cloudwatch:PutMetricStream
+                  - cloudwatch:DeleteMetricStream
+                Resource: !Sub arn:${AWS::Partition}:cloudwatch:*:${AWS::AccountId}:metric-stream/cx-*
+              - Sid: ManageCoralogixBackupBuckets
+                Effect: Allow
+                Action:
+                  - s3:CreateBucket
+                  - s3:PutBucketPublicAccessBlock
+                  - s3:DeleteBucket
+                Resource: !Sub arn:${AWS::Partition}:s3:::cx-*
+              - Sid: DeleteCoralogixBackupObjects
+                Effect: Allow
+                Action:
+                  - s3:DeleteObject
+                Resource: !Sub arn:${AWS::Partition}:s3:::cx-*/*
+              - Sid: PassCoralogixFirehoseServiceRole
+                Effect: Allow
+                Action:
+                  - iam:PassRole
+                Resource: !GetAtt CoralogixFirehoseServiceRole.Arn
+                Condition:
+                  StringEquals:
+                    iam:PassedToService: firehose.amazonaws.com
+              - Sid: PassCoralogixMetricStreamsServiceRole
+                Effect: Allow
+                Action:
+                  - iam:PassRole
+                Resource: !GetAtt CoralogixMetricStreamsServiceRole.Arn
+                Condition:
+                  StringEquals:
+                    iam:PassedToService: streams.metrics.cloudwatch.amazonaws.com
 
 Outputs:
   CoralogixAwsMetricsRoleArn:
