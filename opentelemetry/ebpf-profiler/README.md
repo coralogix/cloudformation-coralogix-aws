@@ -19,16 +19,17 @@ This template supports two image modes:
 
 ## Parameters
 
-| Parameter                     | Description                                                  | Default                                                               | Required |
-|-------------------------------|--------------------------------------------------------------|-----------------------------------------------------------------------|----------|
-| `ClusterName`                 | Name of the existing ECS cluster                             |                                                                       | yes      |
-| `CoralogixRegion`             | Coralogix region (`EU1`,`EU2`,`AP1`,`AP2`,`AP3`,`US1`,`US2`) |                                                                       | yes      |
-| `CoralogixApiKey`             | Coralogix Send-Your-Data API key                             |                                                                       | yes      |
-| `ProfilerImageMode`           | Image mode (`collector` or `supervised`)                     | `collector`                                                           | no       |
-| `EbpfProfilerImageRepository` | Collector image repository                                   | `coralogixrepo/coralogix-otel-collector`                              | no       |
-| `EbpfProfilerImageVersion`    | Image version/tag for collector mode                         | `v0.5.8`                                                              | no       |
-| `SupervisedImageRepository`   | Supervised image repository                                  | `cgx.jfrog.io/coralogix-docker-images/coralogix-otel-supervised-cdot` | no       |
-| `SupervisedImageVersion`      | Supervised image version/tag                                 | `v0.0.1`                                                              | no       |
+| Parameter                     | Description                                                                | Default                                                               | Required |
+|-------------------------------|----------------------------------------------------------------------------|-----------------------------------------------------------------------|----------|
+| `ClusterName`                 | Name of the existing ECS cluster                                           |                                                                       | yes      |
+| `CoralogixRegion`             | Coralogix region (`EU1`,`EU2`,`AP1`,`AP2`,`AP3`,`US1`,`US2`)               |                                                                       | yes      |
+| `CoralogixApiKey`             | Coralogix Send-Your-Data API key                                           |                                                                       | yes      |
+| `ProfilerImageMode`           | Image mode (`collector` or `supervised`)                                   | `collector`                                                           | no       |
+| `EbpfProfilerImageRepository` | Collector image repository                                                 | `coralogixrepo/coralogix-otel-collector`                              | no       |
+| `EbpfProfilerImageVersion`    | Image version/tag for collector mode                                       | `v0.5.8`                                                              | no       |
+| `SupervisedImageRepository`   | Supervised image repository                                                | `cgx.jfrog.io/coralogix-docker-images/coralogix-otel-supervised-cdot` | no       |
+| `SupervisedImageVersion`      | Supervised image version/tag                                               | `v0.0.1`                                                              | no       |
+| `InitialFallbackConfigs`      | Comma-delimited S3 URIs for `agent.initial_fallback_configs` in supervised mode |                                                               | no       |
 
 ## Deploy
 
@@ -60,6 +61,20 @@ aws cloudformation deploy --template-file template.yaml --stack-name <stack_name
     SupervisedImageVersion=v0.0.1
 ```
 
+To enable initial fallback configs in supervised mode, pass a comma-delimited list of S3 URIs:
+
+```sh
+aws cloudformation deploy --template-file template.yaml --stack-name <stack_name> \
+  --region <aws_region> \
+  --capabilities CAPABILITY_NAMED_IAM \
+  --parameter-overrides \
+    ClusterName=<ecs_cluster_name> \
+    CoralogixRegion=<coralogix_region> \
+    CoralogixApiKey=<send_your_data_api_key> \
+    ProfilerImageMode=supervised \
+    InitialFallbackConfigs=s3://<BUCKET>.s3.<REGION>.amazonaws.com/<ACCOUNT_ID>/<GROUP_NAME>/<COLLECTOR_VERSION>/<REMOTE_CONFIG_NAME>/config.yaml,s3://<BUCKET>.s3.<REGION>.amazonaws.com/<ACCOUNT_ID>/<GROUP_NAME>/EMPTY_VERSION/<REMOTE_CONFIG_NAME>/config.yaml
+```
+
 ## Reproducible smoke test
 
 Example configurations are provided at:
@@ -81,6 +96,12 @@ To run supervised mode:
 
 ```sh
 PROFILER_IMAGE_MODE=supervised make smoke
+```
+
+To enable initial fallback configs in the Makefile flow, pass a comma-delimited list of S3 URIs:
+
+```sh
+INITIAL_FALLBACK_CONFIGS=s3://<BUCKET>.s3.<REGION>.amazonaws.com/<ACCOUNT_ID>/<GROUP_NAME>/<COLLECTOR_VERSION>/<REMOTE_CONFIG_NAME>/config.yaml,s3://<BUCKET>.s3.<REGION>.amazonaws.com/<ACCOUNT_ID>/<GROUP_NAME>/EMPTY_VERSION/<REMOTE_CONFIG_NAME>/config.yaml make deploy
 ```
 
 `make smoke` now also creates the ECS cluster and ECS EC2 container instance if they do not already exist.

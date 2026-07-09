@@ -17,6 +17,7 @@ Metadata:
           - EbpfProfilerImageVersion
           - SupervisedImageRepository
           - SupervisedImageVersion
+          - InitialFallbackConfigs
     ParameterLabels:
       ClusterName:
         default: "ECS Cluster Name"
@@ -34,6 +35,8 @@ Metadata:
         default: "Supervised Image Repository"
       SupervisedImageVersion:
         default: "Supervised Image Version"
+      InitialFallbackConfigs:
+        default: "Initial Fallback Configs"
 
 Parameters:
   ClusterName:
@@ -97,8 +100,14 @@ Parameters:
     AllowedPattern: ".+"
     ConstraintDescription: Supervised image version is required.
 
+  InitialFallbackConfigs:
+    Type: CommaDelimitedList
+    Description: Comma-delimited list of S3 URIs for supervisor agent.initial_fallback_configs. Leave empty to omit initial fallback configs.
+    Default: ""
+
 Conditions:
   UseSupervisedImage: !Equals [!Ref ProfilerImageMode, supervised]
+  HasInitialFallbackConfigs: !Not [!Equals [!Join ["", !Ref InitialFallbackConfigs], ""]]
 
 Mappings:
   CoralogixRegionMap:
@@ -194,35 +203,45 @@ Resources:
                       receivers: [profiling]
                       exporters: [coralogix, debug]
             - Name: SUPERVISOR_CONFIG
-              Value: |-
-                server:
-                  endpoint: "https://ingress.${env:CORALOGIX_DOMAIN}/opamp/v1"
-                  headers:
-                    Authorization: "Bearer ${env:CORALOGIX_PRIVATE_KEY}"
-                  tls:
-                    insecure_skip_verify: false
+              Value: !Sub
+                - |-
+                  server:
+                    endpoint: "https://ingress.${!env:CORALOGIX_DOMAIN}/opamp/v1"
+                    headers:
+                      Authorization: "Bearer ${!env:CORALOGIX_PRIVATE_KEY}"
+                    tls:
+                      insecure_skip_verify: false
 
-                capabilities:
-                  reports_effective_config: true
-                  reports_own_metrics: true
-                  reports_own_logs: true
-                  reports_own_traces: true
-                  reports_health: true
-                  accepts_remote_config: true
-                  reports_remote_config: true
+                  capabilities:
+                    reports_effective_config: true
+                    reports_own_metrics: true
+                    reports_own_logs: true
+                    reports_own_traces: true
+                    reports_health: true
+                    accepts_remote_config: true
+                    reports_remote_config: true
 
-                agent:
-                  executable: /cdot
-                  passthrough_logs: true
-                  config_files:
-                    - /otel-config/collector-config.yaml
+                  agent:
+                    executable: /cdot
+                    passthrough_logs: true
+                    config_files:
+                      - /otel-config/collector-config.yaml
+                  ${InitialFallbackConfigsBlock}
+                  storage:
+                    directory: /etc/otelcol-contrib/supervisor-data/
 
-                storage:
-                  directory: /etc/otelcol-contrib/supervisor-data/
-
-                telemetry:
-                  logs:
-                    level: info
+                  telemetry:
+                    logs:
+                      level: info
+                - InitialFallbackConfigsBlock: !If
+                    - HasInitialFallbackConfigs
+                    - !Join
+                      - ""
+                      - - "  initial_fallback_configs:\n    - "
+                        - !Join
+                          - "\n    - "
+                          - !Ref InitialFallbackConfigs
+                    - ""
           MountPoints:
             - SourceVolume: otel-config
               ContainerPath: /otel-config

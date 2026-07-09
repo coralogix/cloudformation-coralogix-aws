@@ -16,6 +16,7 @@ EBPF_PROFILER_IMAGE_REPOSITORY ?= coralogixrepo/coralogix-otel-collector
 EBPF_PROFILER_IMAGE_VERSION ?= v0.5.8
 SUPERVISED_IMAGE_REPOSITORY ?= cgx.jfrog.io/coralogix-docker-images/coralogix-otel-supervised-cdot
 SUPERVISED_IMAGE_VERSION ?= v0.0.1
+INITIAL_FALLBACK_CONFIGS ?=
 
 ECS_INSTANCE_PROFILE ?= ecsInstanceRole
 ECS_EC2_AMI_SSM_PARAM ?= /aws/service/ecs/optimized-ami/amazon-linux-2023/recommended/image_id
@@ -33,7 +34,7 @@ EC2_KEY_NAME ?=
 help:
 	@printf "eBPF profiler ECS CFN helper targets\n\n"
 	@printf "Required vars: CLUSTER_NAME CORALOGIX_REGION CORALOGIX_API_KEY\n"
-	@printf "Optional vars: STACK_NAME AWS_REGION TEMPLATE_FILE PROFILER_IMAGE_MODE EBPF_PROFILER_IMAGE_REPOSITORY EBPF_PROFILER_IMAGE_VERSION SUPERVISED_IMAGE_REPOSITORY SUPERVISED_IMAGE_VERSION ECS_INSTANCE_PROFILE ECS_EC2_AMI_ID ECS_EC2_AMI_SSM_PARAM EC2_INSTANCE_TYPE EC2_SUBNET_ID EC2_SECURITY_GROUP_ID EC2_KEY_NAME\n\n"
+	@printf "Optional vars: STACK_NAME AWS_REGION TEMPLATE_FILE PROFILER_IMAGE_MODE EBPF_PROFILER_IMAGE_REPOSITORY EBPF_PROFILER_IMAGE_VERSION SUPERVISED_IMAGE_REPOSITORY SUPERVISED_IMAGE_VERSION INITIAL_FALLBACK_CONFIGS ECS_INSTANCE_PROFILE ECS_EC2_AMI_ID ECS_EC2_AMI_SSM_PARAM EC2_INSTANCE_TYPE EC2_SUBNET_ID EC2_SECURITY_GROUP_ID EC2_KEY_NAME\n\n"
 	@printf "If $(ENV_FILE) exists, values are auto-loaded from it.\n\n"
 	@printf "Targets:\n"
 	@printf "  make validate            Validate CloudFormation template\n"
@@ -168,7 +169,8 @@ deploy: require-deploy-vars prepare-stack
 			EbpfProfilerImageRepository="$(EBPF_PROFILER_IMAGE_REPOSITORY)" \
 			EbpfProfilerImageVersion="$(EBPF_PROFILER_IMAGE_VERSION)" \
 			SupervisedImageRepository="$(SUPERVISED_IMAGE_REPOSITORY)" \
-			SupervisedImageVersion="$(SUPERVISED_IMAGE_VERSION)"
+			SupervisedImageVersion="$(SUPERVISED_IMAGE_VERSION)" \
+			InitialFallbackConfigs="$(INITIAL_FALLBACK_CONFIGS)"
 
 status:
 	aws ecs describe-services \
