@@ -8,12 +8,8 @@ export
 endif
 
 TEMPLATE_FILE ?= template.yaml
-CONFIG_FILE ?= examples/ebpf-profiler-config.yaml
-SUPERVISOR_CONFIG_FILE ?= examples/ebpf-profiler-supervisor-config.yaml
 STACK_NAME ?= ebpf-profiler-test
 AWS_REGION ?= eu-north-1
-S3_CONFIG_KEY ?= configs/ebpf-profiler-config.yaml
-S3_SUPERVISOR_CONFIG_KEY ?= configs/ebpf-profiler-supervisor-config.yaml
 SERVICE_NAME ?= coralogix-ebpf-profiler
 PROFILER_IMAGE_MODE ?= collector
 EBPF_PROFILER_IMAGE_REPOSITORY ?= coralogixrepo/coralogix-otel-collector
@@ -30,21 +26,19 @@ EC2_SECURITY_GROUP_ID ?=
 EC2_KEY_NAME ?=
 
 # Required for deploy/smoke:
-# CLUSTER_NAME, CORALOGIX_REGION, CORALOGIX_API_KEY, S3_BUCKET
+# CLUSTER_NAME, CORALOGIX_REGION, CORALOGIX_API_KEY
 
-.PHONY: help validate create-cluster create-instance-profile create-ec2-instance wait-cluster-capacity create-bucket upload-config prepare-stack deploy status tasks smoke delete delete-ec2-instance delete-cluster delete-bucket cleanup
+.PHONY: help validate create-cluster create-instance-profile create-ec2-instance wait-cluster-capacity prepare-stack deploy status tasks smoke delete delete-ec2-instance delete-cluster cleanup
 
 help:
 	@printf "eBPF profiler ECS CFN helper targets\n\n"
-	@printf "Required vars: CLUSTER_NAME CORALOGIX_REGION CORALOGIX_API_KEY S3_BUCKET\n"
-	@printf "Optional vars: STACK_NAME AWS_REGION S3_CONFIG_KEY S3_SUPERVISOR_CONFIG_KEY TEMPLATE_FILE CONFIG_FILE SUPERVISOR_CONFIG_FILE PROFILER_IMAGE_MODE EBPF_PROFILER_IMAGE_REPOSITORY EBPF_PROFILER_IMAGE_VERSION SUPERVISED_IMAGE_REPOSITORY SUPERVISED_IMAGE_VERSION ECS_INSTANCE_PROFILE ECS_EC2_AMI_ID ECS_EC2_AMI_SSM_PARAM EC2_INSTANCE_TYPE EC2_SUBNET_ID EC2_SECURITY_GROUP_ID EC2_KEY_NAME\n\n"
+	@printf "Required vars: CLUSTER_NAME CORALOGIX_REGION CORALOGIX_API_KEY\n"
+	@printf "Optional vars: STACK_NAME AWS_REGION TEMPLATE_FILE PROFILER_IMAGE_MODE EBPF_PROFILER_IMAGE_REPOSITORY EBPF_PROFILER_IMAGE_VERSION SUPERVISED_IMAGE_REPOSITORY SUPERVISED_IMAGE_VERSION ECS_INSTANCE_PROFILE ECS_EC2_AMI_ID ECS_EC2_AMI_SSM_PARAM EC2_INSTANCE_TYPE EC2_SUBNET_ID EC2_SECURITY_GROUP_ID EC2_KEY_NAME\n\n"
 	@printf "If $(ENV_FILE) exists, values are auto-loaded from it.\n\n"
 	@printf "Targets:\n"
 	@printf "  make validate            Validate CloudFormation template\n"
 	@printf "  make create-cluster      Create ECS cluster if missing\n"
 	@printf "  make create-ec2-instance Create ECS EC2 instance if missing\n"
-	@printf "  make create-bucket       Create S3 bucket if missing\n"
-	@printf "  make upload-config       Upload collector config to S3\n"
 	@printf "  make deploy              Deploy stack (with rollback-state recovery)\n"
 	@printf "  make status              Show ECS service status\n"
 	@printf "  make tasks               List ECS tasks for service\n"
@@ -52,20 +46,15 @@ help:
 	@printf "  make delete              Delete CloudFormation stack\n"
 	@printf "  make delete-ec2-instance Delete EC2 instances created by this Makefile\n"
 	@printf "  make delete-cluster      Delete ECS cluster if empty\n"
-	@printf "  make delete-bucket       Delete S3 bucket (idempotent)\n"
-	@printf "  make cleanup             delete-bucket + delete + delete-ec2-instance + delete-cluster\n"
+	@printf "  make cleanup             delete + delete-ec2-instance + delete-cluster\n"
 
 require-deploy-vars:
 	@test -n "$(CLUSTER_NAME)" || (echo "Missing required variable: CLUSTER_NAME" && exit 1)
 	@test -n "$(CORALOGIX_REGION)" || (echo "Missing required variable: CORALOGIX_REGION" && exit 1)
 	@test -n "$(CORALOGIX_API_KEY)" || (echo "Missing required variable: CORALOGIX_API_KEY" && exit 1)
-	@test -n "$(S3_BUCKET)" || (echo "Missing required variable: S3_BUCKET" && exit 1)
 
 require-cluster:
 	@test -n "$(CLUSTER_NAME)" || (echo "Missing required variable: CLUSTER_NAME" && exit 1)
-
-require-bucket:
-	@test -n "$(S3_BUCKET)" || (echo "Missing required variable: S3_BUCKET" && exit 1)
 
 validate:
 	aws cloudformation validate-template --region "$(AWS_REGION)" --template-body "file://$(TEMPLATE_FILE)"
@@ -148,22 +137,6 @@ wait-cluster-capacity: require-cluster
 	echo "Timed out waiting for ECS container instance registration."; \
 	exit 1
 
-create-bucket: require-bucket
-	@if aws s3api head-bucket --bucket "$(S3_BUCKET)" >/dev/null 2>&1; then \
-		echo "S3 bucket already exists: $(S3_BUCKET)"; \
-	else \
-		echo "Creating S3 bucket: $(S3_BUCKET) in region $(AWS_REGION)"; \
-		if [ "$(AWS_REGION)" = "us-east-1" ]; then \
-			aws s3api create-bucket --bucket "$(S3_BUCKET)" --region "$(AWS_REGION)"; \
-		else \
-			aws s3api create-bucket --bucket "$(S3_BUCKET)" --region "$(AWS_REGION)" --create-bucket-configuration LocationConstraint="$(AWS_REGION)"; \
-		fi; \
-	fi
-
-upload-config: require-bucket
-	aws s3 cp "$(CONFIG_FILE)" "s3://$(S3_BUCKET)/$(S3_CONFIG_KEY)" --region "$(AWS_REGION)"
-	aws s3 cp "$(SUPERVISOR_CONFIG_FILE)" "s3://$(S3_BUCKET)/$(S3_SUPERVISOR_CONFIG_KEY)" --region "$(AWS_REGION)"
-
 prepare-stack:
 	@status=$$(aws cloudformation describe-stacks --region "$(AWS_REGION)" --stack-name "$(STACK_NAME)" --query "Stacks[0].StackStatus" --output text 2>/dev/null || echo "NOT_FOUND"); \
 	case "$$status" in \
@@ -191,9 +164,6 @@ deploy: require-deploy-vars prepare-stack
 			ClusterName="$(CLUSTER_NAME)" \
 			CoralogixRegion="$(CORALOGIX_REGION)" \
 			CoralogixApiKey="$(CORALOGIX_API_KEY)" \
-			S3ConfigBucket="$(S3_BUCKET)" \
-			S3ConfigKey="$(S3_CONFIG_KEY)" \
-			S3SupervisorConfigKey="$(S3_SUPERVISOR_CONFIG_KEY)" \
 			ProfilerImageMode="$(PROFILER_IMAGE_MODE)" \
 			EbpfProfilerImageRepository="$(EBPF_PROFILER_IMAGE_REPOSITORY)" \
 			EbpfProfilerImageVersion="$(EBPF_PROFILER_IMAGE_VERSION)" \
@@ -213,7 +183,7 @@ tasks:
 		--cluster "$(CLUSTER_NAME)" \
 		--service-name "$(SERVICE_NAME)"
 
-smoke: validate create-cluster create-ec2-instance wait-cluster-capacity create-bucket upload-config deploy status tasks
+smoke: validate create-cluster create-ec2-instance wait-cluster-capacity deploy status tasks
 
 delete:
 	@status=$$(aws cloudformation describe-stacks --region "$(AWS_REGION)" --stack-name "$(STACK_NAME)" --query "Stacks[0].StackStatus" --output text 2>/dev/null || echo "NOT_FOUND"); \
@@ -253,24 +223,5 @@ delete-cluster: require-cluster
 	echo "Deleting ECS cluster: $(CLUSTER_NAME)"; \
 	aws ecs delete-cluster --region "$(AWS_REGION)" --cluster "$(CLUSTER_NAME)" >/dev/null
 
-delete-bucket: require-bucket
-	@if aws s3api head-bucket --bucket "$(S3_BUCKET)" >/dev/null 2>&1; then \
-		echo "Removing objects from s3://$(S3_BUCKET)"; \
-		aws s3 rm "s3://$(S3_BUCKET)" --recursive --region "$(AWS_REGION)" >/dev/null 2>&1 || true; \
-		echo "Deleting S3 bucket $(S3_BUCKET)"; \
-		if aws s3api delete-bucket --bucket "$(S3_BUCKET)" --region "$(AWS_REGION)" >/dev/null 2>&1; then \
-			echo "S3 bucket deleted: $(S3_BUCKET)"; \
-		else \
-			if aws s3api head-bucket --bucket "$(S3_BUCKET)" >/dev/null 2>&1; then \
-				echo "Failed to delete S3 bucket: $(S3_BUCKET)"; \
-				exit 1; \
-			else \
-				echo "S3 bucket already deleted: $(S3_BUCKET)"; \
-			fi; \
-		fi; \
-	else \
-		echo "S3 bucket does not exist or is not accessible, skipping: $(S3_BUCKET)"; \
-	fi
-
-cleanup: delete delete-ec2-instance delete-cluster delete-bucket
+cleanup: delete delete-ec2-instance delete-cluster
 	@echo "Done"

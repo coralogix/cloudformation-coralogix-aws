@@ -1,7 +1,7 @@
 AWSTemplateFormatVersion: 2010-09-09
 Description: |
   Create an eBPF Profiler ECS Daemon Service on an ECS Cluster.
-  This template uses an S3-hosted OpenTelemetry Collector configuration.
+  This template includes the OpenTelemetry Collector and supervisor configurations.
 
 Metadata:
   AWS::CloudFormation::Interface:
@@ -17,12 +17,6 @@ Metadata:
           - EbpfProfilerImageVersion
           - SupervisedImageRepository
           - SupervisedImageVersion
-      - Label:
-          default: "S3 Configuration"
-        Parameters:
-          - S3ConfigBucket
-          - S3ConfigKey
-          - S3SupervisorConfigKey
     ParameterLabels:
       ClusterName:
         default: "ECS Cluster Name"
@@ -40,12 +34,6 @@ Metadata:
         default: "Supervised Image Repository"
       SupervisedImageVersion:
         default: "Supervised Image Version"
-      S3ConfigBucket:
-        default: "S3 Bucket Name"
-      S3ConfigKey:
-        default: "S3 Object Key (file path)"
-      S3SupervisorConfigKey:
-        default: "S3 Supervisor Config Key"
 
 Parameters:
   ClusterName:
@@ -109,25 +97,6 @@ Parameters:
     AllowedPattern: ".+"
     ConstraintDescription: Supervised image version is required.
 
-  S3ConfigBucket:
-    Type: String
-    Description: S3 bucket name containing the collector configuration file
-    AllowedPattern: ".+"
-    ConstraintDescription: S3 bucket name is required.
-
-  S3ConfigKey:
-    Type: String
-    Description: S3 object key (file path) for the collector configuration file
-    AllowedPattern: ".+"
-    ConstraintDescription: S3 object key is required.
-
-  S3SupervisorConfigKey:
-    Type: String
-    Description: S3 object key (file path) for the supervisor configuration file
-    Default: configs/ebpf-profiler-supervisor-config.yaml
-    AllowedPattern: ".+"
-    ConstraintDescription: S3 supervisor config key is required.
-
 Conditions:
   UseSupervisedImage: !Equals [!Ref ProfilerImageMode, supervised]
 
@@ -153,7 +122,6 @@ Resources:
     Type: AWS::ECS::TaskDefinition
     Properties:
       ExecutionRoleArn: !Ref EbpfTaskExecutionRole
-      TaskRoleArn: !Ref EbpfTaskRole
       Family: ebpf-profiler
       RequiresCompatibilities:
         - EC2
@@ -183,10 +151,78 @@ Resources:
             - sh
             - -c
           Command:
-            - !If
-              - UseSupervisedImage
-              - !Sub "aws s3 cp s3://${S3ConfigBucket}/${S3ConfigKey} /otel-config/collector-config.yaml && aws s3 cp s3://${S3ConfigBucket}/${S3SupervisorConfigKey} /otel-config/supervisor.yaml"
-              - !Sub "aws s3 cp s3://${S3ConfigBucket}/${S3ConfigKey} /otel-config/collector-config.yaml"
+            - |
+              set -e
+              printf '%s\n' "$COLLECTOR_CONFIG" > /otel-config/collector-config.yaml
+              printf '%s\n' "$SUPERVISOR_CONFIG" > /otel-config/supervisor.yaml
+          Environment:
+            - Name: COLLECTOR_CONFIG
+              Value: |-
+                receivers:
+                  profiling:
+                    samples_per_second: 20
+                    reporter_interval: 5s
+                    monitor_interval: 5s
+                    probabilistic_interval: 1m
+                    probabilistic_threshold: 100
+                    tracers: all
+
+                exporters:
+                  # Coralogix exporter for traces, metrics, and logs (enabled by default)
+                  coralogix:
+                    domain: "${CORALOGIX_DOMAIN}"
+                    private_key: "${CORALOGIX_PRIVATE_KEY}"
+                    application_name: "myapplication"
+                    subsystem_name: "profiler"
+                    application_name_attributes:
+                      - "aws.ecs.cluster"
+                      - "aws.ecs.task.definition.family"
+                    subsystem_name_attributes:
+                      - "aws.ecs.container.name"
+                      - "aws.ecs.docker.name"
+                      - "docker.name"
+                    timeout: 30s
+                  debug: {}
+
+                extensions:
+                  health_check: {}
+
+                service:
+                  extensions: [health_check]
+                  pipelines:
+                    profiles:
+                      receivers: [profiling]
+                      exporters: [coralogix, debug]
+            - Name: SUPERVISOR_CONFIG
+              Value: |-
+                server:
+                  endpoint: "https://ingress.${env:CORALOGIX_DOMAIN}/opamp/v1"
+                  headers:
+                    Authorization: "Bearer ${env:CORALOGIX_PRIVATE_KEY}"
+                  tls:
+                    insecure_skip_verify: false
+
+                capabilities:
+                  reports_effective_config: true
+                  reports_own_metrics: true
+                  reports_own_logs: true
+                  reports_own_traces: true
+                  reports_health: true
+                  accepts_remote_config: true
+                  reports_remote_config: true
+
+                agent:
+                  executable: /cdot
+                  passthrough_logs: true
+                  config_files:
+                    - /otel-config/collector-config.yaml
+
+                storage:
+                  directory: /etc/otelcol-contrib/supervisor-data/
+
+                telemetry:
+                  logs:
+                    level: info
           MountPoints:
             - SourceVolume: otel-config
               ContainerPath: /otel-config
@@ -246,32 +282,6 @@ Resources:
             Action: sts:AssumeRole
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
-
-  EbpfTaskRole:
-    Type: AWS::IAM::Role
-    Properties:
-      RoleName: !Sub "${AWS::StackName}-ebpf-task-role"
-      AssumeRolePolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: ecs-tasks.amazonaws.com
-            Action: sts:AssumeRole
-      Policies:
-        - PolicyName: S3ReadAccess
-          PolicyDocument:
-            Version: "2012-10-17"
-            Statement:
-              - Effect: Allow
-                Action:
-                  - s3:GetObject
-                  - s3:GetObjectVersion
-                Resource: !Sub "arn:aws:s3:::${S3ConfigBucket}/*"
-              - Effect: Allow
-                Action:
-                  - s3:ListBucket
-                Resource: !Sub "arn:aws:s3:::${S3ConfigBucket}"
 
   ECSService:
     Type: AWS::ECS::Service
