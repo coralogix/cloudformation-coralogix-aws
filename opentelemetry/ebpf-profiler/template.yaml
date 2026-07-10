@@ -120,12 +120,12 @@ Parameters:
 
   S3ConfigBucket:
     Type: String
-    Description: S3 bucket containing optional collector and supervisor configuration files
+    Description: S3 bucket containing collector and supervisor configuration files. Required in collector mode.
     Default: ""
 
   S3ConfigKey:
     Type: String
-    Description: S3 object key for the collector configuration. Leave empty to use the embedded configuration.
+    Description: S3 object key for the collector configuration. Required in collector mode; leave empty in supervised mode to use the embedded configuration.
     Default: ""
 
   S3SupervisorConfigKey:
@@ -133,9 +133,20 @@ Parameters:
     Description: S3 object key for the supervisor configuration. Leave empty to use the embedded configuration.
     Default: ""
 
+Rules:
+  CollectorModeRequiresS3Config:
+    RuleCondition: !Equals [!Ref ProfilerImageMode, collector]
+    Assertions:
+      - Assert: !And
+          - !Not [!Equals [!Ref S3ConfigBucket, ""]]
+          - !Not [!Equals [!Ref S3ConfigKey, ""]]
+        AssertDescription: S3ConfigBucket and S3ConfigKey are required in collector mode.
+
 Conditions:
   UseSupervisedImage: !Equals [!Ref ProfilerImageMode, supervised]
-  HasInitialFallbackConfigs: !Not [!Equals [!Join ["", !Ref InitialFallbackConfigs], ""]]
+  HasInitialFallbackConfigs: !And
+    - !Condition UseSupervisedImage
+    - !Not [!Equals [!Join ["", !Ref InitialFallbackConfigs], ""]]
   UseS3CollectorConfig: !And
     - !Not [!Equals [!Ref S3ConfigBucket, ""]]
     - !Not [!Equals [!Ref S3ConfigKey, ""]]
@@ -203,8 +214,11 @@ Resources:
               set -e
               if [ -n "$S3_CONFIG_BUCKET" ] && [ -n "$S3_CONFIG_KEY" ]; then
                 aws s3 cp "s3://$S3_CONFIG_BUCKET/$S3_CONFIG_KEY" /otel-config/collector-config.yaml
-              else
+              elif [ "$PROFILER_IMAGE_MODE" = "supervised" ]; then
                 printf '%s\n' "$COLLECTOR_CONFIG" > /otel-config/collector-config.yaml
+              else
+                echo "S3_CONFIG_BUCKET and S3_CONFIG_KEY are required in collector mode" >&2
+                exit 1
               fi
               if [ "$PROFILER_IMAGE_MODE" = "supervised" ]; then
                 if [ -n "$S3_CONFIG_BUCKET" ] && [ -n "$S3_SUPERVISOR_CONFIG_KEY" ]; then
@@ -222,85 +236,91 @@ Resources:
               Value: !Ref S3ConfigKey
             - Name: S3_SUPERVISOR_CONFIG_KEY
               Value: !Ref S3SupervisorConfigKey
-            - Name: COLLECTOR_CONFIG
-              Value: |-
-                receivers:
-                  profiling:
-                    samples_per_second: 20
-                    reporter_interval: 5s
-                    monitor_interval: 5s
-                    probabilistic_interval: 1m
-                    probabilistic_threshold: 100
-                    tracers: all
+            - !If
+              - UseSupervisedImage
+              - Name: COLLECTOR_CONFIG
+                Value: |-
+                  receivers:
+                    profiling:
+                      samples_per_second: 20
+                      reporter_interval: 5s
+                      monitor_interval: 5s
+                      probabilistic_interval: 1m
+                      probabilistic_threshold: 100
+                      tracers: all
 
-                exporters:
-                  # Coralogix exporter for traces, metrics, and logs (enabled by default)
-                  coralogix:
-                    domain: "${CORALOGIX_DOMAIN}"
-                    private_key: "${CORALOGIX_PRIVATE_KEY}"
-                    application_name: "myapplication"
-                    subsystem_name: "profiler"
-                    application_name_attributes:
-                      - "aws.ecs.cluster"
-                      - "aws.ecs.task.definition.family"
-                    subsystem_name_attributes:
-                      - "aws.ecs.container.name"
-                      - "aws.ecs.docker.name"
-                      - "docker.name"
-                    timeout: 30s
-                  debug: {}
+                  exporters:
+                    # Coralogix exporter for traces, metrics, and logs (enabled by default)
+                    coralogix:
+                      domain: "${CORALOGIX_DOMAIN}"
+                      private_key: "${CORALOGIX_PRIVATE_KEY}"
+                      application_name: "myapplication"
+                      subsystem_name: "profiler"
+                      application_name_attributes:
+                        - "aws.ecs.cluster"
+                        - "aws.ecs.task.definition.family"
+                      subsystem_name_attributes:
+                        - "aws.ecs.container.name"
+                        - "aws.ecs.docker.name"
+                        - "docker.name"
+                      timeout: 30s
+                    debug: {}
 
-                extensions:
-                  health_check: {}
+                  extensions:
+                    health_check: {}
 
-                service:
-                  extensions: [health_check]
-                  pipelines:
-                    profiles:
-                      receivers: [profiling]
-                      exporters: [coralogix, debug]
-            - Name: SUPERVISOR_CONFIG
-              Value: !Sub
-                - |-
-                  server:
-                    endpoint: "https://ingress.${!env:CORALOGIX_DOMAIN}/opamp/v1"
-                    headers:
-                      Authorization: "Bearer ${!env:CORALOGIX_PRIVATE_KEY}"
-                    tls:
-                      insecure_skip_verify: false
+                  service:
+                    extensions: [health_check]
+                    pipelines:
+                      profiles:
+                        receivers: [profiling]
+                        exporters: [coralogix, debug]
+              - !Ref AWS::NoValue
+            - !If
+              - UseSupervisedImage
+              - Name: SUPERVISOR_CONFIG
+                Value: !Sub
+                  - |-
+                    server:
+                      endpoint: "https://ingress.${!env:CORALOGIX_DOMAIN}/opamp/v1"
+                      headers:
+                        Authorization: "Bearer ${!env:CORALOGIX_PRIVATE_KEY}"
+                      tls:
+                        insecure_skip_verify: false
 
-                  capabilities:
-                    reports_effective_config: true
-                    reports_own_metrics: true
-                    reports_own_logs: true
-                    reports_own_traces: true
-                    reports_health: true
-                    accepts_remote_config: true
-                    reports_remote_config: true
+                    capabilities:
+                      reports_effective_config: true
+                      reports_own_metrics: true
+                      reports_own_logs: true
+                      reports_own_traces: true
+                      reports_health: true
+                      accepts_remote_config: true
+                      reports_remote_config: true
 
-                  agent:
-                    executable: /cdot
-                    passthrough_logs: true
-                    # This adds CLI arguments to the Collector.
-                    args: ["--feature-gates=+service.profilesSupport"]
-                    config_files:
-                      - /otel-config/collector-config.yaml
-                  ${InitialFallbackConfigsBlock}
-                  storage:
-                    directory: /etc/otelcol-contrib/supervisor-data/
+                    agent:
+                      executable: /cdot
+                      passthrough_logs: true
+                      # This adds CLI arguments to the Collector.
+                      args: ["--feature-gates=+service.profilesSupport"]
+                      config_files:
+                        - /otel-config/collector-config.yaml
+                    ${InitialFallbackConfigsBlock}
+                    storage:
+                      directory: /etc/otelcol-contrib/supervisor-data/
 
-                  telemetry:
-                    logs:
-                      level: info
-                - InitialFallbackConfigsBlock: !If
-                    - HasInitialFallbackConfigs
-                    - !Join
+                    telemetry:
+                      logs:
+                        level: info
+                  - InitialFallbackConfigsBlock: !If
+                      - HasInitialFallbackConfigs
+                      - !Join
+                        - ""
+                        - - "  initial_fallback_configs:\n    - "
+                          - !Join
+                            - "\n    - "
+                            - !Ref InitialFallbackConfigs
                       - ""
-                      - - "  initial_fallback_configs:\n    - "
-                        - !Join
-                          - "\n    - "
-                          - !Ref InitialFallbackConfigs
-                    - ""
+              - !Ref AWS::NoValue
           MountPoints:
             - SourceVolume: otel-config
               ContainerPath: /otel-config

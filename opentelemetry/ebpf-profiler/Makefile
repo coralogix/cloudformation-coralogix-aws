@@ -39,6 +39,7 @@ EC2_KEY_NAME ?=
 help:
 	@printf "eBPF profiler ECS CFN helper targets\n\n"
 	@printf "Required vars: CLUSTER_NAME CORALOGIX_REGION CORALOGIX_API_KEY\n"
+	@printf "Collector mode also requires: S3_BUCKET S3_CONFIG_KEY\n"
 	@printf "Optional vars: STACK_NAME AWS_REGION TEMPLATE_FILE CONFIG_FILE SUPERVISOR_CONFIG_FILE PROFILER_IMAGE_MODE EBPF_PROFILER_IMAGE_REPOSITORY EBPF_PROFILER_IMAGE_VERSION SUPERVISED_IMAGE_REPOSITORY SUPERVISED_IMAGE_VERSION INITIAL_FALLBACK_CONFIGS S3_BUCKET S3_CONFIG_KEY S3_SUPERVISOR_CONFIG_KEY ECS_INSTANCE_PROFILE ECS_EC2_AMI_ID ECS_EC2_AMI_SSM_PARAM EC2_INSTANCE_TYPE EC2_SUBNET_ID EC2_SECURITY_GROUP_ID EC2_KEY_NAME\n\n"
 	@printf "If $(ENV_FILE) exists, values are auto-loaded from it.\n\n"
 	@printf "Targets:\n"
@@ -61,6 +62,16 @@ require-deploy-vars:
 	@test -n "$(CLUSTER_NAME)" || (echo "Missing required variable: CLUSTER_NAME" && exit 1)
 	@test -n "$(CORALOGIX_REGION)" || (echo "Missing required variable: CORALOGIX_REGION" && exit 1)
 	@test -n "$(CORALOGIX_API_KEY)" || (echo "Missing required variable: CORALOGIX_API_KEY" && exit 1)
+	@if [ "$(PROFILER_IMAGE_MODE)" = "collector" ]; then \
+		if [ -z "$(S3_BUCKET)" ]; then \
+			echo "Missing required variable in collector mode: S3_BUCKET"; \
+			exit 1; \
+		fi; \
+		if [ -z "$(S3_CONFIG_KEY)" ]; then \
+			echo "Missing required variable in collector mode: S3_CONFIG_KEY"; \
+			exit 1; \
+		fi; \
+	fi
 
 require-cluster:
 	@test -n "$(CLUSTER_NAME)" || (echo "Missing required variable: CLUSTER_NAME" && exit 1)
@@ -69,8 +80,7 @@ require-bucket:
 	@test -n "$(S3_BUCKET)" || (echo "Missing required variable: S3_BUCKET" && exit 1)
 
 require-s3-config-vars: require-bucket
-	@test -n "$(S3_CONFIG_KEY)" || (echo "Missing required variable: S3_CONFIG_KEY" && exit 1)
-	@test -n "$(S3_SUPERVISOR_CONFIG_KEY)" || (echo "Missing required variable: S3_SUPERVISOR_CONFIG_KEY" && exit 1)
+	@test -n "$(S3_CONFIG_KEY)$(S3_SUPERVISOR_CONFIG_KEY)" || (echo "Set S3_CONFIG_KEY or S3_SUPERVISOR_CONFIG_KEY" && exit 1)
 
 validate:
 	aws cloudformation validate-template --region "$(AWS_REGION)" --template-body "file://$(TEMPLATE_FILE)"
@@ -166,8 +176,12 @@ create-bucket: require-bucket
 	fi
 
 upload-config: require-s3-config-vars
-	aws s3 cp "$(CONFIG_FILE)" "s3://$(S3_BUCKET)/$(S3_CONFIG_KEY)" --region "$(AWS_REGION)"
-	aws s3 cp "$(SUPERVISOR_CONFIG_FILE)" "s3://$(S3_BUCKET)/$(S3_SUPERVISOR_CONFIG_KEY)" --region "$(AWS_REGION)"
+	@if [ -n "$(S3_CONFIG_KEY)" ]; then \
+		aws s3 cp "$(CONFIG_FILE)" "s3://$(S3_BUCKET)/$(S3_CONFIG_KEY)" --region "$(AWS_REGION)"; \
+	fi
+	@if [ -n "$(S3_SUPERVISOR_CONFIG_KEY)" ]; then \
+		aws s3 cp "$(SUPERVISOR_CONFIG_FILE)" "s3://$(S3_BUCKET)/$(S3_SUPERVISOR_CONFIG_KEY)" --region "$(AWS_REGION)"; \
+	fi
 
 prepare-stack:
 	@status=$$(aws cloudformation describe-stacks --region "$(AWS_REGION)" --stack-name "$(STACK_NAME)" --query "Stacks[0].StackStatus" --output text 2>/dev/null || echo "NOT_FOUND"); \

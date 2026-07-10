@@ -2,7 +2,7 @@
 
 This CloudFormation template deploys an ECS daemon service for the OpenTelemetry eBPF profiler collector on an existing ECS EC2 cluster.
 
-The deployment includes default collector and supervisor configurations in the template and runs one profiler task per EC2 container instance. You can optionally load either configuration from S3 instead.
+In supervised mode, the deployment includes default collector and Supervisor configurations in the template. Collector mode loads its configuration from S3. The deployment runs one profiler task per EC2 container instance.
 
 ## Image
 
@@ -30,8 +30,8 @@ This template supports two image modes:
 | `SupervisedImageRepository`   | Supervised image repository                                                | `cgx.jfrog.io/coralogix-docker-images/coralogix-otel-supervised-cdot` | no       |
 | `SupervisedImageVersion`      | Supervised image version/tag                                               | `v0.0.1`                                                              | no       |
 | `InitialFallbackConfigs`      | Comma-delimited S3 URIs for `agent.initial_fallback_configs` in supervised mode |                                                               | no       |
-| `S3ConfigBucket`              | S3 bucket containing optional collector and Supervisor configurations      |                                                                       | no       |
-| `S3ConfigKey`                 | S3 object key for the collector configuration                              |                                                                       | no       |
+| `S3ConfigBucket`              | S3 bucket containing collector and optional Supervisor configurations      |                                                                       | collector mode |
+| `S3ConfigKey`                 | S3 object key for the collector configuration                              |                                                                       | collector mode |
 | `S3SupervisorConfigKey`       | S3 object key for the Supervisor configuration                             |                                                                       | no       |
 
 ## Deploy
@@ -45,6 +45,8 @@ aws cloudformation deploy --template-file template.yaml --stack-name <stack_name
     CoralogixRegion=<coralogix_region> \
     CoralogixApiKey=<send_your_data_api_key> \
     ProfilerImageMode=collector \
+    S3ConfigBucket=<s3_bucket_name> \
+    S3ConfigKey=<path/to/collector-config.yaml> \
     EbpfProfilerImageRepository=coralogixrepo/coralogix-otel-collector \
     EbpfProfilerImageVersion=v0.5.8
 ```
@@ -78,9 +80,9 @@ aws cloudformation deploy --template-file template.yaml --stack-name <stack_name
     InitialFallbackConfigs=s3://<BUCKET>.s3.<REGION>.amazonaws.com/<ACCOUNT_ID>/<GROUP_NAME>/<COLLECTOR_VERSION>/<REMOTE_CONFIG_NAME>/config.yaml,s3://<BUCKET>.s3.<REGION>.amazonaws.com/<ACCOUNT_ID>/<GROUP_NAME>/EMPTY_VERSION/<REMOTE_CONFIG_NAME>/config.yaml
 ```
 
-## Optional S3 configurations
+## S3 configurations
 
-The embedded configurations are used by default. To load the collector configuration from S3, set both `S3ConfigBucket` and `S3ConfigKey`. In supervised mode, set `S3ConfigBucket` and `S3SupervisorConfigKey` to load the Supervisor configuration from S3. Each configuration falls back to its embedded default when its key or the bucket is empty.
+Collector mode requires `S3ConfigBucket` and `S3ConfigKey`. Supervised mode uses embedded configurations by default; set the bucket and relevant key to override either configuration from S3.
 
 ```sh
 aws cloudformation deploy --template-file template.yaml --stack-name <stack_name> \
@@ -112,7 +114,9 @@ CLUSTER_NAME=<ecs_cluster_name> \
 CORALOGIX_REGION=<coralogix_region> \
 CORALOGIX_API_KEY=<send_your_data_api_key> \
 AWS_REGION=<aws_region> \
-make smoke
+S3_BUCKET=<s3_bucket_name> \
+S3_CONFIG_KEY=<path/to/collector-config.yaml> \
+make create-bucket upload-config smoke
 ```
 
 To run supervised mode:
@@ -137,7 +141,7 @@ PROFILER_IMAGE_MODE=supervised \
 make create-bucket upload-config deploy
 ```
 
-`create-bucket`, `upload-config`, and `delete-bucket` require `S3_BUCKET`. `upload-config` also requires both S3 config keys. These targets are not part of `smoke` or `cleanup` because embedded configurations are the default.
+`create-bucket`, `upload-config`, and `delete-bucket` require `S3_BUCKET`. `upload-config` requires at least one S3 config key and uploads only the configured files. These targets are not part of `smoke` or `cleanup` because supervised mode uses embedded configurations by default.
 
 `make smoke` now also creates the ECS cluster and ECS EC2 container instance if they do not already exist.
 
