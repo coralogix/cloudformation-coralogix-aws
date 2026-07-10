@@ -28,7 +28,7 @@ This template supports two image modes:
 | `EbpfProfilerImageRepository` | Collector image repository                                                 | `coralogixrepo/coralogix-otel-collector`                              | no       |
 | `EbpfProfilerImageVersion`    | Image version/tag for collector mode                                       | `v0.5.8`                                                              | no       |
 | `SupervisedImageRepository`   | Supervised image repository                                                | `cgx.jfrog.io/coralogix-docker-images/coralogix-otel-supervised-cdot` | no       |
-| `SupervisedImageVersion`      | Supervised image version/tag                                               | `v0.0.1`                                                              | no       |
+| `SupervisedImageVersion`      | Supervised image version/tag                                               | `v0.10.0`                                                             | no       |
 | `InitialFallbackConfigs`      | Comma-delimited S3 URIs for `agent.initial_fallback_configs` in supervised mode |                                                               | no       |
 | `S3ConfigBucket`              | S3 bucket containing collector and optional Supervisor configurations      |                                                                       | collector mode |
 | `S3ConfigKey`                 | S3 object key for the collector configuration                              |                                                                       | collector mode |
