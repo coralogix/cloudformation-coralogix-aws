@@ -321,6 +321,7 @@ Resources:
             - !Sub "${SupervisedImageRepository}:${SupervisedImageVersion}"
             - !Sub "${EbpfProfilerImageRepository}:${EbpfProfilerImageVersion}"
           Essential: true
+          User: "0"
           Privileged: true
           DependsOn:
             - ContainerName: config-loader

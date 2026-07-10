@@ -6,6 +6,7 @@
 <!-- * [Update/Bug fix] message that describes the changes that you apply -->
 
 ### 0.1.1 / 2026-07-09
+- [Fix] Run the eBPF profiler as user `0` (zero) to fix permission issues with eBPF maps and tracepoints.
 - [Update] Embedded default eBPF profiler and Supervisor configurations in the CloudFormation template while retaining optional S3 configuration loading.
 - [Update] Added the `InitialFallbackConfigs` CloudFormation parameter for Supervisor initial fallback config sources, written as a comma-separated list.
 
