@@ -18,8 +18,6 @@ Metadata:
           - EbpfProfilerImageVersion
           - SupervisedImageRepository
           - SupervisedImageVersion
-          - InitialFallbackConfigs
-          - S3FallbackConfigBucket
       - Label:
           default: "S3 Configuration (Optional)"
         Parameters:
@@ -43,10 +41,6 @@ Metadata:
         default: "Supervised Image Repository"
       SupervisedImageVersion:
         default: "Supervised Image Version"
-      InitialFallbackConfigs:
-        default: "Initial Fallback Configs"
-      S3FallbackConfigBucket:
-        default: "S3 Fallback Config Bucket"
       S3ConfigBucket:
         default: "S3 Bucket Name"
       S3ConfigKey:
@@ -116,16 +110,6 @@ Parameters:
     AllowedPattern: ".+"
     ConstraintDescription: Supervised image version is required.
 
-  InitialFallbackConfigs:
-    Type: CommaDelimitedList
-    Description: Comma-delimited list of S3 URIs for supervisor agent.initial_fallback_configs. Leave empty to omit initial fallback configs.
-    Default: ""
-
-  S3FallbackConfigBucket:
-    Type: String
-    Description: S3 bucket containing the initial fallback configurations. Required when InitialFallbackConfigs is set.
-    Default: ""
-
   S3ConfigBucket:
     Type: String
     Description: S3 bucket containing collector and supervisor configuration files. Required in collector mode.
@@ -149,24 +133,8 @@ Rules:
           - !Not [!Equals [!Ref S3ConfigBucket, ""]]
           - !Not [!Equals [!Ref S3ConfigKey, ""]]
         AssertDescription: S3ConfigBucket and S3ConfigKey are required in collector mode.
-  InitialFallbackConfigsRequireBucket:
-    RuleCondition:
-      Fn::And:
-        - Fn::Equals: [!Ref ProfilerImageMode, supervised]
-        - Fn::Not:
-            - Fn::EachMemberEquals:
-                - !Ref InitialFallbackConfigs
-                - ""
-    Assertions:
-      - Assert: !Not [!Equals [!Ref S3FallbackConfigBucket, ""]]
-        AssertDescription: S3FallbackConfigBucket is required when InitialFallbackConfigs is set.
-
 Conditions:
   UseSupervisedImage: !Equals [!Ref ProfilerImageMode, supervised]
-  UseS3InitialFallbackConfigs: !And
-    - !Condition UseSupervisedImage
-    - !Not [!Equals [!Join ["", !Ref InitialFallbackConfigs], ""]]
-    - !Not [!Equals [!Ref S3FallbackConfigBucket, ""]]
   UseS3CollectorConfig: !And
     - !Not [!Equals [!Ref S3ConfigBucket, ""]]
     - !Not [!Equals [!Ref S3ConfigKey, ""]]
@@ -174,12 +142,9 @@ Conditions:
     - !Condition UseSupervisedImage
     - !Not [!Equals [!Ref S3ConfigBucket, ""]]
     - !Not [!Equals [!Ref S3SupervisorConfigKey, ""]]
-  UseS3UploadedConfigs: !Or
+  UseAnyS3Config: !Or
     - !Condition UseS3CollectorConfig
     - !Condition UseS3SupervisorConfig
-  UseAnyS3Config: !Or
-    - !Condition UseS3UploadedConfigs
-    - !Condition UseS3InitialFallbackConfigs
 
 Mappings:
   CoralogixRegionMap:
@@ -302,47 +267,37 @@ Resources:
             - !If
               - UseSupervisedImage
               - Name: SUPERVISOR_CONFIG
-                Value: !Sub
-                  - |-
-                    server:
-                      endpoint: "https://ingress.${!env:CORALOGIX_DOMAIN}/opamp/v1"
-                      headers:
-                        Authorization: "Bearer ${!env:CORALOGIX_PRIVATE_KEY}"
-                      tls:
-                        insecure_skip_verify: false
+                Value: |-
+                  server:
+                    endpoint: "https://ingress.${env:CORALOGIX_DOMAIN}/opamp/v1"
+                    headers:
+                      Authorization: "Bearer ${env:CORALOGIX_PRIVATE_KEY}"
+                    tls:
+                      insecure_skip_verify: false
 
-                    capabilities:
-                      reports_effective_config: true
-                      reports_own_metrics: true
-                      reports_own_logs: true
-                      reports_own_traces: true
-                      reports_health: true
-                      accepts_remote_config: true
-                      reports_remote_config: true
+                  capabilities:
+                    reports_effective_config: true
+                    reports_own_metrics: true
+                    reports_own_logs: true
+                    reports_own_traces: true
+                    reports_health: true
+                    accepts_remote_config: true
+                    reports_remote_config: true
 
-                    agent:
-                      executable: /cdot
-                      passthrough_logs: true
-                      # This adds CLI arguments to the Collector.
-                      args: ["--feature-gates=+service.profilesSupport"]
-                      config_files:
-                        - /otel-config/collector-config.yaml
-                    ${InitialFallbackConfigsBlock}
-                    storage:
-                      directory: /etc/otelcol-contrib/supervisor-data/
+                  agent:
+                    executable: /cdot
+                    passthrough_logs: true
+                    # This adds CLI arguments to the Collector.
+                    args: ["--feature-gates=+service.profilesSupport"]
+                    config_files:
+                      - /otel-config/collector-config.yaml
 
-                    telemetry:
-                      logs:
-                        level: info
-                  - InitialFallbackConfigsBlock: !If
-                      - UseS3InitialFallbackConfigs
-                      - !Join
-                        - ""
-                        - - "  initial_fallback_configs:\n    - "
-                          - !Join
-                            - "\n    - "
-                            - !Ref InitialFallbackConfigs
-                      - ""
+                  storage:
+                    directory: /etc/otelcol-contrib/supervisor-data/
+
+                  telemetry:
+                    logs:
+                      level: info
               - !Ref AWS::NoValue
           MountPoints:
             - SourceVolume: otel-config
@@ -426,16 +381,11 @@ Resources:
                 Action:
                   - s3:GetObject
                   - s3:GetObjectVersion
-                Resource:
-                  - !If [UseS3UploadedConfigs, !Sub "arn:aws:s3:::${S3ConfigBucket}/*", !Ref AWS::NoValue]
-                  - !If [UseS3InitialFallbackConfigs, !Sub "arn:aws:s3:::${S3FallbackConfigBucket}/*", !Ref AWS::NoValue]
-              - !If
-                - UseS3UploadedConfigs
-                - Effect: Allow
-                  Action:
-                    - s3:ListBucket
-                  Resource: !Sub "arn:aws:s3:::${S3ConfigBucket}"
-                - !Ref AWS::NoValue
+                Resource: !Sub "arn:aws:s3:::${S3ConfigBucket}/*"
+              - Effect: Allow
+                Action:
+                  - s3:ListBucket
+                Resource: !Sub "arn:aws:s3:::${S3ConfigBucket}"
 
   ECSService:
     Type: AWS::ECS::Service

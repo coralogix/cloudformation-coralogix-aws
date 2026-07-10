@@ -18,8 +18,6 @@ EBPF_PROFILER_IMAGE_REPOSITORY ?= coralogixrepo/coralogix-otel-collector
 EBPF_PROFILER_IMAGE_VERSION ?= v0.5.8
 SUPERVISED_IMAGE_REPOSITORY ?= cgx.jfrog.io/coralogix-docker-images/coralogix-otel-supervised-cdot
 SUPERVISED_IMAGE_VERSION ?= v0.10.0
-INITIAL_FALLBACK_CONFIGS ?=
-S3_FALLBACK_CONFIG_BUCKET ?=
 S3_BUCKET ?=
 S3_CONFIG_KEY ?=
 S3_SUPERVISOR_CONFIG_KEY ?=
@@ -43,8 +41,7 @@ help:
 	@printf "eBPF profiler ECS CFN helper targets\n\n"
 	@printf "Required vars: CLUSTER_NAME CORALOGIX_REGION CORALOGIX_API_KEY\n"
 	@printf "Collector mode also requires: S3_BUCKET S3_CONFIG_KEY\n"
-	@printf "Initial fallback configs also require: S3_FALLBACK_CONFIG_BUCKET\n"
-	@printf "Optional vars: STACK_NAME AWS_REGION TEMPLATE_FILE CONFIG_FILE SUPERVISOR_CONFIG_FILE PROFILER_IMAGE_MODE EBPF_PROFILER_IMAGE_REPOSITORY EBPF_PROFILER_IMAGE_VERSION SUPERVISED_IMAGE_REPOSITORY SUPERVISED_IMAGE_VERSION INITIAL_FALLBACK_CONFIGS S3_FALLBACK_CONFIG_BUCKET S3_BUCKET S3_CONFIG_KEY S3_SUPERVISOR_CONFIG_KEY ECS_INSTANCE_PROFILE ECS_EC2_AMI_ID ECS_EC2_AMI_SSM_PARAM EC2_INSTANCE_TYPE EC2_SUBNET_ID EC2_SECURITY_GROUP_ID EC2_KEY_NAME\n\n"
+	@printf "Optional vars: STACK_NAME AWS_REGION TEMPLATE_FILE CONFIG_FILE SUPERVISOR_CONFIG_FILE PROFILER_IMAGE_MODE EBPF_PROFILER_IMAGE_REPOSITORY EBPF_PROFILER_IMAGE_VERSION SUPERVISED_IMAGE_REPOSITORY SUPERVISED_IMAGE_VERSION S3_BUCKET S3_CONFIG_KEY S3_SUPERVISOR_CONFIG_KEY ECS_INSTANCE_PROFILE ECS_EC2_AMI_ID ECS_EC2_AMI_SSM_PARAM EC2_INSTANCE_TYPE EC2_SUBNET_ID EC2_SECURITY_GROUP_ID EC2_KEY_NAME\n\n"
 	@printf "If $(ENV_FILE) exists, values are auto-loaded from it.\n\n"
 	@printf "Targets:\n"
 	@printf "  make validate            Validate CloudFormation template\n"
@@ -69,10 +66,6 @@ require-deploy-vars:
 	@test -n "$(CLUSTER_NAME)" || (echo "Missing required variable: CLUSTER_NAME" && exit 1)
 	@test -n "$(CORALOGIX_REGION)" || (echo "Missing required variable: CORALOGIX_REGION" && exit 1)
 	@test -n "$(CORALOGIX_API_KEY)" || (echo "Missing required variable: CORALOGIX_API_KEY" && exit 1)
-	@if [ "$(PROFILER_IMAGE_MODE)" = "supervised" ] && [ -n "$(INITIAL_FALLBACK_CONFIGS)" ] && [ -z "$(S3_FALLBACK_CONFIG_BUCKET)" ]; then \
-		echo "Missing required variable when INITIAL_FALLBACK_CONFIGS is set: S3_FALLBACK_CONFIG_BUCKET"; \
-		exit 1; \
-	fi
 	@if [ "$(PROFILER_IMAGE_MODE)" = "collector" ]; then \
 		if [ -z "$(S3_BUCKET)" ]; then \
 			echo "Missing required variable in collector mode: S3_BUCKET"; \
@@ -229,8 +222,6 @@ deploy: require-deploy-vars prepare-stack
 			EbpfProfilerImageVersion="$(EBPF_PROFILER_IMAGE_VERSION)" \
 			SupervisedImageRepository="$(SUPERVISED_IMAGE_REPOSITORY)" \
 			SupervisedImageVersion="$(SUPERVISED_IMAGE_VERSION)" \
-			InitialFallbackConfigs="$(INITIAL_FALLBACK_CONFIGS)" \
-			S3FallbackConfigBucket="$(S3_FALLBACK_CONFIG_BUCKET)" \
 			S3ConfigBucket="$(S3_BUCKET)" \
 			S3ConfigKey="$(S3_CONFIG_KEY)" \
 			S3SupervisorConfigKey="$(S3_SUPERVISOR_CONFIG_KEY)"
