@@ -116,19 +116,21 @@ CORALOGIX_API_KEY=<send_your_data_api_key> \
 AWS_REGION=<aws_region> \
 S3_BUCKET=<s3_bucket_name> \
 S3_CONFIG_KEY=<path/to/collector-config.yaml> \
-make create-bucket upload-config smoke
+make smoke
 ```
 
 To run supervised mode:
 
 ```sh
-PROFILER_IMAGE_MODE=supervised make smoke
+make smoke-supervised
 ```
+
+`deploy-supervised`, `smoke-supervised`, and `cleanup-supervised` reuse the corresponding main targets with `PROFILER_IMAGE_MODE=supervised` and all S3 configuration variables cleared. This allows the normal targets to keep S3 values configured in `.env` while the supervised targets always exercise embedded configurations.
 
 To enable initial fallback configs in the Makefile flow, pass a comma-delimited list of S3 URIs:
 
 ```sh
-INITIAL_FALLBACK_CONFIGS=s3://<BUCKET>.s3.<REGION>.amazonaws.com/<ACCOUNT_ID>/<GROUP_NAME>/<COLLECTOR_VERSION>/<REMOTE_CONFIG_NAME>/config.yaml,s3://<BUCKET>.s3.<REGION>.amazonaws.com/<ACCOUNT_ID>/<GROUP_NAME>/EMPTY_VERSION/<REMOTE_CONFIG_NAME>/config.yaml make deploy
+INITIAL_FALLBACK_CONFIGS=s3://<BUCKET>.s3.<REGION>.amazonaws.com/<ACCOUNT_ID>/<GROUP_NAME>/<COLLECTOR_VERSION>/<REMOTE_CONFIG_NAME>/config.yaml,s3://<BUCKET>.s3.<REGION>.amazonaws.com/<ACCOUNT_ID>/<GROUP_NAME>/EMPTY_VERSION/<REMOTE_CONFIG_NAME>/config.yaml make deploy-supervised
 ```
 
 To load configurations from S3 in the Makefile flow:
@@ -141,7 +143,7 @@ PROFILER_IMAGE_MODE=supervised \
 make create-bucket upload-config deploy
 ```
 
-`create-bucket`, `upload-config`, and `delete-bucket` require `S3_BUCKET`. `upload-config` requires at least one S3 config key and uploads only the configured files. These targets are not part of `smoke` or `cleanup` because supervised mode uses embedded configurations by default.
+`smoke` creates the configured S3 bucket and uploads each configured file before deployment. `cleanup` removes the configured bucket after deleting the stack and ECS resources. The S3 steps do nothing when `S3_BUCKET` is empty, so supervised mode can use embedded configurations without separate commands.
 
 `make smoke` now also creates the ECS cluster and ECS EC2 container instance if they do not already exist.
 
@@ -163,12 +165,16 @@ Useful individual targets:
 - `make upload-config`
 - `make delete-ec2-instance`
 - `make deploy`
+- `make deploy-supervised`
+- `make smoke`
+- `make smoke-supervised`
 - `make status`
 - `make tasks`
 - `make delete`
 - `make delete-cluster`
 - `make delete-bucket`
 - `make cleanup`
+- `make cleanup-supervised`
 
 ## Notes
 
