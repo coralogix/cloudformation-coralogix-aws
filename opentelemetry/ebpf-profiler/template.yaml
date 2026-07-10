@@ -281,6 +281,8 @@ Resources:
                   agent:
                     executable: /cdot
                     passthrough_logs: true
+                    # This adds CLI arguments to the Collector.
+                    args: ["--feature-gates=+service.profilesSupport"]
                     config_files:
                       - /otel-config/collector-config.yaml
                   ${InitialFallbackConfigsBlock}
