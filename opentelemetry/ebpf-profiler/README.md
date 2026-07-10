@@ -134,8 +134,10 @@ S3_BUCKET=<s3_bucket_name> \
 S3_CONFIG_KEY=<path/to/collector-config.yaml> \
 S3_SUPERVISOR_CONFIG_KEY=<path/to/supervisor-config.yaml> \
 PROFILER_IMAGE_MODE=supervised \
-make deploy
+make create-bucket upload-config deploy
 ```
+
+`create-bucket`, `upload-config`, and `delete-bucket` require `S3_BUCKET`. `upload-config` also requires both S3 config keys. These targets are not part of `smoke` or `cleanup` because embedded configurations are the default.
 
 `make smoke` now also creates the ECS cluster and ECS EC2 container instance if they do not already exist.
 
@@ -153,12 +155,15 @@ Useful individual targets:
 - `make create-cluster`
 - `make create-ec2-instance`
 - `make wait-cluster-capacity`
+- `make create-bucket`
+- `make upload-config`
 - `make delete-ec2-instance`
 - `make deploy`
 - `make status`
 - `make tasks`
 - `make delete`
 - `make delete-cluster`
+- `make delete-bucket`
 - `make cleanup`
 
 ## Notes
