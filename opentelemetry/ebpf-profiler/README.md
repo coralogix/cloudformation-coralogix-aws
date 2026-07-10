@@ -30,6 +30,7 @@ This template supports two image modes:
 | `SupervisedImageRepository`   | Supervised image repository                                                | `cgx.jfrog.io/coralogix-docker-images/coralogix-otel-supervised-cdot` | no       |
 | `SupervisedImageVersion`      | Supervised image version/tag                                               | `v0.10.0`                                                             | no       |
 | `InitialFallbackConfigs`      | Comma-delimited S3 URIs for `agent.initial_fallback_configs` in supervised mode |                                                               | no       |
+| `S3FallbackConfigBucket`      | S3 bucket containing the initial fallback configurations                   |                                                                       | with `InitialFallbackConfigs` |
 | `S3ConfigBucket`              | S3 bucket containing collector and optional Supervisor configurations      |                                                                       | collector mode |
 | `S3ConfigKey`                 | S3 object key for the collector configuration                              |                                                                       | collector mode |
 | `S3SupervisorConfigKey`       | S3 object key for the Supervisor configuration                             |                                                                       | no       |
@@ -63,7 +64,7 @@ aws cloudformation deploy --template-file template.yaml --stack-name <stack_name
     CoralogixApiKey=<send_your_data_api_key> \
     ProfilerImageMode=supervised \
     SupervisedImageRepository=cgx.jfrog.io/coralogix-docker-images/coralogix-otel-supervised-cdot \
-    SupervisedImageVersion=v0.0.1
+    SupervisedImageVersion=v0.10.0
 ```
 
 To enable initial fallback configs in supervised mode, pass a comma-delimited list of S3 URIs:
@@ -77,6 +78,7 @@ aws cloudformation deploy --template-file template.yaml --stack-name <stack_name
     CoralogixRegion=<coralogix_region> \
     CoralogixApiKey=<send_your_data_api_key> \
     ProfilerImageMode=supervised \
+    S3FallbackConfigBucket=<BUCKET> \
     InitialFallbackConfigs=s3://<BUCKET>.s3.<REGION>.amazonaws.com/<ACCOUNT_ID>/<GROUP_NAME>/<COLLECTOR_VERSION>/<REMOTE_CONFIG_NAME>/config.yaml,s3://<BUCKET>.s3.<REGION>.amazonaws.com/<ACCOUNT_ID>/<GROUP_NAME>/EMPTY_VERSION/<REMOTE_CONFIG_NAME>/config.yaml
 ```
 
@@ -125,11 +127,12 @@ To run supervised mode:
 make smoke-supervised
 ```
 
-`deploy-supervised`, `smoke-supervised`, and `cleanup-supervised` reuse the corresponding main targets with `PROFILER_IMAGE_MODE=supervised` and all S3 configuration variables cleared. This allows the normal targets to keep S3 values configured in `.env` while the supervised targets always exercise embedded configurations.
+`deploy-supervised`, `smoke-supervised`, and `cleanup-supervised` reuse the corresponding main targets with `PROFILER_IMAGE_MODE=supervised` and the S3 collector and Supervisor configuration overrides cleared. This allows the normal targets to keep those values configured in `.env` while the supervised targets always exercise embedded configurations. `S3_FALLBACK_CONFIG_BUCKET` is preserved so the Supervisor can access initial fallback configurations.
 
 To enable initial fallback configs in the Makefile flow, pass a comma-delimited list of S3 URIs:
 
 ```sh
+S3_FALLBACK_CONFIG_BUCKET=<BUCKET> \
 INITIAL_FALLBACK_CONFIGS=s3://<BUCKET>.s3.<REGION>.amazonaws.com/<ACCOUNT_ID>/<GROUP_NAME>/<COLLECTOR_VERSION>/<REMOTE_CONFIG_NAME>/config.yaml,s3://<BUCKET>.s3.<REGION>.amazonaws.com/<ACCOUNT_ID>/<GROUP_NAME>/EMPTY_VERSION/<REMOTE_CONFIG_NAME>/config.yaml make deploy-supervised
 ```
 

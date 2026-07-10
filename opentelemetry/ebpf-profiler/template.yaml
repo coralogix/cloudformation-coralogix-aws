@@ -19,6 +19,7 @@ Metadata:
           - SupervisedImageRepository
           - SupervisedImageVersion
           - InitialFallbackConfigs
+          - S3FallbackConfigBucket
       - Label:
           default: "S3 Configuration (Optional)"
         Parameters:
@@ -44,6 +45,8 @@ Metadata:
         default: "Supervised Image Version"
       InitialFallbackConfigs:
         default: "Initial Fallback Configs"
+      S3FallbackConfigBucket:
+        default: "S3 Fallback Config Bucket"
       S3ConfigBucket:
         default: "S3 Bucket Name"
       S3ConfigKey:
@@ -118,6 +121,11 @@ Parameters:
     Description: Comma-delimited list of S3 URIs for supervisor agent.initial_fallback_configs. Leave empty to omit initial fallback configs.
     Default: ""
 
+  S3FallbackConfigBucket:
+    Type: String
+    Description: S3 bucket containing the initial fallback configurations. Required when InitialFallbackConfigs is set.
+    Default: ""
+
   S3ConfigBucket:
     Type: String
     Description: S3 bucket containing collector and supervisor configuration files. Required in collector mode.
@@ -141,12 +149,24 @@ Rules:
           - !Not [!Equals [!Ref S3ConfigBucket, ""]]
           - !Not [!Equals [!Ref S3ConfigKey, ""]]
         AssertDescription: S3ConfigBucket and S3ConfigKey are required in collector mode.
+  InitialFallbackConfigsRequireBucket:
+    RuleCondition:
+      Fn::And:
+        - Fn::Equals: [!Ref ProfilerImageMode, supervised]
+        - Fn::Not:
+            - Fn::EachMemberEquals:
+                - !Ref InitialFallbackConfigs
+                - ""
+    Assertions:
+      - Assert: !Not [!Equals [!Ref S3FallbackConfigBucket, ""]]
+        AssertDescription: S3FallbackConfigBucket is required when InitialFallbackConfigs is set.
 
 Conditions:
   UseSupervisedImage: !Equals [!Ref ProfilerImageMode, supervised]
-  HasInitialFallbackConfigs: !And
+  UseS3InitialFallbackConfigs: !And
     - !Condition UseSupervisedImage
     - !Not [!Equals [!Join ["", !Ref InitialFallbackConfigs], ""]]
+    - !Not [!Equals [!Ref S3FallbackConfigBucket, ""]]
   UseS3CollectorConfig: !And
     - !Not [!Equals [!Ref S3ConfigBucket, ""]]
     - !Not [!Equals [!Ref S3ConfigKey, ""]]
@@ -154,9 +174,12 @@ Conditions:
     - !Condition UseSupervisedImage
     - !Not [!Equals [!Ref S3ConfigBucket, ""]]
     - !Not [!Equals [!Ref S3SupervisorConfigKey, ""]]
-  UseAnyS3Config: !Or
+  UseS3UploadedConfigs: !Or
     - !Condition UseS3CollectorConfig
     - !Condition UseS3SupervisorConfig
+  UseAnyS3Config: !Or
+    - !Condition UseS3UploadedConfigs
+    - !Condition UseS3InitialFallbackConfigs
 
 Mappings:
   CoralogixRegionMap:
@@ -312,7 +335,7 @@ Resources:
                       logs:
                         level: info
                   - InitialFallbackConfigsBlock: !If
-                      - HasInitialFallbackConfigs
+                      - UseS3InitialFallbackConfigs
                       - !Join
                         - ""
                         - - "  initial_fallback_configs:\n    - "
@@ -403,11 +426,16 @@ Resources:
                 Action:
                   - s3:GetObject
                   - s3:GetObjectVersion
-                Resource: !Sub "arn:aws:s3:::${S3ConfigBucket}/*"
-              - Effect: Allow
-                Action:
-                  - s3:ListBucket
-                Resource: !Sub "arn:aws:s3:::${S3ConfigBucket}"
+                Resource:
+                  - !If [UseS3UploadedConfigs, !Sub "arn:aws:s3:::${S3ConfigBucket}/*", !Ref AWS::NoValue]
+                  - !If [UseS3InitialFallbackConfigs, !Sub "arn:aws:s3:::${S3FallbackConfigBucket}/*", !Ref AWS::NoValue]
+              - !If
+                - UseS3UploadedConfigs
+                - Effect: Allow
+                  Action:
+                    - s3:ListBucket
+                  Resource: !Sub "arn:aws:s3:::${S3ConfigBucket}"
+                - !Ref AWS::NoValue
 
   ECSService:
     Type: AWS::ECS::Service
