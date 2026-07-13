@@ -129,14 +129,14 @@ Parameters:
     Type: String
     Description: |
       S3 bucket name containing the profiling configuration file.
-      Used only when ProfilingEnabled is true.
+      Required when profiling is enabled in collector mode. Optional in supervised mode.
     Default: ""
 
   ProfilingS3ConfigKey:
     Type: String
     Description: |
       S3 object key (file path) for the profiling configuration file.
-      Used only when ProfilingEnabled is true.
+      Required when profiling is enabled in collector mode. Optional in supervised mode.
     Default: ""
 
   ClusterName:
@@ -278,12 +278,14 @@ Rules:
         AssertDescription: "InitialFallbackConfigs must be empty when ProfilingEnabled is true."
 
   ProfilingS3ConfigRequired:
-    RuleCondition: !Equals [!Ref ProfilingEnabled, "true"]
+    RuleCondition: !And
+      - !Equals [!Ref ProfilingEnabled, "true"]
+      - !Equals [!Ref AgentImageMode, collector]
     Assertions:
       - Assert: !Not [!Equals [!Ref ProfilingS3ConfigBucket, ""]]
-        AssertDescription: "ProfilingS3ConfigBucket is required when ProfilingEnabled is true."
+        AssertDescription: "ProfilingS3ConfigBucket is required when profiling is enabled in collector mode."
       - Assert: !Not [!Equals [!Ref ProfilingS3ConfigKey, ""]]
-        AssertDescription: "ProfilingS3ConfigKey is required when ProfilingEnabled is true."
+        AssertDescription: "ProfilingS3ConfigKey is required when profiling is enabled in collector mode."
 
 Conditions:
   UseImage: !Not [!Equals [!Ref Image, "none"]]
@@ -295,12 +297,16 @@ Conditions:
     - !Condition UseSupervisedImage
     - !Not [!Equals [!Ref S3ConfigBucket, ""]]
     - !Not [!Equals [!Ref S3SupervisorConfigKey, ""]]
+  UseS3ProfilingConfig: !And
+    - !Condition EnableProfiling
+    - !Not [!Equals [!Ref ProfilingS3ConfigBucket, ""]]
+    - !Not [!Equals [!Ref ProfilingS3ConfigKey, ""]]
   UseMainS3Bucket: !Or
     - !Condition UseS3CollectorConfig
     - !Condition UseS3SupervisorConfig
   UseAnyS3Config: !Or
     - !Condition UseMainS3Bucket
-    - !Condition EnableProfiling
+    - !Condition UseS3ProfilingConfig
   EnableHealthCheck: !Equals [!Ref HealthCheckEnabled, "true"]
   UseCustomTaskRole: !Not [!Equals [!Ref TaskRoleArn, ""]]
   CreateTaskRole: !And
@@ -574,7 +580,7 @@ Resources:
                       - !Sub "arn:aws:s3:::${S3ConfigBucket}/*"
                       - !Ref AWS::NoValue
                     - !If
-                      - EnableProfiling
+                      - UseS3ProfilingConfig
                       - !Sub "arn:aws:s3:::${ProfilingS3ConfigBucket}/*"
                       - !Ref AWS::NoValue
                 - Effect: Allow
@@ -586,7 +592,7 @@ Resources:
                       - !Sub "arn:aws:s3:::${S3ConfigBucket}"
                       - !Ref AWS::NoValue
                     - !If
-                      - EnableProfiling
+                      - UseS3ProfilingConfig
                       - !Sub "arn:aws:s3:::${ProfilingS3ConfigBucket}"
                       - !Ref AWS::NoValue
         - !Ref AWS::NoValue
@@ -620,7 +626,7 @@ Resources:
                     - !Sub "arn:aws:s3:::${S3ConfigBucket}/*"
                     - !Ref AWS::NoValue
                   - !If
-                    - EnableProfiling
+                    - UseS3ProfilingConfig
                     - !Sub "arn:aws:s3:::${ProfilingS3ConfigBucket}/*"
                     - !Ref AWS::NoValue
               - Effect: Allow
@@ -632,7 +638,7 @@ Resources:
                     - !Sub "arn:aws:s3:::${S3ConfigBucket}"
                     - !Ref AWS::NoValue
                   - !If
-                    - EnableProfiling
+                    - UseS3ProfilingConfig
                     - !Sub "arn:aws:s3:::${ProfilingS3ConfigBucket}"
                     - !Ref AWS::NoValue
 
@@ -669,7 +675,7 @@ Resources:
       TaskRoleArn: !If
         - UseCustomTaskRole
         - !Ref TaskRoleArn
-        - !Ref OtelTaskRole
+        - !If [CreateTaskRole, !Ref OtelTaskRole, !Ref AWS::NoValue]
       Family: opentelemetry-profiling
       RequiresCompatibilities:
         - EC2
@@ -704,7 +710,14 @@ Resources:
           Command:
             - |
               set -e
-              aws s3 cp "s3://$PROFILING_S3_CONFIG_BUCKET/$PROFILING_S3_CONFIG_KEY" /otel-config/collector-config.yaml
+              if [ -n "$PROFILING_S3_CONFIG_BUCKET" ] && [ -n "$PROFILING_S3_CONFIG_KEY" ]; then
+                aws s3 cp "s3://$PROFILING_S3_CONFIG_BUCKET/$PROFILING_S3_CONFIG_KEY" /otel-config/collector-config.yaml
+              elif [ "$AGENT_IMAGE_MODE" = "supervised" ]; then
+                printf '%s\n' "$COLLECTOR_CONFIG" > /otel-config/collector-config.yaml
+              else
+                echo "PROFILING_S3_CONFIG_BUCKET and PROFILING_S3_CONFIG_KEY are required in collector mode" >&2
+                exit 1
+              fi
               if [ "$AGENT_IMAGE_MODE" = "supervised" ]; then
                 printf '%s\n' "$SUPERVISOR_CONFIG" > /otel-config/supervisor.yaml
               fi
@@ -715,6 +728,37 @@ Resources:
               Value: !Ref ProfilingS3ConfigBucket
             - Name: PROFILING_S3_CONFIG_KEY
               Value: !Ref ProfilingS3ConfigKey
+            - !If
+              - UseSupervisedImage
+              - Name: COLLECTOR_CONFIG
+                Value: |-
+                  receivers:
+                    nop:
+
+                  exporters:
+                    nop:
+
+                  extensions:
+                    health_check:
+                      endpoint: "localhost:13133"
+
+                  service:
+                    extensions:
+                      - health_check
+                    telemetry:
+                      logs:
+                        encoding: json
+                    pipelines:
+                      traces:
+                        receivers: [nop]
+                        exporters: [nop]
+                      metrics:
+                        receivers: [nop]
+                        exporters: [nop]
+                      logs:
+                        receivers: [nop]
+                        exporters: [nop]
+              - !Ref AWS::NoValue
             - !If
               - UseSupervisedImage
               - Name: SUPERVISOR_CONFIG
