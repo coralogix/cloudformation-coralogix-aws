@@ -229,40 +229,31 @@ Resources:
               - Name: COLLECTOR_CONFIG
                 Value: |-
                   receivers:
-                    profiling:
-                      samples_per_second: 20
-                      reporter_interval: 5s
-                      monitor_interval: 5s
-                      probabilistic_interval: 1m
-                      probabilistic_threshold: 100
-                      tracers: all
+                    nop:
 
                   exporters:
-                    # Coralogix exporter for traces, metrics, and logs (enabled by default)
-                    coralogix:
-                      domain: "${CORALOGIX_DOMAIN}"
-                      private_key: "${CORALOGIX_PRIVATE_KEY}"
-                      application_name: "myapplication"
-                      subsystem_name: "profiler"
-                      application_name_attributes:
-                        - "aws.ecs.cluster"
-                        - "aws.ecs.task.definition.family"
-                      subsystem_name_attributes:
-                        - "aws.ecs.container.name"
-                        - "aws.ecs.docker.name"
-                        - "docker.name"
-                      timeout: 30s
-                    debug: {}
+                    nop:
 
                   extensions:
-                    health_check: {}
+                    health_check:
+                      endpoint: "localhost:13133"
 
                   service:
-                    extensions: [health_check]
+                    extensions:
+                      - health_check
+                    telemetry:
+                      logs:
+                        encoding: json
                     pipelines:
-                      profiles:
-                        receivers: [profiling]
-                        exporters: [coralogix, debug]
+                      traces:
+                        receivers: [nop]
+                        exporters: [nop]
+                      metrics:
+                        receivers: [nop]
+                        exporters: [nop]
+                      logs:
+                        receivers: [nop]
+                        exporters: [nop]
               - !Ref AWS::NoValue
             - !If
               - UseSupervisedImage
