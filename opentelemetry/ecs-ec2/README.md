@@ -68,7 +68,7 @@ When enabled, database operation traces are processed separately with dedicated 
 | S3SupervisorConfigKey | Optional S3 object key for the Supervisor configuration.                                                                                                                                                                         | ""                                                                       |                    |
 | ClusterName      | The name of an **existing** ECS cluster                                                                                                                                                                                              |                                                                          | :heavy_check_mark: |
 | CDOTImageVersion | The Coralogix OpenTelemetry Collector Image version/tag to use. See available tags [here](https://hub.docker.com/r/coralogixrepo/coralogix-otel-collector/tags)                                                                     |                                                                          |                    |
-| AgentImageMode   | Run the collector image directly (`collector`) or through the Supervisor (`supervised`).                                                                                                                                              | collector                                                                |                    |
+| SupervisorEnabled | Run the collectors through the Supervisor (`true` or `false`).                                                                                                                                                                       | false                                                                    |                    |
 | SupervisedImageRepository | Repository for the supervised CDOT image.                                                                                                                                                                                    | `cgx.jfrog.io/coralogix-docker-images/coralogix-otel-supervised-cdot`     |                    |
 | SupervisedImageVersion | Version/tag for the supervised CDOT image.                                                                                                                                                                                       | `v0.10.0`                                                                |                    |
 | InitialFallbackConfigs | Initial Supervisor fallback configuration URLs, entered as a comma-separated list.                                                                                                                                              | ""                                                                       |                    |
@@ -101,7 +101,7 @@ aws cloudformation deploy --template-file template.yaml --stack-name <stack_name
         CDOTImageVersion=<image tag> \
         CoralogixApiKey=<your-api-key> \
         CoralogixRegion=<coralogix-region> \
-        AgentImageMode=collector \
+        SupervisorEnabled=false \
         HealthCheckEnabled=true
 ```
 
@@ -116,7 +116,7 @@ aws cloudformation deploy --template-file template.yaml --stack-name <stack_name
         CDOTImageVersion=<image_tag> \
         CoralogixApiKey=<send_your_data_api_key> \
         CoralogixRegion=<coralogix_region> \
-        AgentImageMode=supervised
+        SupervisorEnabled=true
 ```
 
 The embedded startup config uses `nop` receivers and exporters for traces, metrics, and logs. It only exposes the health check on `localhost:13133`, so it does not send data until the Supervisor receives a remote config.
@@ -135,7 +135,7 @@ When `InitialFallbackConfigs` is set, `S3ConfigBucket` is required and every fal
 
 `InitialFallbackConfigs` and `ProfilingEnabled=true` cannot be used together. CloudFormation rejects the deployment unless `InitialFallbackConfigs` is empty when the separate profiling collector is enabled.
 
-When `ProfilingEnabled=true`, the profiling collector follows `AgentImageMode`. In supervised mode, it uses the supervised CDOT image and starts with the embedded localhost-only `nop` config. Set both `ProfilingS3ConfigBucket` and `ProfilingS3ConfigKey` to override that startup config from S3. In collector mode, those S3 parameters are required and the file is run directly by CDOT.
+When `ProfilingEnabled=true`, the profiling collector follows `SupervisorEnabled`. When the flag is `true`, it uses the supervised CDOT image and starts with the embedded localhost-only `nop` config. Set both `ProfilingS3ConfigBucket` and `ProfilingS3ConfigKey` to override that startup config from S3. When the flag is `false`, those S3 parameters are required and the file is run directly by CDOT.
 
 Note that these are just examples of how this could be deployed. You can also deploy this template using the AWS Console or any CloudFormation management tools.
 

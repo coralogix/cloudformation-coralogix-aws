@@ -13,7 +13,7 @@ Metadata:
           - ClusterName
           - CoralogixRegion
           - CoralogixApiKey
-          - AgentImageMode
+          - SupervisorEnabled
           - CDOTImageVersion
           - SupervisedImageRepository
           - SupervisedImageVersion
@@ -78,8 +78,8 @@ Metadata:
         default: "Coralogix API Key"
       CDOTImageVersion:
         default: "CDOT Image Version"
-      AgentImageMode:
-        default: "Agent Image Mode"
+      SupervisorEnabled:
+        default: "Enable Supervisor"
       SupervisedImageRepository:
         default: "Supervised Image Repository"
       SupervisedImageVersion:
@@ -153,13 +153,11 @@ Parameters:
       This is required when Custom Image is set to "none".
     Type: String
 
-  AgentImageMode:
+  SupervisorEnabled:
     Type: String
-    Description: Choose whether to run the collector image directly or through the Supervisor.
-    AllowedValues:
-      - collector
-      - supervised
-    Default: collector
+    Description: Run the collectors through the Supervisor.
+    AllowedValues: ["true", "false"]
+    Default: "false"
 
   SupervisedImageRepository:
     Type: String
@@ -264,7 +262,7 @@ Parameters:
 
 Rules:
   CollectorModeRequiresS3Config:
-    RuleCondition: !Equals [!Ref AgentImageMode, collector]
+    RuleCondition: !Equals [!Ref SupervisorEnabled, "false"]
     Assertions:
       - Assert: !And
           - !Not [!Equals [!Ref S3ConfigBucket, ""]]
@@ -287,7 +285,7 @@ Rules:
   ProfilingS3ConfigRequired:
     RuleCondition: !And
       - !Equals [!Ref ProfilingEnabled, "true"]
-      - !Equals [!Ref AgentImageMode, collector]
+      - !Equals [!Ref SupervisorEnabled, "false"]
     Assertions:
       - Assert: !Not [!Equals [!Ref ProfilingS3ConfigBucket, ""]]
         AssertDescription: "ProfilingS3ConfigBucket is required when profiling is enabled in collector mode."
@@ -296,7 +294,7 @@ Rules:
 
 Conditions:
   UseImage: !Not [!Equals [!Ref Image, "none"]]
-  UseSupervisedImage: !Equals [!Ref AgentImageMode, supervised]
+  UseSupervisedImage: !Equals [!Ref SupervisorEnabled, "true"]
   UseS3CollectorConfig: !And
     - !Not [!Equals [!Ref S3ConfigBucket, ""]]
     - !Not [!Equals [!Ref S3ConfigKey, ""]]
@@ -389,13 +387,13 @@ Resources:
               set -e
               if [ -n "$S3_CONFIG_BUCKET" ] && [ -n "$S3_CONFIG_KEY" ]; then
                 aws s3 cp "s3://$S3_CONFIG_BUCKET/$S3_CONFIG_KEY" /otel-config/collector-config.yaml
-              elif [ "$AGENT_IMAGE_MODE" = "supervised" ]; then
+              elif [ "$SUPERVISOR_ENABLED" = "true" ]; then
                 printf '%s\n' "$COLLECTOR_CONFIG" > /otel-config/collector-config.yaml
               else
                 echo "S3_CONFIG_BUCKET and S3_CONFIG_KEY are required in collector mode" >&2
                 exit 1
               fi
-              if [ "$AGENT_IMAGE_MODE" = "supervised" ]; then
+              if [ "$SUPERVISOR_ENABLED" = "true" ]; then
                 if [ -n "$S3_CONFIG_BUCKET" ] && [ -n "$S3_SUPERVISOR_CONFIG_KEY" ]; then
                   aws s3 cp "s3://$S3_CONFIG_BUCKET/$S3_SUPERVISOR_CONFIG_KEY" /otel-config/supervisor.yaml
                 else
@@ -403,8 +401,8 @@ Resources:
                 fi
               fi
           Environment:
-            - Name: AGENT_IMAGE_MODE
-              Value: !Ref AgentImageMode
+            - Name: SUPERVISOR_ENABLED
+              Value: !Ref SupervisorEnabled
             - Name: S3_CONFIG_BUCKET
               Value: !Ref S3ConfigBucket
             - Name: S3_CONFIG_KEY
@@ -724,18 +722,18 @@ Resources:
               set -e
               if [ -n "$PROFILING_S3_CONFIG_BUCKET" ] && [ -n "$PROFILING_S3_CONFIG_KEY" ]; then
                 aws s3 cp "s3://$PROFILING_S3_CONFIG_BUCKET/$PROFILING_S3_CONFIG_KEY" /otel-config/collector-config.yaml
-              elif [ "$AGENT_IMAGE_MODE" = "supervised" ]; then
+              elif [ "$SUPERVISOR_ENABLED" = "true" ]; then
                 printf '%s\n' "$COLLECTOR_CONFIG" > /otel-config/collector-config.yaml
               else
                 echo "PROFILING_S3_CONFIG_BUCKET and PROFILING_S3_CONFIG_KEY are required in collector mode" >&2
                 exit 1
               fi
-              if [ "$AGENT_IMAGE_MODE" = "supervised" ]; then
+              if [ "$SUPERVISOR_ENABLED" = "true" ]; then
                 printf '%s\n' "$SUPERVISOR_CONFIG" > /otel-config/supervisor.yaml
               fi
           Environment:
-            - Name: AGENT_IMAGE_MODE
-              Value: !Ref AgentImageMode
+            - Name: SUPERVISOR_ENABLED
+              Value: !Ref SupervisorEnabled
             - Name: PROFILING_S3_CONFIG_BUCKET
               Value: !Ref ProfilingS3ConfigBucket
             - Name: PROFILING_S3_CONFIG_KEY
