@@ -107,7 +107,7 @@ Parameters:
   S3ConfigBucket:
     Type: String
     Description: |
-      S3 bucket name containing configuration files. Required in collector mode.
+      S3 bucket name containing configuration files. Required in collector mode and when InitialFallbackConfigs is set.
       Example: 'my-bucket'
     Default: ""
 
@@ -271,6 +271,13 @@ Rules:
           - !Not [!Equals [!Ref S3ConfigKey, ""]]
         AssertDescription: "S3ConfigBucket and S3ConfigKey are required in collector mode."
 
+  InitialFallbackConfigsRequireS3Bucket:
+    Assertions:
+      - Assert: !Or
+          - !EachMemberEquals [!Ref InitialFallbackConfigs, ""]
+          - !Not [!Equals [!Ref S3ConfigBucket, ""]]
+        AssertDescription: "S3ConfigBucket is required when InitialFallbackConfigs is set."
+
   ProfilingDisablesInitialFallbackConfigs:
     RuleCondition: !Equals [!Ref ProfilingEnabled, "true"]
     Assertions:
@@ -301,9 +308,14 @@ Conditions:
     - !Condition EnableProfiling
     - !Not [!Equals [!Ref ProfilingS3ConfigBucket, ""]]
     - !Not [!Equals [!Ref ProfilingS3ConfigKey, ""]]
+  UseInitialFallbackConfigs: !Not
+    - !Equals
+      - !Join ["", !Ref InitialFallbackConfigs]
+      - ""
   UseMainS3Bucket: !Or
     - !Condition UseS3CollectorConfig
     - !Condition UseS3SupervisorConfig
+    - !Condition UseInitialFallbackConfigs
   UseAnyS3Config: !Or
     - !Condition UseMainS3Bucket
     - !Condition UseS3ProfilingConfig

@@ -131,6 +131,8 @@ s3://<BUCKET>.s3.<REGION>.amazonaws.com/<ACCOUNT_ID>/<GROUP_NAME>/<COLLECTOR_VER
 
 Its default is empty, which produces no initial fallback configuration. This parameter applies only to the embedded Supervisor configuration; an S3-provided Supervisor configuration is used as-is.
 
+When `InitialFallbackConfigs` is set, `S3ConfigBucket` is required and every fallback URL must reference that bucket. The generated task role grants read access to that bucket. When `TaskRoleArn` is provided, that custom role must grant `s3:GetObject` access to the fallback objects.
+
 `InitialFallbackConfigs` and `ProfilingEnabled=true` cannot be used together. CloudFormation rejects the deployment unless `InitialFallbackConfigs` is empty when the separate profiling collector is enabled.
 
 When `ProfilingEnabled=true`, the profiling collector follows `AgentImageMode`. In supervised mode, it uses the supervised CDOT image and starts with the embedded localhost-only `nop` config. Set both `ProfilingS3ConfigBucket` and `ProfilingS3ConfigKey` to override that startup config from S3. In collector mode, those S3 parameters are required and the file is run directly by CDOT.
