@@ -675,6 +675,8 @@ Resources:
         - EC2
       NetworkMode: bridge
       Volumes:
+        - Name: otel-config
+
         - Name: hostfs
           Host:
             SourcePath: "/var/lib/docker/"
@@ -692,6 +694,65 @@ Resources:
             SourcePath: /sys/kernel/debug
 
       ContainerDefinitions:
+        - Name: profiling-config-loader
+          Essential: false
+          MemoryReservation: 32
+          Image: public.ecr.aws/aws-cli/aws-cli:2.28.17
+          EntryPoint:
+            - sh
+            - -c
+          Command:
+            - |
+              set -e
+              aws s3 cp "s3://$PROFILING_S3_CONFIG_BUCKET/$PROFILING_S3_CONFIG_KEY" /otel-config/collector-config.yaml
+              if [ "$AGENT_IMAGE_MODE" = "supervised" ]; then
+                printf '%s\n' "$SUPERVISOR_CONFIG" > /otel-config/supervisor.yaml
+              fi
+          Environment:
+            - Name: AGENT_IMAGE_MODE
+              Value: !Ref AgentImageMode
+            - Name: PROFILING_S3_CONFIG_BUCKET
+              Value: !Ref ProfilingS3ConfigBucket
+            - Name: PROFILING_S3_CONFIG_KEY
+              Value: !Ref ProfilingS3ConfigKey
+            - !If
+              - UseSupervisedImage
+              - Name: SUPERVISOR_CONFIG
+                Value: |-
+                  server:
+                    endpoint: "https://ingress.${env:CORALOGIX_DOMAIN}/opamp/v1"
+                    headers:
+                      Authorization: "Bearer ${env:CORALOGIX_PRIVATE_KEY}"
+                    tls:
+                      insecure_skip_verify: false
+
+                  capabilities:
+                    reports_effective_config: true
+                    reports_own_metrics: true
+                    reports_own_logs: true
+                    reports_own_traces: true
+                    reports_health: true
+                    accepts_remote_config: true
+                    reports_remote_config: true
+
+                  agent:
+                    executable: /cdot
+                    passthrough_logs: true
+                    args: ["--feature-gates=+service.profilesSupport"]
+                    config_files:
+                      - /otel-config/collector-config.yaml
+
+                  storage:
+                    directory: /etc/otelcol-contrib/supervisor-data/
+
+                  telemetry:
+                    logs:
+                      level: info
+              - !Ref AWS::NoValue
+          MountPoints:
+            - SourceVolume: otel-config
+              ContainerPath: /otel-config
+
         - Name: coralogix-otel-profiling-agent
           Cpu: 0
           Memory: !Ref ProfilingMemory
@@ -699,14 +760,23 @@ Resources:
             - sh
             - -c
           Command:
-            - !Sub "mkdir -p /sys/kernel/debug /sys/kernel/tracing && mount -t debugfs debugfs /sys/kernel/debug 2>/dev/null || true; mount -t tracefs tracefs /sys/kernel/tracing 2>/dev/null || true; exec /cdot --feature-gates=+service.profilesSupport --config s3://${ProfilingS3ConfigBucket}.s3.${AWS::Region}.amazonaws.com/${ProfilingS3ConfigKey}"
+            - !If
+              - UseSupervisedImage
+              - "mkdir -p /sys/kernel/debug /sys/kernel/tracing && mount -t debugfs debugfs /sys/kernel/debug 2>/dev/null || true; mount -t tracefs tracefs /sys/kernel/tracing 2>/dev/null || true; exec /opampsupervisor -config /otel-config/supervisor.yaml"
+              - "mkdir -p /sys/kernel/debug /sys/kernel/tracing && mount -t debugfs debugfs /sys/kernel/debug 2>/dev/null || true; mount -t tracefs tracefs /sys/kernel/tracing 2>/dev/null || true; exec /cdot --feature-gates=+service.profilesSupport --config /otel-config/collector-config.yaml"
           Image: !If
-            - UseImage
-            - !Ref Image
-            - !Sub "coralogixrepo/coralogix-otel-collector:${CDOTImageVersion}"
+            - UseSupervisedImage
+            - !Sub "${SupervisedImageRepository}:${SupervisedImageVersion}"
+            - !If
+              - UseImage
+              - !Ref Image
+              - !Sub "coralogixrepo/coralogix-otel-collector:${CDOTImageVersion}"
 
           Essential: true
           User: "0"
+          DependsOn:
+            - ContainerName: profiling-config-loader
+              Condition: SUCCESS
           HealthCheck: !If
             - EnableHealthCheck
             - Command:
@@ -720,6 +790,10 @@ Resources:
           Privileged: true
 
           MountPoints:
+            - SourceVolume: otel-config
+              ContainerPath: /otel-config
+              ReadOnly: true
+
             - SourceVolume: hostfs
               ContainerPath: "/hostfs/var/lib/docker"
               ReadOnly: True

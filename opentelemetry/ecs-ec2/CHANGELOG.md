@@ -6,7 +6,7 @@
 <!-- * [Update/Bug fix] message that describes the changes that you apply -->
 
 ### 1.0.11 / 2026-07-13
-- [Feature] Added supervised mode with an embedded Supervisor configuration and a localhost-only `nop` collector startup configuration.
+- [Feature] Added supervised mode with an embedded Supervisor configuration and a localhost-only `nop` collector startup configuration. It also supports the profiler if both are enabled.
 - [Feature] Added optional S3 overrides for the collector and Supervisor configurations while keeping S3 required in collector mode.
 - [Feature] Added `InitialFallbackConfigs`. In CloudFormation, fallback URLs must be written as one comma-separated value; the empty default configures no startup fallback.
 

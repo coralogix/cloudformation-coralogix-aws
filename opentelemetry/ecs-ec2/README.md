@@ -133,6 +133,8 @@ Its default is empty, which produces no initial fallback configuration. This par
 
 `InitialFallbackConfigs` and `ProfilingEnabled=true` cannot be used together. CloudFormation rejects the deployment unless `InitialFallbackConfigs` is empty when the separate profiling collector is enabled.
 
+When `ProfilingEnabled=true`, the profiling collector follows `AgentImageMode`. In supervised mode, it uses the supervised CDOT image and an embedded Supervisor configuration. Its Collector startup configuration is copied from `ProfilingS3ConfigBucket` and `ProfilingS3ConfigKey`; in collector mode, the same file is run directly by CDOT.
+
 Note that these are just examples of how this could be deployed. You can also deploy this template using the AWS Console or any CloudFormation management tools.
 
 ### OpenTelemetry configuration
