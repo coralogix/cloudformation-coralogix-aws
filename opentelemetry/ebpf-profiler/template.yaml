@@ -1,7 +1,8 @@
 AWSTemplateFormatVersion: 2010-09-09
 Description: |
   Create an eBPF Profiler ECS Daemon Service on an ECS Cluster.
-  This template uses an S3-hosted OpenTelemetry Collector configuration.
+  This template includes default OpenTelemetry Collector and supervisor configurations
+  and can optionally load them from S3.
 
 Metadata:
   AWS::CloudFormation::Interface:
@@ -18,7 +19,7 @@ Metadata:
           - SupervisedImageRepository
           - SupervisedImageVersion
       - Label:
-          default: "S3 Configuration"
+          default: "S3 Configuration (Optional)"
         Parameters:
           - S3ConfigBucket
           - S3ConfigKey
@@ -43,7 +44,7 @@ Metadata:
       S3ConfigBucket:
         default: "S3 Bucket Name"
       S3ConfigKey:
-        default: "S3 Object Key (file path)"
+        default: "S3 Collector Config Key"
       S3SupervisorConfigKey:
         default: "S3 Supervisor Config Key"
 
@@ -105,31 +106,45 @@ Parameters:
   SupervisedImageVersion:
     Type: String
     Description: supervised eBPF profiler image version/tag
-    Default: v0.0.1
+    Default: v0.10.0
     AllowedPattern: ".+"
     ConstraintDescription: Supervised image version is required.
 
   S3ConfigBucket:
     Type: String
-    Description: S3 bucket name containing the collector configuration file
-    AllowedPattern: ".+"
-    ConstraintDescription: S3 bucket name is required.
+    Description: S3 bucket containing collector and supervisor configuration files. Required in collector mode.
+    Default: ""
 
   S3ConfigKey:
     Type: String
-    Description: S3 object key (file path) for the collector configuration file
-    AllowedPattern: ".+"
-    ConstraintDescription: S3 object key is required.
+    Description: S3 object key for the collector configuration. Required in collector mode; leave empty in supervised mode to use the embedded configuration.
+    Default: ""
 
   S3SupervisorConfigKey:
     Type: String
-    Description: S3 object key (file path) for the supervisor configuration file
-    Default: configs/ebpf-profiler-supervisor-config.yaml
-    AllowedPattern: ".+"
-    ConstraintDescription: S3 supervisor config key is required.
+    Description: S3 object key for the supervisor configuration. Leave empty to use the embedded configuration.
+    Default: ""
 
+Rules:
+  CollectorModeRequiresS3Config:
+    RuleCondition: !Equals [!Ref ProfilerImageMode, collector]
+    Assertions:
+      - Assert: !And
+          - !Not [!Equals [!Ref S3ConfigBucket, ""]]
+          - !Not [!Equals [!Ref S3ConfigKey, ""]]
+        AssertDescription: S3ConfigBucket and S3ConfigKey are required in collector mode.
 Conditions:
   UseSupervisedImage: !Equals [!Ref ProfilerImageMode, supervised]
+  UseS3CollectorConfig: !And
+    - !Not [!Equals [!Ref S3ConfigBucket, ""]]
+    - !Not [!Equals [!Ref S3ConfigKey, ""]]
+  UseS3SupervisorConfig: !And
+    - !Condition UseSupervisedImage
+    - !Not [!Equals [!Ref S3ConfigBucket, ""]]
+    - !Not [!Equals [!Ref S3SupervisorConfigKey, ""]]
+  UseAnyS3Config: !Or
+    - !Condition UseS3CollectorConfig
+    - !Condition UseS3SupervisorConfig
 
 Mappings:
   CoralogixRegionMap:
@@ -153,7 +168,7 @@ Resources:
     Type: AWS::ECS::TaskDefinition
     Properties:
       ExecutionRoleArn: !Ref EbpfTaskExecutionRole
-      TaskRoleArn: !Ref EbpfTaskRole
+      TaskRoleArn: !If [UseAnyS3Config, !Ref EbpfTaskRole, !Ref AWS::NoValue]
       Family: ebpf-profiler
       RequiresCompatibilities:
         - EC2
@@ -183,10 +198,98 @@ Resources:
             - sh
             - -c
           Command:
+            - |
+              set -e
+              if [ -n "$S3_CONFIG_BUCKET" ] && [ -n "$S3_CONFIG_KEY" ]; then
+                aws s3 cp "s3://$S3_CONFIG_BUCKET/$S3_CONFIG_KEY" /otel-config/collector-config.yaml
+              elif [ "$PROFILER_IMAGE_MODE" = "supervised" ]; then
+                printf '%s\n' "$COLLECTOR_CONFIG" > /otel-config/collector-config.yaml
+              else
+                echo "S3_CONFIG_BUCKET and S3_CONFIG_KEY are required in collector mode" >&2
+                exit 1
+              fi
+              if [ "$PROFILER_IMAGE_MODE" = "supervised" ]; then
+                if [ -n "$S3_CONFIG_BUCKET" ] && [ -n "$S3_SUPERVISOR_CONFIG_KEY" ]; then
+                  aws s3 cp "s3://$S3_CONFIG_BUCKET/$S3_SUPERVISOR_CONFIG_KEY" /otel-config/supervisor.yaml
+                else
+                  printf '%s\n' "$SUPERVISOR_CONFIG" > /otel-config/supervisor.yaml
+                fi
+              fi
+          Environment:
+            - Name: PROFILER_IMAGE_MODE
+              Value: !Ref ProfilerImageMode
+            - Name: S3_CONFIG_BUCKET
+              Value: !Ref S3ConfigBucket
+            - Name: S3_CONFIG_KEY
+              Value: !Ref S3ConfigKey
+            - Name: S3_SUPERVISOR_CONFIG_KEY
+              Value: !Ref S3SupervisorConfigKey
             - !If
               - UseSupervisedImage
-              - !Sub "aws s3 cp s3://${S3ConfigBucket}/${S3ConfigKey} /otel-config/collector-config.yaml && aws s3 cp s3://${S3ConfigBucket}/${S3SupervisorConfigKey} /otel-config/supervisor.yaml"
-              - !Sub "aws s3 cp s3://${S3ConfigBucket}/${S3ConfigKey} /otel-config/collector-config.yaml"
+              - Name: COLLECTOR_CONFIG
+                Value: |-
+                  receivers:
+                    nop:
+
+                  exporters:
+                    nop:
+
+                  extensions:
+                    health_check:
+                      endpoint: "localhost:13133"
+
+                  service:
+                    extensions:
+                      - health_check
+                    telemetry:
+                      logs:
+                        encoding: json
+                    pipelines:
+                      traces:
+                        receivers: [nop]
+                        exporters: [nop]
+                      metrics:
+                        receivers: [nop]
+                        exporters: [nop]
+                      logs:
+                        receivers: [nop]
+                        exporters: [nop]
+              - !Ref AWS::NoValue
+            - !If
+              - UseSupervisedImage
+              - Name: SUPERVISOR_CONFIG
+                Value: |-
+                  server:
+                    endpoint: "https://ingress.${env:CORALOGIX_DOMAIN}/opamp/v1"
+                    headers:
+                      Authorization: "Bearer ${env:CORALOGIX_PRIVATE_KEY}"
+                    tls:
+                      insecure_skip_verify: false
+
+                  capabilities:
+                    reports_effective_config: true
+                    reports_own_metrics: true
+                    reports_own_logs: true
+                    reports_own_traces: true
+                    reports_health: true
+                    accepts_remote_config: true
+                    reports_remote_config: true
+
+                  agent:
+                    executable: /cdot
+                    passthrough_logs: true
+                    # This adds CLI arguments to the Collector.
+                    args: ["--feature-gates=+service.profilesSupport"]
+                    config_files:
+                      - /otel-config/collector-config.yaml
+
+                  storage:
+                    directory: /etc/otelcol-contrib/supervisor-data/
+
+                  telemetry:
+                    logs:
+                      level: info
+              - !Ref AWS::NoValue
           MountPoints:
             - SourceVolume: otel-config
               ContainerPath: /otel-config
@@ -207,6 +310,7 @@ Resources:
             - !Sub "${SupervisedImageRepository}:${SupervisedImageVersion}"
             - !Sub "${EbpfProfilerImageRepository}:${EbpfProfilerImageVersion}"
           Essential: true
+          User: "0"
           Privileged: true
           DependsOn:
             - ContainerName: config-loader
@@ -249,6 +353,7 @@ Resources:
 
   EbpfTaskRole:
     Type: AWS::IAM::Role
+    Condition: UseAnyS3Config
     Properties:
       RoleName: !Sub "${AWS::StackName}-ebpf-task-role"
       AssumeRolePolicyDocument:
