@@ -5,6 +5,13 @@
 <!-- ### version / full date -->
 <!-- * [Update/Bug fix] message that describes the changes that you apply -->
 
+### 1.0.11 / 2026-07-13
+- [Feature] Added supervised mode with an embedded Supervisor configuration and a localhost-only `nop` collector startup configuration.
+- [Feature] Added optional S3 overrides for the collector and Supervisor configurations while keeping S3 required in collector mode.
+- [Feature] Added `InitialFallbackConfigs`. In CloudFormation, fallback URLs must be written as one comma-separated value; the empty default configures no startup fallback.
+- [Fix] Reject deployments that configure `InitialFallbackConfigs` together with `ProfilingEnabled=true` because these modes are incompatible.
+- [Fix] Run the optional profiling container as user `0` and enable the required profiles feature gate while preserving privileged mode.
+
 ### 1.0.10 / 2026-04-06
 - [Bug fix] Fixed IAM S3 policies granting wildcard access when profiling is disabled (empty bucket param resolved to `arn:aws:s3:::/*`).
 - [Update] Profiling S3 bucket ARNs are now conditionally included in IAM policies only when `ProfilingEnabled` is true.
