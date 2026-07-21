@@ -5,6 +5,10 @@
 <!-- ### version / full date -->
 <!-- * [Update/Bug fix] message that describes the changes that you apply -->
 
+### 1.0.12 / 2026-07-21
+- [Update] Default `SupervisedImageVersion` is now `v0.11.0`.
+- [Feature] Added `ProfilingInitialFallbackConfigs` so the main collector and profiling agents can use different initial fallback URLs. Both require `S3ConfigBucket` and must reference that bucket.
+
 ### 1.0.11 / 2026-07-13
 - [Feature] Added supervised mode with embedded Supervisor configuration and `nop` startup configurations for both the main and profiling collectors. S3 remains available as an explicit profiling startup-config override.
 - [Feature] Added optional S3 overrides for the collector and Supervisor configurations while keeping S3 required in collector mode.
