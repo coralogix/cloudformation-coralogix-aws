@@ -32,6 +32,7 @@ Metadata:
           - ProfilingEnabled
           - ProfilingS3ConfigBucket
           - ProfilingS3ConfigKey
+          - ProfilingInitialFallbackConfigs
           - ProfilingMemory
       
       - Label:
@@ -67,6 +68,8 @@ Metadata:
         default: "Profiling S3 Object Key (file path)"
       ProfilingEnabled:
         default: "Enable Profiling Collector"
+      ProfilingInitialFallbackConfigs:
+        default: "Profiling Initial Fallback Configurations"
       ProfilingMemory:
         default: "Profiling Memory (MiB)"
 
@@ -107,7 +110,9 @@ Parameters:
   S3ConfigBucket:
     Type: String
     Description: |
-      S3 bucket name containing configuration files. Required in collector mode and when InitialFallbackConfigs is set.
+      S3 bucket name containing configuration files. Required in collector mode and when
+      InitialFallbackConfigs or ProfilingInitialFallbackConfigs is set.
+      Fallback URLs must reference this bucket.
       Example: 'my-bucket'
     Default: ""
 
@@ -137,6 +142,13 @@ Parameters:
     Description: |
       S3 object key (file path) for the profiling configuration file.
       Required when profiling is enabled in collector mode. Optional in supervised mode.
+    Default: ""
+
+  ProfilingInitialFallbackConfigs:
+    Type: CommaDelimitedList
+    Description: |
+      Initial Supervisor fallback configuration URLs for the profiling agent, written as a comma-separated list.
+      Example: s3://<BUCKET>.s3.<REGION>.amazonaws.com/<ACCOUNT_ID>/<GROUP_NAME>/<COLLECTOR_VERSION>/<REMOTE_CONFIG_NAME>/config.yaml
     Default: ""
 
   ClusterName:
@@ -169,14 +181,14 @@ Parameters:
   SupervisedImageVersion:
     Type: String
     Description: Supervised CDOT image version/tag.
-    Default: v0.10.0
+    Default: v0.11.0
     AllowedPattern: ".+"
     ConstraintDescription: Supervised image version is required.
 
   InitialFallbackConfigs:
     Type: CommaDelimitedList
     Description: |
-      Initial Supervisor fallback configuration URLs, written as a comma-separated list.
+      Initial Supervisor fallback configuration URLs for the main collector agent, written as a comma-separated list.
       Example: s3://<BUCKET>.s3.<REGION>.amazonaws.com/<ACCOUNT_ID>/<GROUP_NAME>/<COLLECTOR_VERSION>/<REMOTE_CONFIG_NAME>/config.yaml
     Default: ""
   
@@ -276,11 +288,12 @@ Rules:
           - !Not [!Equals [!Ref S3ConfigBucket, ""]]
         AssertDescription: "S3ConfigBucket is required when InitialFallbackConfigs is set."
 
-  ProfilingDisablesInitialFallbackConfigs:
-    RuleCondition: !Equals [!Ref ProfilingEnabled, "true"]
+  ProfilingInitialFallbackConfigsRequireS3Bucket:
     Assertions:
-      - Assert: !EachMemberEquals [!Ref InitialFallbackConfigs, ""]
-        AssertDescription: "InitialFallbackConfigs must be empty when ProfilingEnabled is true."
+      - Assert: !Or
+          - !EachMemberEquals [!Ref ProfilingInitialFallbackConfigs, ""]
+          - !Not [!Equals [!Ref S3ConfigBucket, ""]]
+        AssertDescription: "S3ConfigBucket is required when ProfilingInitialFallbackConfigs is set."
 
   ProfilingS3ConfigRequired:
     RuleCondition: !And
@@ -310,10 +323,15 @@ Conditions:
     - !Equals
       - !Join ["", !Ref InitialFallbackConfigs]
       - ""
+  UseProfilingInitialFallbackConfigs: !Not
+    - !Equals
+      - !Join ["", !Ref ProfilingInitialFallbackConfigs]
+      - ""
   UseMainS3Bucket: !Or
     - !Condition UseS3CollectorConfig
     - !Condition UseS3SupervisorConfig
     - !Condition UseInitialFallbackConfigs
+    - !Condition UseProfilingInitialFallbackConfigs
   UseAnyS3Config: !Or
     - !Condition UseMainS3Bucket
     - !Condition UseS3ProfilingConfig
@@ -772,36 +790,40 @@ Resources:
             - !If
               - UseSupervisedImage
               - Name: SUPERVISOR_CONFIG
-                Value: |-
-                  server:
-                    endpoint: "https://ingress.${env:CORALOGIX_DOMAIN}/opamp/v1"
-                    headers:
-                      Authorization: "Bearer ${env:CORALOGIX_PRIVATE_KEY}"
-                    tls:
-                      insecure_skip_verify: false
+                Value:
+                  Fn::Sub:
+                    - |-
+                      server:
+                        endpoint: "https://ingress.${!env:CORALOGIX_DOMAIN}/opamp/v1"
+                        headers:
+                          Authorization: "Bearer ${!env:CORALOGIX_PRIVATE_KEY}"
+                        tls:
+                          insecure_skip_verify: false
 
-                  capabilities:
-                    reports_effective_config: true
-                    reports_own_metrics: true
-                    reports_own_logs: true
-                    reports_own_traces: true
-                    reports_health: true
-                    accepts_remote_config: true
-                    reports_remote_config: true
+                      capabilities:
+                        reports_effective_config: true
+                        reports_own_metrics: true
+                        reports_own_logs: true
+                        reports_own_traces: true
+                        reports_health: true
+                        accepts_remote_config: true
+                        reports_remote_config: true
 
-                  agent:
-                    executable: /cdot
-                    passthrough_logs: true
-                    args: ["--feature-gates=+service.profilesSupport"]
-                    config_files:
-                      - /otel-config/collector-config.yaml
+                      agent:
+                        executable: /cdot
+                        passthrough_logs: true
+                        args: ["--feature-gates=+service.profilesSupport"]
+                        config_files:
+                          - /otel-config/collector-config.yaml
+                        initial_fallback_configs: [${FallbackConfigs}]
 
-                  storage:
-                    directory: /etc/otelcol-contrib/supervisor-data/
+                      storage:
+                        directory: /etc/otelcol-contrib/supervisor-data/
 
-                  telemetry:
-                    logs:
-                      level: info
+                      telemetry:
+                        logs:
+                          level: info
+                    - FallbackConfigs: !Join [", ", !Ref ProfilingInitialFallbackConfigs]
               - !Ref AWS::NoValue
           MountPoints:
             - SourceVolume: otel-config
