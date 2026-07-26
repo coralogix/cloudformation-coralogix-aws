@@ -244,7 +244,7 @@ Resources:
             Action:
             - sts:AssumeRole
             Resource:
-            - 'arn:aws:iam::*:role/*'
+            - !Sub 'arn:${AWS::Partition}:iam::*:role/*'
           - !Ref 'AWS::NoValue'
         - Effect: Allow
           Action:
@@ -252,7 +252,7 @@ Resources:
           - logs:CreateLogStream
           - logs:PutLogEvents
           Resource:
-          - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:*:*'
+          - !Sub 'arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:*:*'
       Roles:
       - Ref: LambdaProcessorRole
   LambdaMetricsTagsProcessors:
@@ -307,8 +307,8 @@ Resources:
           - s3:ListBucketMultipartUploads
           - s3:PutObject
           Resource:
-          - !Sub 'arn:aws:s3:::${BackupDataBucket}'
-          - !Sub 'arn:aws:s3:::${BackupDataBucket}/*'
+          - !Sub 'arn:${AWS::Partition}:s3:::${BackupDataBucket}'
+          - !Sub 'arn:${AWS::Partition}:s3:::${BackupDataBucket}/*'
         - Effect: Allow
           Action:
           - logs:PutLogEvents
@@ -320,25 +320,25 @@ Resources:
             - kinesis:GetRecords
             - kinesis:ListShards
           Resource: 
-          - !Sub 'arn:aws:firehose:${AWS::Region}:${AWS::AccountId}:deliverystream/*'
-          - !Sub 'arn:aws:kinesis:${AWS::Region}:${AWS::AccountId}:stream/*'
+          - !Sub 'arn:${AWS::Partition}:firehose:${AWS::Region}:${AWS::AccountId}:deliverystream/*'
+          - !Sub 'arn:${AWS::Partition}:kinesis:${AWS::Region}:${AWS::AccountId}:stream/*'
         - Effect: Allow
           Action:
           - kms:Decrypt
           - kms:GenerateDataKey
           Resource:
-          - !Sub 'arn:aws:kms:${AWS::Region}:${AWS::AccountId}:key/*'
+          - !Sub 'arn:${AWS::Partition}:kms:${AWS::Region}:${AWS::AccountId}:key/*'
           Condition:
             StringEquals:
               kms:ViaService: !Sub 's3.${AWS::Region}.amazonaws.com'
             StringLike:
-              kms:EncryptionContext: !Sub 'arn:aws:s3:::${BackupDataBucket}'
+              kms:EncryptionContext: !Sub 'arn:${AWS::Partition}:s3:::${BackupDataBucket}'
         - Effect: Allow
           Action:
           - lambda:InvokeFunction
           - lambda:GetFunctionConfiguration
           Resource:
-          - !Sub 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:*'
+          - !Sub 'arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:*'
       Roles:
       - Ref: FirehoseMetricsRole
   CoralogixDeliveryMetricsStream:
@@ -441,7 +441,7 @@ Resources:
           - firehose:PutRecordBatch
           - firehose:DeleteDeliveryStream
           - firehose:UpdateDestination
-          Resource: !Sub 'arn:aws:firehose:${AWS::Region}:${AWS::AccountId}:deliverystream/*'
+          Resource: !Sub 'arn:${AWS::Partition}:firehose:${AWS::Region}:${AWS::AccountId}:deliverystream/*'
       Roles:
       - Ref: CloudWatchMetricsRole
 
@@ -464,13 +464,13 @@ Resources:
                 Action:
                   - cloudwatch:PutMetricStream
                   - cloudwatch:DeleteMetricStream
-                Resource: !Sub "arn:aws:cloudwatch:${AWS::Region}:${AWS::AccountId}:metric-stream/*"
+                Resource: !Sub "arn:${AWS::Partition}:cloudwatch:${AWS::Region}:${AWS::AccountId}:metric-stream/*"
               - Effect: Allow
                 Action:
                   - iam:PassRole
-                Resource: !Sub "arn:aws:iam::${AWS::AccountId}:role/${CloudWatchMetricsRole}"
+                Resource: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${CloudWatchMetricsRole}"
       ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - !Sub 'arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
 
   LambdaCustomResourceCloudWatchMetricStreamFunction:
     Type: AWS::Lambda::Function
@@ -539,7 +539,7 @@ Resources:
               except Exception as e:
                 print(e)
                 cfnresponse.send(event, context, cfnresponse.FAILED, {"Error": str(e)}, physical_id)
-      Runtime: python3.8
+      Runtime: python3.12
       Timeout: 300
       Role: !GetAtt LambdaCustomResourceCloudWatchMetricStreamRole.Arn
 
