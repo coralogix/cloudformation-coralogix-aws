@@ -24,6 +24,11 @@ Parameters:
     Type: String
     Description: The Coralogix Api key which is used to validate your authenticity.
     NoEcho: true
+    Default: ""
+  ApiKeySecretArn:
+    Type: String
+    Description: Optional - The ARN of an AWS Secrets Manager secret containing the Coralogix Api key. If set, the API key is read from Secrets Manager at runtime instead of the ApiKey parameter.
+    Default: ""
   ApplicationName:
     Type: String
     Description: The desired Application Name within the Coralogix Platform. If not set, it will be the delivery stream name.
@@ -95,6 +100,7 @@ Mappings:
       LogUrl: ""
 Conditions:
   IsApplicationName: !Not [!Equals [!Ref ApplicationName, ""]]
+  UseSecretsManager: !Not [!Equals [!Ref ApiKeySecretArn, ""]]
   IsSubsystemName: !Not [!Equals [!Ref SubsystemName, ""]]
   IsIntegrationTypeLogs: !Not [!Equals [!Ref IntegrationTypeLogs, ""]]
   IsCustomDomain: !Equals [ !Ref CoralogixRegion, "Custom"]
@@ -207,6 +213,25 @@ Resources:
           Resource: 
           - !Sub 'arn:aws:firehose:${AWS::Region}:${AWS::AccountId}:deliverystream/*'
           - !Sub 'arn:aws:kinesis:${AWS::Region}:${AWS::AccountId}:stream/*'
+        - !If
+          - UseSecretsManager
+          - Effect: Allow
+            Action:
+            - secretsmanager:GetSecretValue
+            Resource:
+            - !Ref ApiKeySecretArn
+          - !Ref 'AWS::NoValue'
+        - !If
+          - UseSecretsManager
+          - Effect: Allow
+            Action:
+            - kms:Decrypt
+            Resource:
+            - !Sub 'arn:aws:kms:${AWS::Region}:${AWS::AccountId}:key/*'
+            Condition:
+              StringEquals:
+                kms:ViaService: !Sub 'secretsmanager.${AWS::Region}.amazonaws.com'
+          - !Ref 'AWS::NoValue'
       Roles:
       - Ref: FirehoseLogsRole
   CoralogixDeliveryLogsStream:
@@ -240,7 +265,17 @@ Resources:
                 - 'https://ingress.${Domain}/aws/firehose'
                 - Domain: !FindInMap [CoralogixRegionMap, !Ref CoralogixRegion, LogUrl]
           AccessKey:
-            Ref: ApiKey
+            !If
+              - UseSecretsManager
+              - !Ref 'AWS::NoValue'
+              - !Ref ApiKey
+          SecretsManagerConfiguration:
+            !If
+              - UseSecretsManager
+              - Enabled: true
+                SecretARN: !Ref ApiKeySecretArn
+                RoleARN: !GetAtt FirehoseLogsRole.Arn
+              - !Ref 'AWS::NoValue'
           Name: 
             'Coralogix'
         RequestConfiguration:
