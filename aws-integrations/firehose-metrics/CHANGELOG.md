@@ -8,6 +8,7 @@
 ### 0.0.14 / 4 Aug 2026
 * [Fix] Move SecretsManagerConfiguration to the correct level in HttpEndpointDestinationConfiguration
 * [Fix] Require either ApiKey or ApiKeySecretArn via a template Rule, and document the required `api_key` JSON format for the Secrets Manager secret
+* [Update] Document that migrating an existing stack between ApiKey and ApiKeySecretArn is recreate-only, since SecretsManagerConfiguration is replacement-only on a custom-named delivery stream
 
 ### 0.0.13 / 28 Feb 2026
 * [Fix] Scope `sts:AssumeRole` IAM permission to `arn:aws:iam::*:role/*` instead of `*` when `CrossAccountEnabled` is true.
