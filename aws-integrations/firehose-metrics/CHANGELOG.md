@@ -9,6 +9,7 @@
 * [Fix] Move SecretsManagerConfiguration to the correct level in HttpEndpointDestinationConfiguration
 * [Fix] Require either ApiKey or ApiKeySecretArn via a template Rule, and document the required `api_key` JSON format for the Secrets Manager secret
 * [Update] Document that migrating an existing stack between ApiKey and ApiKeySecretArn is recreate-only, since SecretsManagerConfiguration is replacement-only on a custom-named delivery stream
+* [Update] Document that Secrets Manager secrets (and their KMS encryption key) must reside in the same AWS account and Region as the stack, since the delivery stream role grants kms:Decrypt only on keys in the stack account and Region
 
 ### 0.0.13 / 28 Feb 2026
 * [Fix] Scope `sts:AssumeRole` IAM permission to `arn:aws:iam::*:role/*` instead of `*` when `CrossAccountEnabled` is true.

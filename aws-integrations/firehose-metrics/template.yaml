@@ -27,7 +27,7 @@ Parameters:
     Default: ""
   ApiKeySecretArn:
     Type: String
-    Description: Optional - The ARN of an AWS Secrets Manager secret containing the Coralogix Api key. The secret value must be JSON with an `api_key` field (e.g. {"api_key":"<your-key>"}), as required by Amazon Data Firehose. If set, the API key is read from Secrets Manager at runtime instead of the ApiKey parameter. Note - switching an existing stack from ApiKey to ApiKeySecretArn (or vice versa) changes SecretsManagerConfiguration, which is replacement-only. Because the delivery stream is custom-named, CloudFormation cannot update it in place, so migrating an existing stream requires recreating the delivery stream (delete and re-create the stack).
+    Description: Optional - The ARN of an AWS Secrets Manager secret containing the Coralogix Api key. The secret value must be JSON with an `api_key` field (e.g. {"api_key":"<your-key>"}), as required by Amazon Data Firehose. If set, the API key is read from Secrets Manager at runtime instead of the ApiKey parameter. Note - switching an existing stack from ApiKey to ApiKeySecretArn (or vice versa) changes SecretsManagerConfiguration, which is replacement-only. Because the delivery stream is custom-named, CloudFormation cannot update it in place, so migrating an existing stream requires recreating the delivery stream (delete and re-create the stack). The secret and its encryption KMS key must reside in the same AWS account and Region as this stack; cross-account or cross-Region secrets are not supported because the delivery stream role only grants kms:Decrypt on keys in the stack account and Region.
     Default: ""
   ApplicationName:
     Type: String
