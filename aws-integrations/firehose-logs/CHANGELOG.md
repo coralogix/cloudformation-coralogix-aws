@@ -5,6 +5,9 @@
 <!-- ### version / full date -->
 <!-- * [Update/Bug fix] message that describes the changes that you apply -->
 
+### 0.0.8 / 4 Aug 2026
+* [Fix] Move SecretsManagerConfiguration to the correct level in HttpEndpointDestinationConfiguration
+
 ### 0.0.7 / 7 Oct 2025
 * [UPDATE] Change coralogix domains and endpoints to new format `<coralogix_region>.coralogix.com`.
 

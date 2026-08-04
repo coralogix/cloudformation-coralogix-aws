@@ -5,6 +5,9 @@
 <!-- ### version / full date -->
 <!-- * [Update/Bug fix] message that describes the changes that you apply -->
 
+### 0.0.14 / 4 Aug 2026
+* [Fix] Move SecretsManagerConfiguration to the correct level in HttpEndpointDestinationConfiguration
+
 ### 0.0.13 / 28 Feb 2026
 * [Fix] Scope `sts:AssumeRole` IAM permission to `arn:aws:iam::*:role/*` instead of `*` when `CrossAccountEnabled` is true.
 

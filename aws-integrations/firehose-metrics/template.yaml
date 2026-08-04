@@ -391,15 +391,15 @@ Resources:
               - UseSecretsManager
               - !Ref 'AWS::NoValue'
               - !Ref ApiKey
-          SecretsManagerConfiguration:
-            !If
-              - UseSecretsManager
-              - Enabled: true
-                SecretARN: !Ref ApiKeySecretArn
-                RoleARN: !GetAtt FirehoseMetricsRole.Arn
-              - !Ref 'AWS::NoValue'
           Name: 
             'Coralogix'
+        SecretsManagerConfiguration:
+          !If
+            - UseSecretsManager
+            - Enabled: true
+              SecretARN: !Ref ApiKeySecretArn
+              RoleARN: !GetAtt FirehoseMetricsRole.Arn
+            - !Ref 'AWS::NoValue'
         RequestConfiguration:
           ContentEncoding: GZIP
           CommonAttributes:
