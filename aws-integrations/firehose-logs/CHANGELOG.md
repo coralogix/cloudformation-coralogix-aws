@@ -7,6 +7,7 @@
 
 ### 0.0.8 / 4 Aug 2026
 * [Fix] Move SecretsManagerConfiguration to the correct level in HttpEndpointDestinationConfiguration
+* [Fix] Require either ApiKey or ApiKeySecretArn via a template Rule, and document the required `api_key` JSON format for the Secrets Manager secret
 
 ### 0.0.7 / 7 Oct 2025
 * [UPDATE] Change coralogix domains and endpoints to new format `<coralogix_region>.coralogix.com`.

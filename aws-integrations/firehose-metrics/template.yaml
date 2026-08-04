@@ -27,7 +27,7 @@ Parameters:
     Default: ""
   ApiKeySecretArn:
     Type: String
-    Description: Optional - The ARN of an AWS Secrets Manager secret containing the Coralogix Api key. If set, the API key is read from Secrets Manager at runtime instead of the ApiKey parameter.
+    Description: Optional - The ARN of an AWS Secrets Manager secret containing the Coralogix Api key. The secret value must be JSON with an `api_key` field (e.g. {"api_key":"<your-key>"}), as required by Amazon Data Firehose. If set, the API key is read from Secrets Manager at runtime instead of the ApiKey parameter.
     Default: ""
   ApplicationName:
     Type: String
@@ -122,9 +122,15 @@ Rules:
           - !Equals [!Ref CrossAccountEnabled, 'false']
           - !Not [!Equals [!Ref CrossAccountRoles, '{}']]
         AssertDescription: CrossAccountRoles must be set when CrossAccountEnabled is true.
+  CredentialSourceRequired:
+    Assertions:
+      - Assert: !Or
+          - !Not [!Equals [!Ref ApiKey, ""]]
+          - !Not [!Equals [!Ref ApiKeySecretArn, ""]]
+        AssertDescription: Either ApiKey or ApiKeySecretArn must be provided.
 
 Metadata:
-  SemanticVersion: 0.0.13
+  SemanticVersion: 0.0.14
   AWS::CloudFormation::Interface: 
     ParameterGroups: 
       - Label: 

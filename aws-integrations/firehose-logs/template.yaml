@@ -27,7 +27,7 @@ Parameters:
     Default: ""
   ApiKeySecretArn:
     Type: String
-    Description: Optional - The ARN of an AWS Secrets Manager secret containing the Coralogix Api key. If set, the API key is read from Secrets Manager at runtime instead of the ApiKey parameter.
+    Description: Optional - The ARN of an AWS Secrets Manager secret containing the Coralogix Api key. The secret value must be JSON with an `api_key` field (e.g. {"api_key":"<your-key>"}), as required by Amazon Data Firehose. If set, the API key is read from Secrets Manager at runtime instead of the ApiKey parameter.
     Default: ""
   ApplicationName:
     Type: String
@@ -59,7 +59,7 @@ Parameters:
     Default: ""
   
 Metadata:
-  SemanticVersion: 0.0.5
+  SemanticVersion: 0.0.8
   AWS::CloudFormation::Interface: 
     ParameterGroups: 
       - Label: 
@@ -98,6 +98,13 @@ Mappings:
       LogUrl: us2.coralogix.com
     Custom:
       LogUrl: ""
+Rules:
+  CredentialSourceRequired:
+    Assertions:
+      - Assert: !Or
+          - !Not [!Equals [!Ref ApiKey, ""]]
+          - !Not [!Equals [!Ref ApiKeySecretArn, ""]]
+        AssertDescription: Either ApiKey or ApiKeySecretArn must be provided.
 Conditions:
   IsApplicationName: !Not [!Equals [!Ref ApplicationName, ""]]
   UseSecretsManager: !Not [!Equals [!Ref ApiKeySecretArn, ""]]
