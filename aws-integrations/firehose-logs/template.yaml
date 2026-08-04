@@ -24,6 +24,11 @@ Parameters:
     Type: String
     Description: The Coralogix Api key which is used to validate your authenticity.
     NoEcho: true
+    Default: ""
+  ApiKeySecretArn:
+    Type: String
+    Description: Optional - The ARN of an AWS Secrets Manager secret containing the Coralogix Api key. The secret value must be JSON with an `api_key` field (e.g. {"api_key":"<your-key>"}), as required by Amazon Data Firehose. If set, the API key is read from Secrets Manager at runtime instead of the ApiKey parameter. Note - switching an existing stack from ApiKey to ApiKeySecretArn (or vice versa) changes SecretsManagerConfiguration, which is replacement-only. Because the delivery stream is custom-named, CloudFormation cannot update it in place, so migrating an existing stream requires recreating the delivery stream (delete and re-create the stack). The secret and its encryption KMS key must reside in the same AWS account and Region as this stack; cross-account or cross-Region secrets are not supported because the delivery stream role only grants kms:Decrypt on keys in the stack account and Region.
+    Default: ""
   ApplicationName:
     Type: String
     Description: The desired Application Name within the Coralogix Platform. If not set, it will be the delivery stream name.
@@ -54,7 +59,7 @@ Parameters:
     Default: ""
   
 Metadata:
-  SemanticVersion: 0.0.5
+  SemanticVersion: 0.0.8
   AWS::CloudFormation::Interface: 
     ParameterGroups: 
       - Label: 
@@ -93,8 +98,16 @@ Mappings:
       LogUrl: us2.coralogix.com
     Custom:
       LogUrl: ""
+Rules:
+  CredentialSourceRequired:
+    Assertions:
+      - Assert: !Or
+          - !Not [!Equals [!Ref ApiKey, ""]]
+          - !Not [!Equals [!Ref ApiKeySecretArn, ""]]
+        AssertDescription: Either ApiKey or ApiKeySecretArn must be provided.
 Conditions:
   IsApplicationName: !Not [!Equals [!Ref ApplicationName, ""]]
+  UseSecretsManager: !Not [!Equals [!Ref ApiKeySecretArn, ""]]
   IsSubsystemName: !Not [!Equals [!Ref SubsystemName, ""]]
   IsIntegrationTypeLogs: !Not [!Equals [!Ref IntegrationTypeLogs, ""]]
   IsCustomDomain: !Equals [ !Ref CoralogixRegion, "Custom"]
@@ -207,6 +220,25 @@ Resources:
           Resource: 
           - !Sub 'arn:aws:firehose:${AWS::Region}:${AWS::AccountId}:deliverystream/*'
           - !Sub 'arn:aws:kinesis:${AWS::Region}:${AWS::AccountId}:stream/*'
+        - !If
+          - UseSecretsManager
+          - Effect: Allow
+            Action:
+            - secretsmanager:GetSecretValue
+            Resource:
+            - !Ref ApiKeySecretArn
+          - !Ref 'AWS::NoValue'
+        - !If
+          - UseSecretsManager
+          - Effect: Allow
+            Action:
+            - kms:Decrypt
+            Resource:
+            - !Sub 'arn:aws:kms:${AWS::Region}:${AWS::AccountId}:key/*'
+            Condition:
+              StringEquals:
+                kms:ViaService: !Sub 'secretsmanager.${AWS::Region}.amazonaws.com'
+          - !Ref 'AWS::NoValue'
       Roles:
       - Ref: FirehoseLogsRole
   CoralogixDeliveryLogsStream:
@@ -240,9 +272,19 @@ Resources:
                 - 'https://ingress.${Domain}/aws/firehose'
                 - Domain: !FindInMap [CoralogixRegionMap, !Ref CoralogixRegion, LogUrl]
           AccessKey:
-            Ref: ApiKey
+            !If
+              - UseSecretsManager
+              - !Ref 'AWS::NoValue'
+              - !Ref ApiKey
           Name: 
             'Coralogix'
+        SecretsManagerConfiguration:
+          !If
+            - UseSecretsManager
+            - Enabled: true
+              SecretARN: !Ref ApiKeySecretArn
+              RoleARN: !GetAtt FirehoseLogsRole.Arn
+            - !Ref 'AWS::NoValue'
         RequestConfiguration:
           ContentEncoding: GZIP
           CommonAttributes:

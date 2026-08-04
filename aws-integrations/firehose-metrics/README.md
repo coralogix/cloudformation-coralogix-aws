@@ -16,8 +16,11 @@ For a more detailed description of the settigns and architecture of this AWS Kin
 | CoralogixRegion | The region of your Coralogix Account. If set to Custom, you must provide a CustomDomain otherwise url will be invalid. | _Allowed Values:_<br>- Custom<br>- EU1<br>- EU2<br>- AP1<br>- AP2<br>- AP3<br>- US1<br>- US2<br>_Default_: Custom | :heavy_check_mark: |
 | CustomDomain | The Custom Coralogix domain. If set, will be the domain to send telemetry. | | |
 | ApiKey | Your Coralogix Private Key | |  :heavy_check_mark: |
+| ApiKeySecretArn | Optional - ARN of an AWS Secrets Manager secret holding the Coralogix Api key. The secret value must be JSON with an `api_key` field (e.g. `{"api_key":"<your-key>"}`), as required by Amazon Data Firehose. When set, the key is read from Secrets Manager at runtime instead of the `ApiKey` parameter. **Migration is recreate-only** - see note below. | | |
 | ApplicationName | Your Coralogix Application name | | |
 | SubsystemName | Your Coralogix Subsystem name | | |
+
+> **Note on migrating to Secrets Manager:** Switching an existing stack between `ApiKey` and `ApiKeySecretArn` changes the delivery stream's `SecretsManagerConfiguration`, which is a replacement-only property. Because the delivery stream is custom-named, CloudFormation cannot update it in place - migrating an existing stream requires recreating the delivery stream (delete and re-create the stack).
 
 ## Metrics Stream Parameters
 
