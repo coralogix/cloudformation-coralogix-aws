@@ -34,6 +34,12 @@ Parameters:
       be a separate secret from any plaintext one used with ApiKey. Must be in the
       same region as the delivery stream.
     Default: ""
+  ApiKeyKmsKeyArn:
+    Type: String
+    Description: >-
+      (Optional) ARN of the KMS key used to encrypt the Secrets Manager secret,
+      required only if the secret uses a Customer Managed Key (CMK).
+    Default: ""
   ApplicationName:
     Type: String
     Description: The desired Application Name within the Coralogix Platform. If not set, it will be the delivery stream name.
@@ -127,9 +133,16 @@ Rules:
           - !Equals [!Ref CrossAccountEnabled, 'false']
           - !Not [!Equals [!Ref CrossAccountRoles, '{}']]
         AssertDescription: CrossAccountRoles must be set when CrossAccountEnabled is true.
+  ApiKeyOrSecretArnRequired:
+    Assertions:
+      - Assert:
+          !Or
+            - !Not [!Equals [!Ref ApiKey, ""]]
+            - !Not [!Equals [!Ref ApiKeySecretArn, ""]]
+        AssertDescription: "You must provide either ApiKey or ApiKeySecretArn"
 
 Metadata:
-  SemanticVersion: 0.0.13
+  SemanticVersion: 0.1.0
   AWS::CloudFormation::Interface: 
     ParameterGroups: 
       - Label: 
@@ -179,6 +192,7 @@ Mappings:
 
 Conditions:
   UseSecretsManager: !Not [!Equals [!Ref ApiKeySecretArn, ""]]
+  UseKmsKey: !Not [!Equals [!Ref ApiKeyKmsKeyArn, ""]]
   IsApplicationName: !Not [!Equals [!Ref ApplicationName, ""]]
   IsSubsystemName: !Not [!Equals [!Ref SubsystemName, ""]]
   IsCustomDomain: !Equals [ !Ref CoralogixRegion, "Custom"]
@@ -357,6 +371,14 @@ Resources:
             - secretsmanager:GetSecretValue
             Resource:
             - !Ref ApiKeySecretArn
+          - !Ref "AWS::NoValue"
+        - !If
+          - UseKmsKey
+          - Effect: Allow
+            Action:
+            - kms:Decrypt
+            Resource:
+            - !Ref ApiKeyKmsKeyArn
           - !Ref "AWS::NoValue"
       Roles:
       - Ref: FirehoseMetricsRole
