@@ -5,6 +5,10 @@
 <!-- ### version / full date -->
 <!-- * [Update/Bug fix] message that describes the changes that you apply -->
 
+### 0.1.0 / 4 Aug 2026
+* [Feature] Add support for retrieving the Coralogix API key from AWS Secrets Manager, including a rule to allow an empty API key parameter.
+* [Feature] Add customer-managed key (CMK/KMS) encryption support for the Firehose delivery stream and associated resources.
+
 ### 0.0.7 / 7 Oct 2025
 * [UPDATE] Change coralogix domains and endpoints to new format `<coralogix_region>.coralogix.com`.
 
