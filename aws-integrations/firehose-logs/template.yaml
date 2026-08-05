@@ -259,7 +259,6 @@ Resources:
     - BackupDataBucket
     Type: AWS::KinesisFirehose::DeliveryStream
     Properties:
-      DeliveryStreamName: !Sub '${AWS::StackName}-logs'
       DeliveryStreamType:
         !If
           - IsKinesisStreamAsSource

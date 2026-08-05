@@ -389,7 +389,6 @@ Resources:
     - CloudWatchMetricsPolicy
     - BackupDataBucket
     Properties:
-      DeliveryStreamName: !Sub '${AWS::StackName}-metrics'
       DeliveryStreamType: DirectPut
       HttpEndpointDestinationConfiguration:
         RoleARN:
