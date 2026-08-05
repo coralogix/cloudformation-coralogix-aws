@@ -83,7 +83,7 @@ elif [[ $file == *"firehose"* ]]; then
         - IsCustomDomain
         - !Ref CustomDomain
         - !FindInMap [ CoralogixRegionMap, !Ref CoralogixRegion, LogUrl ]
-      CoralogixApiKey: !Ref ApiKey" >> $file
+      CoralogixApiKey: !If [UseSecretsManager, !Ref \"AWS::NoValue\", !Ref ApiKey]" >> $file
   echo "
       # Parameters to track
       IntegrationName: !Ref \"AWS::StackName\"
