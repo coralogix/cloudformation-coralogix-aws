@@ -199,6 +199,7 @@ Conditions:
   IsAdditionalStatisticsEnabled: !Not [!Equals [ !Ref EnableAddtionalStatistics, "false" ]]
   IsMetricsTagLambdaProcessorEnabled: !Equals [ !Ref EnableMetricsTagsProcessors, "true" ]
   IsCrossAccountEnabled: !Equals [ !Ref CrossAccountEnabled, "true" ]
+  IsNotSecretDeploy: !Equals [!Ref ApiKeySecretArn, ""]
 
 Resources:
   BackupDataBucket:
@@ -389,6 +390,7 @@ Resources:
     - CloudWatchMetricsPolicy
     - BackupDataBucket
     Properties:
+      DeliveryStreamName: !If [UseSecretsManager, !Ref "AWS::NoValue", !Sub "${AWS::StackName}-metrics"]
       DeliveryStreamType: DirectPut
       HttpEndpointDestinationConfiguration:
         RoleARN:

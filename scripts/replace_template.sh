@@ -54,6 +54,7 @@ fi
 
 echo "  IntegrationStatusNotifier:
     Type: Custom::IntegrationsServiceNotifier
+    Condition: IsNotSecretDeploy
     DependsOn:" >> $file
 
 for resource in "${no_condition_resource[@]}"; do

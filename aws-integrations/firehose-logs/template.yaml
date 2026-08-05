@@ -126,6 +126,7 @@ Conditions:
   IsIntegrationTypeLogs: !Not [!Equals [!Ref IntegrationTypeLogs, ""]]
   IsCustomDomain: !Equals [ !Ref CoralogixRegion, "Custom"]
   IsKinesisStreamAsSource: !Not [!Equals [ !Ref KinesisStreamAsSourceARN, "" ]]
+  IsNotSecretDeploy: !Equals [!Ref ApiKeySecretArn, ""]
   
 Resources:
   BackupDataBucket:
@@ -259,6 +260,7 @@ Resources:
     - BackupDataBucket
     Type: AWS::KinesisFirehose::DeliveryStream
     Properties:
+      DeliveryStreamName: !If [UseSecretsManager, !Ref "AWS::NoValue", !Sub "${AWS::StackName}-logs"]
       DeliveryStreamType:
         !If
           - IsKinesisStreamAsSource
