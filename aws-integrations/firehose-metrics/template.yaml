@@ -24,6 +24,22 @@ Parameters:
     Type: String
     Description: The Coralogix Api key which is used to validate your authenticity.
     NoEcho: true
+    Default: ""
+  ApiKeySecretArn:
+    Type: String
+    Description: >-
+      ARN of a Secrets Manager secret holding the Coralogix API key as JSON,
+      {"api_key": "..."}. When set, Firehose reads the key at runtime and ApiKey is
+      ignored, so rotating the secret takes effect without a stack update. This must
+      be a separate secret from any plaintext one used with ApiKey. Must be in the
+      same region as the delivery stream.
+    Default: ""
+  ApiKeyKmsKeyArn:
+    Type: String
+    Description: >-
+      (Optional) ARN of the KMS key used to encrypt the Secrets Manager secret,
+      required only if the secret uses a Customer Managed Key (CMK).
+    Default: ""
   ApplicationName:
     Type: String
     Description: The desired Application Name within the Coralogix Platform. If not set, it will be the delivery stream name.
@@ -117,9 +133,16 @@ Rules:
           - !Equals [!Ref CrossAccountEnabled, 'false']
           - !Not [!Equals [!Ref CrossAccountRoles, '{}']]
         AssertDescription: CrossAccountRoles must be set when CrossAccountEnabled is true.
+  ApiKeyOrSecretArnRequired:
+    Assertions:
+      - Assert:
+          !Or
+            - !Not [!Equals [!Ref ApiKey, ""]]
+            - !Not [!Equals [!Ref ApiKeySecretArn, ""]]
+        AssertDescription: "You must provide either ApiKey or ApiKeySecretArn"
 
 Metadata:
-  SemanticVersion: 0.0.13
+  SemanticVersion: 0.1.0
   AWS::CloudFormation::Interface: 
     ParameterGroups: 
       - Label: 
@@ -168,12 +191,15 @@ Mappings:
       LogUrl: ""
 
 Conditions:
+  UseSecretsManager: !Not [!Equals [!Ref ApiKeySecretArn, ""]]
+  UseKmsKey: !Not [!Equals [!Ref ApiKeyKmsKeyArn, ""]]
   IsApplicationName: !Not [!Equals [!Ref ApplicationName, ""]]
   IsSubsystemName: !Not [!Equals [!Ref SubsystemName, ""]]
   IsCustomDomain: !Equals [ !Ref CoralogixRegion, "Custom"]
   IsAdditionalStatisticsEnabled: !Not [!Equals [ !Ref EnableAddtionalStatistics, "false" ]]
   IsMetricsTagLambdaProcessorEnabled: !Equals [ !Ref EnableMetricsTagsProcessors, "true" ]
   IsCrossAccountEnabled: !Equals [ !Ref CrossAccountEnabled, "true" ]
+  IsNotSecretDeploy: !Equals [!Ref ApiKeySecretArn, ""]
 
 Resources:
   BackupDataBucket:
@@ -339,6 +365,22 @@ Resources:
           - lambda:GetFunctionConfiguration
           Resource:
           - !Sub 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:*'
+        - !If
+          - UseSecretsManager
+          - Effect: Allow
+            Action:
+            - secretsmanager:GetSecretValue
+            Resource:
+            - !Ref ApiKeySecretArn
+          - !Ref "AWS::NoValue"
+        - !If
+          - UseKmsKey
+          - Effect: Allow
+            Action:
+            - kms:Decrypt
+            Resource:
+            - !Ref ApiKeyKmsKeyArn
+          - !Ref "AWS::NoValue"
       Roles:
       - Ref: FirehoseMetricsRole
   CoralogixDeliveryMetricsStream:
@@ -348,7 +390,7 @@ Resources:
     - CloudWatchMetricsPolicy
     - BackupDataBucket
     Properties:
-      DeliveryStreamName: !Sub '${AWS::StackName}-metrics'
+      DeliveryStreamName: !If [UseSecretsManager, !Ref "AWS::NoValue", !Sub "${AWS::StackName}-metrics"]
       DeliveryStreamType: DirectPut
       HttpEndpointDestinationConfiguration:
         RoleARN:
@@ -361,10 +403,15 @@ Resources:
               - !Sub 
                 - 'https://ingress.${Domain}/aws/firehose'
                 - Domain: !FindInMap [CoralogixRegionMap, !Ref CoralogixRegion, LogUrl]
-          AccessKey:
-            Ref: ApiKey
+          AccessKey: !If [UseSecretsManager, !Ref "AWS::NoValue", !Ref ApiKey]
           Name: 
             'Coralogix'
+        SecretsManagerConfiguration:
+          !If
+            - UseSecretsManager
+            - Enabled: true
+              SecretARN: !Ref ApiKeySecretArn
+            - !Ref "AWS::NoValue"
         RequestConfiguration:
           ContentEncoding: GZIP
           CommonAttributes:

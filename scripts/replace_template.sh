@@ -53,8 +53,13 @@ if [[ $file == *"aws-shipper-lambda"* ]]; then
 fi
 
 echo "  IntegrationStatusNotifier:
-    Type: Custom::IntegrationsServiceNotifier
-    DependsOn:" >> $file
+    Type: Custom::IntegrationsServiceNotifier" >> $file
+# The IsNotSecretDeploy condition is only defined for firehose templates.
+# Injecting it unconditionally breaks non-firehose templates that never define it.
+if [[ $file == *"firehose"* ]]; then
+  echo "    Condition: IsNotSecretDeploy" >> $file
+fi
+echo "    DependsOn:" >> $file
 
 for resource in "${no_condition_resource[@]}"; do
   echo "      - $resource" >> $file
@@ -83,7 +88,7 @@ elif [[ $file == *"firehose"* ]]; then
         - IsCustomDomain
         - !Ref CustomDomain
         - !FindInMap [ CoralogixRegionMap, !Ref CoralogixRegion, LogUrl ]
-      CoralogixApiKey: !Ref ApiKey" >> $file
+      CoralogixApiKey: !If [UseSecretsManager, !Ref \"AWS::NoValue\", !Ref ApiKey]" >> $file
   echo "
       # Parameters to track
       IntegrationName: !Ref \"AWS::StackName\"
