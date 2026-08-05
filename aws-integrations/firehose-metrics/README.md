@@ -15,7 +15,9 @@ For a more detailed description of the settigns and architecture of this AWS Kin
 |---|---|---|---|
 | CoralogixRegion | The region of your Coralogix Account. If set to Custom, you must provide a CustomDomain otherwise url will be invalid. | _Allowed Values:_<br>- Custom<br>- EU1<br>- EU2<br>- AP1<br>- AP2<br>- AP3<br>- US1<br>- US2<br>_Default_: Custom | :heavy_check_mark: |
 | CustomDomain | The Custom Coralogix domain. If set, will be the domain to send telemetry. | | |
-| ApiKey | Your Coralogix Private Key | |  :heavy_check_mark: |
+| ApiKey | Your Coralogix Private Key. Required unless `ApiKeySecretArn` is set. | | :heavy_check_mark: (unless using ApiKeySecretArn) |
+| ApiKeySecretArn | ARN of a Secrets Manager secret holding the Coralogix API key as JSON `{"api_key": "..."}`. When set, Firehose reads the key at runtime so rotating the secret takes effect without a stack update. Must be in the same region as the delivery stream. See [AWS Firehose Secrets Manager](https://docs.aws.amazon.com/firehose/latest/dev/using-secrets-manager.html). | | :heavy_check_mark: (unless using ApiKey) |
+| ApiKeyKmsKeyArn | ARN of the KMS key used to encrypt the Secrets Manager secret. Required only when the secret uses a customer-managed key (CMK). | | |
 | ApplicationName | Your Coralogix Application name | | |
 | SubsystemName | Your Coralogix Subsystem name | | |
 
@@ -40,6 +42,9 @@ For a more detailed description of the settigns and architecture of this AWS Kin
 
 ## Notes:
 
+* Provide either `ApiKey` or `ApiKeySecretArn` (or both; the secret wins). `ApiKeySecretArn` requires a JSON secret `{"api_key": "..."}` — a different format from plaintext secrets used with `ApiKey` or CloudFormation `{{resolve:secretsmanager:...}}` dynamic references.
+* Switching an existing stack from `ApiKey` to `ApiKeySecretArn` replaces the Firehose delivery stream (the stream name becomes auto-generated). Update any CloudWatch Metric Streams that target the previous stream ARN after the update.
+* When `ApiKeySecretArn` is set, the Coralogix integration status notifier is omitted (it cannot read the runtime secret).
 * For cross-account enrichment, each linked account role (for example `CoralogixMetricsReader`) must trust the monitoring account Lambda role and allow `sts:AssumeRole`:
   - Principal: `arn:aws:iam::<monitoring-account-id>:role/<stack-name>-lambda`
   - Action: `sts:AssumeRole`
