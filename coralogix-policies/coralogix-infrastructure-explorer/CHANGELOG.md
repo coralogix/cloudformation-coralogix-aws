@@ -2,6 +2,13 @@
 
 ## infrastructure explorer
 
+### 0.0.6 / 5.11.2025 Add RDS permissions
+
+- [update] Scanning for RDS instances
+- [update] Scanning for Lambda functions
+- [update] Scanning for EBS volumes
+- [update] Scanning for S3 buckets
+
 ### 0.0.5 /4.9.2025 Add output to the role that the module will create
 
 - [update] Add output `ExternalId` to the role that the module will create
@@ -14,7 +21,7 @@
 
 ### 0.0.3 / 30.9.2024
 * [update] Add ec2:DescribeNetworkInterfaces
-* 
+*
 ### 0.0.2 / 2.9.2024
 * [update] Add option to run module in AP3 region
 

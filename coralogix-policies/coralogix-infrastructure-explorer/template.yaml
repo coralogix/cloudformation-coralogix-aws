@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: 2010-09-09
-Description: The module will create a role to allow Coralogix scrape AWS infrastructure metadata
+Description: The module will create a role to allow Coralogix to scrape AWS infrastructure metadata
 Parameters:
   ExternalIdSecret:
     Description: "ExternalIdSecret for sts:AssumeRole"
@@ -83,7 +83,11 @@ Resources:
                 - aws_account_id: !If
                     - IsCustomAWSAccountId
                     - !Ref CustomAWSAccountId
-                    - !FindInMap [CoralogixEnvironment, !Ref CoralogixRegion, "ID"]
+                    - !FindInMap [
+                        CoralogixEnvironment,
+                        !Ref CoralogixRegion,
+                        "ID",
+                      ]
                   role_suffix:
                     !FindInMap [
                       CoralogixEnvironment,
@@ -110,6 +114,33 @@ Resources:
                   - "ec2:DescribeRegions"
                   - "ec2:DescribeTransitGateway*"
                   - "ec2:DescribeNetworkInterfaces"
+                  - "ec2:DescribeVolumes"
+                Resource: "*"
+        - PolicyName: CoralogixDescribeRdsPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - "rds:DescribeDBInstances"
+                  - "rds:DescribeReservedDBInstances"
+                Resource: "*"
+        - PolicyName: CoralogixListLambdaPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - "lambda:ListFunctions"
+                Resource: "*"
+        - PolicyName: CoralogixListS3Policy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - "s3:ListAllMyBuckets"
+                  - "s3express:ListAllMyDirectoryBuckets"
                 Resource: "*"
 
 Outputs:
