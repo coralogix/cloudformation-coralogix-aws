@@ -1,0 +1,31 @@
+Parameters:
+  Principal:
+    Type: String
+    Description: The AWS account ID of the principal who will assume the role
+    ConstraintDescription: "Must be a valid AWS account ID"
+
+Resources:
+  CoralogixCSPMManagementRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: Coralogix-CSPM-Management-Role
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS:
+                Ref: Principal
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: CoralogixCSPMManagementRolePolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - organizations:ListAccounts
+                  - iam:CreatePolicy
+                  - iam:DeletePolicy
+                  - iam:AttachRolePolicy
+                Resource: "*"
