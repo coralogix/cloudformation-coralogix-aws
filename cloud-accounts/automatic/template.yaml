@@ -1,8 +1,8 @@
 AWSTemplateFormatVersion: 2010-09-09
-Description: Creates an IAM role allowing Coralogix to collect metrics from your AWS account.
+Description: Creates IAM roles allowing Coralogix to collect metrics and manage CloudWatch Logs ingestion in your AWS account.
 
 Metadata:
-  SemanticVersion: 2.0.0
+  SemanticVersion: 3.0.0
   AWS::CloudFormation::Interface:
     ParameterGroups:
       - Label:
@@ -42,7 +42,7 @@ Parameters:
   RoleName:
     Type: String
     Default: coralogix-cloud-account
-    Description: The name of the main IAM role that will be created. Static Firehose service roles use this name with -fh and -ms suffixes.
+    Description: The name of the main IAM role that will be created. Static service roles use this name with -fh, -ms, -logs, and -lm suffixes.
     AllowedPattern: '[\w+=,.@-]+'
     MaxLength: 56
   ExternalIdSecret:
@@ -162,13 +162,95 @@ Resources:
                   - firehose:PutRecordBatch
                 Resource: !Sub arn:${AWS::Partition}:firehose:*:${AWS::AccountId}:deliverystream/cx-*
 
+  CoralogixCloudWatchLogsServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${RoleName}-logs"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: logs.amazonaws.com
+            Action:
+              - sts:AssumeRole
+            Condition:
+              StringEquals:
+                aws:SourceAccount: !Ref AWS::AccountId
+              ArnLike:
+                aws:SourceArn: !Sub arn:${AWS::Partition}:logs:*:${AWS::AccountId}:*
+      Policies:
+        - PolicyName: CoralogixFirehosePutAccess
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - firehose:PutRecord
+                  - firehose:PutRecordBatch
+                Resource: !Sub arn:${AWS::Partition}:firehose:*:${AWS::AccountId}:deliverystream/cx-*
+
+  CoralogixLambdaManagerExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${RoleName}-lm"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Policies:
+        - PolicyName: CoralogixLambdaManagerExecution
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: CreateCoralogixLambdaLogGroups
+                Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                Resource: !Sub arn:${AWS::Partition}:logs:*:${AWS::AccountId}:log-group:/aws/lambda/cx-lc-*-lm
+              - Sid: WriteCoralogixLambdaLogs
+                Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !Sub arn:${AWS::Partition}:logs:*:${AWS::AccountId}:log-group:/aws/lambda/cx-lc-*-lm:log-stream:*
+              - Sid: DescribeCustomerLogGroups
+                Effect: Allow
+                Action:
+                  - logs:DescribeLogGroups
+                Resource: "*"
+              - Sid: ManageCustomerLogGroupSubscriptions
+                Effect: Allow
+                Action:
+                  - logs:DescribeSubscriptionFilters
+                  - logs:PutSubscriptionFilter
+                Resource: !Sub arn:${AWS::Partition}:logs:*:${AWS::AccountId}:log-group:*
+              - Sid: UpdateCoralogixLambdaManagerConfiguration
+                Effect: Allow
+                Action:
+                  - lambda:GetFunctionConfiguration
+                  - lambda:UpdateFunctionConfiguration
+                Resource: !Sub arn:${AWS::Partition}:lambda:*:${AWS::AccountId}:function:cx-lc-*-lm
+              - Sid: PassCoralogixCloudWatchLogsServiceRole
+                Effect: Allow
+                Action:
+                  - iam:PassRole
+                Resource: !GetAtt CoralogixCloudWatchLogsServiceRole.Arn
+                Condition:
+                  StringEquals:
+                    iam:PassedToService: logs.amazonaws.com
+
   CoralogixAwsMetricsRole:
     Type: AWS::IAM::Role
     Properties:
       RoleName: !Ref RoleName
       Tags:
         - Key: CoralogixCloudAccountTemplateVersion
-          Value: "2"
+          Value: "3"
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -232,6 +314,26 @@ Resources:
                 Action:
                   - s3:DeleteObject
                 Resource: !Sub arn:${AWS::Partition}:s3:::cx-*/*
+              - Sid: ManageCoralogixLambdaManagers
+                Effect: Allow
+                Action:
+                  - lambda:AddPermission
+                  - lambda:CreateFunction
+                  - lambda:DeleteFunction
+                  - lambda:GetFunctionConfiguration
+                  - lambda:InvokeFunction
+                  - lambda:RemovePermission
+                  - lambda:UpdateFunctionCode
+                  - lambda:UpdateFunctionConfiguration
+                Resource: !Sub arn:${AWS::Partition}:lambda:*:${AWS::AccountId}:function:cx-lc-*-lm
+              - Sid: ManageCoralogixEventBridgeRules
+                Effect: Allow
+                Action:
+                  - events:DeleteRule
+                  - events:PutRule
+                  - events:PutTargets
+                  - events:RemoveTargets
+                Resource: !Sub arn:${AWS::Partition}:events:*:${AWS::AccountId}:rule/cx-lc-*-lg
               - Sid: PassCoralogixFirehoseServiceRole
                 Effect: Allow
                 Action:
@@ -248,6 +350,14 @@ Resources:
                 Condition:
                   StringEquals:
                     iam:PassedToService: streams.metrics.cloudwatch.amazonaws.com
+              - Sid: PassCoralogixLambdaManagerExecutionRole
+                Effect: Allow
+                Action:
+                  - iam:PassRole
+                Resource: !GetAtt CoralogixLambdaManagerExecutionRole.Arn
+                Condition:
+                  StringEquals:
+                    iam:PassedToService: lambda.amazonaws.com
 
 Outputs:
   CoralogixAwsMetricsRoleArn:
