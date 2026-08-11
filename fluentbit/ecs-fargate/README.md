@@ -97,7 +97,7 @@ Next we need to add Log Configuration to our application task definition. The fo
             "Port": "443",
 
             // your coralogix domain: 
-            "Host": "ingress.coralogix.com",
+            "Host": "ingress.eu1.coralogix.com",
             "TLS": "On",
             "URI": "/logs/rest/singles",
             "Name": "http"

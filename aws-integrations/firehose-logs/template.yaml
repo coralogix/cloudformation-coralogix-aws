@@ -18,7 +18,7 @@ Parameters:
     Default: Custom
   CustomDomain:
     Type: String
-    Description: The Custom Domain. If set, will be the domain used to send telemetry (e.g. coralogix.com, eu2.coralogix.com, coralogixsg.com).
+    Description: The Custom Domain. If set, will be the domain used to send telemetry (e.g. eu1.coralogix.com, eu2.coralogix.com, ap2.coralogix.com).
     Default: ""
   ApiKey:
     Type: String
@@ -70,7 +70,7 @@ Parameters:
     Default: ""
   
 Metadata:
-  SemanticVersion: 0.1.0
+  SemanticVersion: 0.1.1
   AWS::CloudFormation::Interface: 
     ParameterGroups: 
       - Label: 

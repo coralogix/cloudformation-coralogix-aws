@@ -5,6 +5,9 @@
 <!-- ### version / full date -->
 <!-- * [Update/Bug fix] message that describes the changes that you apply -->
 
+### 1.0.2 / 11 Aug 2026
+* [Update] Migrate Coralogix endpoints to the regional domain format `<region>.coralogix.com` (`coralogix.com`, `coralogix.us`, `coralogix.in`, `coralogixsg.com`, `cx498.coralogix.com` -> `eu1`/`us1`/`ap1`/`ap2`/`us2.coralogix.com`).
+
 ### 1.0.1 / 08 Apr 2026
 * [FEAT] Add support for GovCloud deployments to example CF
 

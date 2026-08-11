@@ -80,7 +80,7 @@ Resources:
               Retry_Limit: "10"
               compress: "gzip"
               Port: "443"
-              Host: "ingress.coralogix.com"
+              Host: "ingress.eu1.coralogix.com"
               TLS: "On"
               URI: "/logs/rest/singles"
               Name: "http"

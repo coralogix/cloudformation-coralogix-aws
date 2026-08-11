@@ -22,7 +22,7 @@ In order for a Prometheus target container to be detected by the Cloudwatch Agen
 | ECSNetworkMode      | ECS Network Mode for the Task                                                                                     | String | `bridge`                               |          |
 | TaskRoleName        | Enter the CloudWatch Agent ECS task role name                                                                     | String | `ECSDiscoveryCWAgentTaskRoleName`      |          |
 | ExecutionRoleName   | Enter the CloudWatch Agent ECS execution role name                                                                | String | `ECSDiscoveryCWAgentExecutionRoleName` |          |
-| CoralogixRegion     | The Coralogix location region                                                                                     | String | `Europe`                               | ✔️        |
+| CoralogixRegion     | The Coralogix location region: `EU1`, `EU2`, `AP1`, `AP2`, `AP3`, `US1`, `US2`. The former names (`Europe`, `Europe2`, `India`, `Singapore`, `US`) are still accepted. | String |                                        | ✔️        |
 | CoralogixPrivateKey | The Coralogix Private Key                                                                                         | String | `NoEcho: true`                         | ✔️        |
 | ImageTag            | The Coralogix Otel Collector image tag.<br>see [here](coralogixrepo/coralogix-otel-collector) for available tags: | String |                                        | ✔️        |
 

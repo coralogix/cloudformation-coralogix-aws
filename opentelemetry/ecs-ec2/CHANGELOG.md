@@ -5,6 +5,9 @@
 <!-- ### version / full date -->
 <!-- * [Update/Bug fix] message that describes the changes that you apply -->
 
+### 1.0.13 / 2026-08-11
+* [Update] Migrate Coralogix endpoints to the regional domain format `<region>.coralogix.com` (`coralogix.com`, `coralogix.us`, `coralogix.in`, `coralogixsg.com`, `cx498.coralogix.com` -> `eu1`/`us1`/`ap1`/`ap2`/`us2.coralogix.com`).
+
 ### 1.0.12 / 2026-07-21
 - [Update] Default `SupervisedImageVersion` is now `v0.11.0`.
 - [Feature] Added `ProfilingInitialFallbackConfigs` so the main collector and profiling agents can use different initial fallback URLs. Both require `S3ConfigBucket` and must reference that bucket.

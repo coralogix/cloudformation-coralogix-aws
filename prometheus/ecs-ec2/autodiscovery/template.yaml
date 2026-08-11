@@ -32,8 +32,16 @@ Parameters:
 
   CoralogixRegion:
       Type: String
-      Description: The Coralogix location region [Europe, Europe2, India, Singapore, US]
+      Description: The Coralogix location region [EU1, EU2, AP1, AP2, AP3, US1, US2]
       AllowedValues:
+        - EU1
+        - EU2
+        - AP1
+        - AP2
+        - AP3
+        - US1
+        - US2
+        # Deprecated region names, kept for backward compatibility
         - Europe
         - Europe2
         - India
@@ -59,25 +67,54 @@ Conditions:
 
 Mappings:
   CoralogixRegionMap:
+    EU1:
+      Endpoint: ingress.eu1.coralogix.com:443
+      Domain: eu1.coralogix.com
+
+    EU2:
+      Endpoint: ingress.eu2.coralogix.com:443
+      Domain: eu2.coralogix.com
+
+    AP1:
+      Endpoint: ingress.ap1.coralogix.com:443
+      Domain: ap1.coralogix.com
+
+    AP2:
+      Endpoint: ingress.ap2.coralogix.com:443
+      Domain: ap2.coralogix.com
+
+    AP3:
+      Endpoint: ingress.ap3.coralogix.com:443
+      Domain: ap3.coralogix.com
+
+    US1:
+      Endpoint: ingress.us1.coralogix.com:443
+      Domain: us1.coralogix.com
+
+    US2:
+      Endpoint: ingress.us2.coralogix.com:443
+      Domain: us2.coralogix.com
+
+    # Deprecated region names, kept for backward compatibility
     Europe:
-      Endpoint: ingress.coralogix.com:443
-      Domain: coralogix.com
+      Endpoint: ingress.eu1.coralogix.com:443
+      Domain: eu1.coralogix.com
 
     Europe2:
       Endpoint: ingress.eu2.coralogix.com:443
       Domain: eu2.coralogix.com
 
     India:
-      Endpoint: ingress.coralogix.in:443
-      Domain: coralogix.in
+      Endpoint: ingress.ap1.coralogix.com:443
+      Domain: ap1.coralogix.com
 
     Singapore:
-      Endpoint: ingress.coralogixsg.com:443
-      Domain: coralogixsg.com
+      Endpoint: ingress.ap2.coralogix.com:443
+      Domain: ap2.coralogix.com
 
     US:
-      Endpoint: ingress.coralogix.us:443
-      Domain: coralogix.us
+      Endpoint: ingress.us1.coralogix.com:443
+      Domain: us1.coralogix.com
 
 
 Resources:
