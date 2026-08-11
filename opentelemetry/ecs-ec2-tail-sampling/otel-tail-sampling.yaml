@@ -113,7 +113,7 @@ Parameters:
 
   CoralogixRegion:
     Type: String
-    Description: "The Coralogix location region [EU1|EU2|AP1|AP2|AP3|US1|US2]]"
+    Description: "The Coralogix location region [EU1|EU2|AP1|AP2|AP3|US1|US2|US3]"
     AllowedValues:
       - EU1
       - EU2
@@ -122,6 +122,7 @@ Parameters:
       - AP3
       - US1
       - US2
+      - US3
 
   CoralogixApiKey:
     Type: String
@@ -249,6 +250,10 @@ Mappings:
     US2:
       Endpoint: ingress.us2.coralogix.com:443
       Domain: us2.coralogix.com
+
+    US3:
+      Endpoint: ingress.us3.coralogix.com:443
+      Domain: us3.coralogix.com
 
 Resources:
   OtelCloudMapNamespace:

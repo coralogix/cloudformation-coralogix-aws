@@ -42,7 +42,7 @@ Parameters:
 
   CoralogixRegion:
     Type: String
-    Description: Coralogix region [EU1|EU2|AP1|AP2|AP3|US1|US2|custom].
+    Description: Coralogix region [EU1|EU2|AP1|AP2|AP3|US1|US2|US3|custom].
     AllowedValues:
       - EU1
       - EU2
@@ -51,6 +51,7 @@ Parameters:
       - AP3
       - US1
       - US2
+      - US3
       - custom
 
   CustomDomain:
@@ -230,6 +231,9 @@ Mappings:
       Domain: us1.coralogix.com
     US2:
       Domain: us2.coralogix.com
+
+    US3:
+      Domain: us3.coralogix.com
 
 Resources:
   OtelLogGroup:

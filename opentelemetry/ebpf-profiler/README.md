@@ -22,7 +22,7 @@ This template supports two image modes:
 | Parameter                     | Description                                                                | Default                                                               | Required |
 |-------------------------------|----------------------------------------------------------------------------|-----------------------------------------------------------------------|----------|
 | `ClusterName`                 | Name of the existing ECS cluster                                           |                                                                       | yes      |
-| `CoralogixRegion`             | Coralogix region (`EU1`,`EU2`,`AP1`,`AP2`,`AP3`,`US1`,`US2`)               |                                                                       | yes      |
+| `CoralogixRegion`             | Coralogix region (`EU1`,`EU2`,`AP1`,`AP2`,`AP3`,`US1`,`US2`,`US3`)               |                                                                       | yes      |
 | `CoralogixApiKey`             | Coralogix Send-Your-Data API key                                           |                                                                       | yes      |
 | `ProfilerImageMode`           | Image mode (`collector` or `supervised`)                                   | `collector`                                                           | no       |
 | `EbpfProfilerImageRepository` | Collector image repository                                                 | `coralogixrepo/coralogix-otel-collector`                              | no       |

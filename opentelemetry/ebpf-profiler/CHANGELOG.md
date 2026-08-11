@@ -7,6 +7,7 @@
 
 ### 0.1.2 / 2026-08-11
 * [Update] Migrate Coralogix endpoints to the regional domain format `<region>.coralogix.com` (`coralogix.com`, `coralogix.us`, `coralogix.in`, `coralogixsg.com`, `cx498.coralogix.com` -> `eu1`/`us1`/`ap1`/`ap2`/`us2.coralogix.com`).
+* [Feature] Add `US3` (`us3.coralogix.com`) as a supported `CoralogixRegion`.
 
 ### 0.1.1 / 2026-07-09
 - [Update] Updated the eBPF profiler image tag to v0.10.0.

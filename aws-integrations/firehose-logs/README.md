@@ -12,7 +12,7 @@ For a more detailed description of the settigns and architecture of this AWS Kin
 
 | Parameter | Description | Default Value | Required |
 |---|---|---|---|
-| CoralogixRegion | The region of your Coralogix Account. If set to Custom, you must provide a CustomDomain otherwise url will be invalid. | _Allowed Values:_<br>- Custom<br>- EU1<br>- EU2<br>- AP1<br>- AP2<br>- AP3<br>- US1<br>- US2<br>_Default_: Custom | :heavy_check_mark: |
+| CoralogixRegion | The region of your Coralogix Account. If set to Custom, you must provide a CustomDomain otherwise url will be invalid. | _Allowed Values:_<br>- Custom<br>- EU1<br>- EU2<br>- AP1<br>- AP2<br>- AP3<br>- US1<br>- US2<br>- US3<br>_Default_: Custom | :heavy_check_mark: |
 | CustomDomain | The Custom Coralogix domain. If set, will be the domain to send telemetry. | | |
 | ApiKey | Your Coralogix Private Key. Required unless `ApiKeySecretArn` is set. | | :heavy_check_mark: (unless using ApiKeySecretArn) |
 | ApiKeySecretArn | ARN of a Secrets Manager secret holding the Coralogix API key as JSON `{"api_key": "..."}`. When set, Firehose reads the key at runtime so rotating the secret takes effect without a stack update. Must be in the same region as the delivery stream. See [AWS Firehose Secrets Manager](https://docs.aws.amazon.com/firehose/latest/dev/using-secrets-manager.html). | | :heavy_check_mark: (unless using ApiKey) |

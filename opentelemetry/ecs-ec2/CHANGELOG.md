@@ -7,6 +7,7 @@
 
 ### 1.0.13 / 2026-08-11
 * [Update] Migrate Coralogix endpoints to the regional domain format `<region>.coralogix.com` (`coralogix.com`, `coralogix.us`, `coralogix.in`, `coralogixsg.com`, `cx498.coralogix.com` -> `eu1`/`us1`/`ap1`/`ap2`/`us2.coralogix.com`).
+* [Feature] Add `US3` (`us3.coralogix.com`) as a supported `CoralogixRegion`.
 
 ### 1.0.12 / 2026-07-21
 - [Update] Default `SupervisedImageVersion` is now `v0.11.0`.

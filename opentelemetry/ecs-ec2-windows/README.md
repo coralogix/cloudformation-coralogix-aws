@@ -32,7 +32,7 @@ The agent runs one task per Windows EC2 instance, uses **awsvpc** network mode, 
 | ConfigSource | Config source: `template`, `s3`, `parameter-store` | `template` | |
 | CDOTImageVersion | OTEL Collector image tag (use Windows tag, e.g. v0.5.10-windowsserver-2022) | `v0.5.10-windowsserver-2022` | |
 | Image | Override image repository (empty = coralogixrepo/coralogix-otel-collector) | `""` | |
-| CoralogixRegion | Coralogix region [EU1\|EU2\|AP1\|AP2\|AP3\|US1\|US2\|custom] | — | ✓ |
+| CoralogixRegion | Coralogix region [EU1\|EU2\|AP1\|AP2\|AP3\|US1\|US2\|US3\|custom] | — | ✓ |
 | CustomDomain | Coralogix custom domain (e.g. private link). Required when region is custom | `""` | |
 | CoralogixApiKey | Send-Your-Data API key | — | ✓ * |
 | UseApiKeySecret | Use API key from Secrets Manager | `false` | |

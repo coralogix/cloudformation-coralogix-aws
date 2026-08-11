@@ -17,9 +17,9 @@ Parameters:
     Type: String
     Default: " "
   CoralogixRegion:
-    Description: "The Coralogix location region, possible options are [EU1, EU2, AP1, AP2, AP3, US1, US2]"
+    Description: "The Coralogix location region, possible options are [EU1, EU2, AP1, AP2, AP3, US1, US2, US3]"
     Type: String
-    AllowedValues: [EU1, EU2, AP1, AP2, AP3, US1, US2]
+    AllowedValues: [EU1, EU2, AP1, AP2, AP3, US1, US2, US3]
     Default: "EU1"
   CustomUrl:
     Type: String
@@ -157,6 +157,8 @@ Mappings:
       url: "https://ingress.us1.coralogix.com/aws/event-bridge"
     US2:
       url: "https://ingress.us2.coralogix.com/aws/event-bridge"
+    US3:
+      url: "https://ingress.us3.coralogix.com/aws/event-bridge"
 
 Outputs:
   EventBridgeRuleName:
