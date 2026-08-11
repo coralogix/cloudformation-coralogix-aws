@@ -57,7 +57,7 @@ Parameters:
 
   CoralogixRegion:
     Type: String
-    Description: "The Coralogix location region [EU1|EU2|AP1|AP2|AP3|US1|US2]"
+    Description: "The Coralogix location region [EU1|EU2|AP1|AP2|AP3|US1|US2|US3]"
     AllowedValues:
       - EU1
       - EU2
@@ -66,6 +66,7 @@ Parameters:
       - AP3
       - US1
       - US2
+      - US3
 
   CoralogixApiKey:
     Type: String
@@ -149,19 +150,22 @@ Conditions:
 Mappings:
   CoralogixRegionMap:
     EU1:
-      Domain: coralogix.com
+      Domain: eu1.coralogix.com
     EU2:
       Domain: eu2.coralogix.com
     AP1:
-      Domain: coralogix.in
+      Domain: ap1.coralogix.com
     AP2:
-      Domain: coralogixsg.com
+      Domain: ap2.coralogix.com
     AP3:
       Domain: ap3.coralogix.com
     US1:
-      Domain: coralogix.us
+      Domain: us1.coralogix.com
     US2:
-      Domain: cx498.coralogix.com
+      Domain: us2.coralogix.com
+
+    US3:
+      Domain: us3.coralogix.com
 
 Resources:
   EbpfTaskDefinition:

@@ -51,7 +51,7 @@ receivers:
   awsecscontainermetricsd:
 exporters:
   coralogix:
-    domain: coralogix.com
+    domain: eu1.coralogix.com
     private_key: '<your-product-key>'
     application_name: "opentelemetry"
     subsystem_name: "ecs"
@@ -258,7 +258,7 @@ processors:
         action: delete
 exporters:
   coralogix:
-    domain: coralogix.com
+    domain: eu1.coralogix.com
     private_key: '<your-product-key>'
     application_name: "opentelemetry"
     subsystem_name: "ecs"

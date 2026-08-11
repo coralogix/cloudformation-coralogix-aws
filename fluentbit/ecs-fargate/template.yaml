@@ -76,13 +76,13 @@ Resources:
             LogDriver: "awsfirelens"
             Options:
               Format: "json_lines"
-              Header: !Sub "private_key ${PrivateKey}"
+              Header: !Sub "Authorization Bearer ${PrivateKey}"
               Retry_Limit: "10"
               compress: "gzip"
               Port: "443"
-              Host: "ingress.coralogix.com"
+              Host: "ingress.eu1.coralogix.com"
               TLS: "On"
-              URI: "/logs/rest/singles"
+              URI: "/logs/v1/singles"
               Name: "http"
         # ------------------------
 

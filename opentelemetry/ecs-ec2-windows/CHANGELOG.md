@@ -4,6 +4,9 @@
 <!-- To add a new entry write: -->
 <!-- ### version / full date -->
 <!-- * [Update/Bug fix] message that describes the changes that you apply -->
+### 2.0.1 / 2026-08-11
+* [Feature] Add `US3` (`us3.coralogix.com`) as a supported `CoralogixRegion`.
+
 ### 2.0.0 / 2026-03-18
 * [Update] Aligned template with Terraform module ecs-ec2-windows: Daemon ECS service only (removed sidecar app example)
 * [Update] Switched to awsvpc network mode with required SubnetIds and SecurityGroupIds; Windows Server 2022 Core, X86_64

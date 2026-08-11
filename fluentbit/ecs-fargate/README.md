@@ -91,15 +91,15 @@ Next we need to add Log Configuration to our application task definition. The fo
           "LogDriver": "awsfirelens",
           "Options": {
             "Format": "json_lines",
-            "Header": "private_key <YOUR PRIVATE KEY>",
+            "Header": "Authorization Bearer <YOUR SEND-YOUR-DATA API KEY>",
             "Retry_Limit": "10",
             "compress": "gzip",
             "Port": "443",
 
             // your coralogix domain: 
-            "Host": "ingress.coralogix.com",
+            "Host": "ingress.eu1.coralogix.com",
             "TLS": "On",
-            "URI": "/logs/rest/singles",
+            "URI": "/logs/v1/singles",
             "Name": "http"
           }
         }
