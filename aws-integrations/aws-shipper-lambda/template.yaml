@@ -24,7 +24,7 @@ Metadata:
       - kinesis
       - cloudfront
     HomePageUrl: https://coralogix.com
-    SemanticVersion: 1.4.12
+    SemanticVersion: 1.4.13
     SourceCodeUrl: https://github.com/coralogix/coralogix-aws-shipper
   AWS::CloudFormation::Interface:
     ParameterGroups:
@@ -84,6 +84,7 @@ Metadata:
           default: Generic Config
         Parameters:
           - NotificationEmail
+          - SnsKmsKeyArn
           - BlockingPattern
           - LogStreamFilter
           - SamplingRate
@@ -336,6 +337,10 @@ Parameters:
     Description: Failure notification email address
     MaxLength: 320
     Default: ''
+  SnsKmsKeyArn:
+    Type: String
+    Description: Optional KMS key ARN or alias to encrypt the Lambda failure-notification SNS topic. Leave empty for no encryption. The key policy must allow sns.amazonaws.com and the Lambda execution role to use kms:Decrypt and kms:GenerateDataKey*.
+    Default: ''
   StoreAPIKeyInSecretsManager:
     Type: String
     Description: "Store the API key in AWS Secrets Manager. ApiKeys are stored in secret manager\nby default. If this option is set to false, the ApiKey will apeear in plain text as an \nenvironment variable in the lambda function console.\n"
@@ -533,6 +538,7 @@ Conditions:
   UseECRScan: !Equals [!Ref IntegrationType, 'EcrScan']
   IsSQSIntegration: !Equals [!Ref IntegrationType, 'Sqs']
   IsNotificationEnabled: !Not [!Equals [!Ref NotificationEmail, '']]
+  IsSnsKmsKeySet: !Not [!Equals [!Ref SnsKmsKeyArn, '']]
   IsCustomDomain: !Equals [!Ref CoralogixRegion, Custom]
   S3KeyPrefixIsSet: !Not [!Equals [!Ref S3KeyPrefix, '']]
   S3SuffixIsSet: !Not [!Equals [!Ref S3KeySuffix, '']]
@@ -709,6 +715,13 @@ Rules:
       - Assert: !Not [!Equals [!Ref SQSIntegrationTopicArn, 'arn:aws:sqs:us-east-1:123456789012:placeholder']]
         AssertDescription: SQSIntegrationTopicArn must be set when IntegrationType is set to Sqs
 Resources:
+  FailureNotificationTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      KmsMasterKeyId: !If
+        - IsSnsKmsKeySet
+        - !Ref SnsKmsKeyArn
+        - !Ref AWS::NoValue
   Secret:
     Type: 'AWS::SecretsManager::Secret'
     Condition: StoreAPIKeyInSecretsManager
@@ -843,6 +856,15 @@ Resources:
               Action:
                 - 'kms:Decrypt'
               Resource: !Ref S3BucketKMSKeyARN
+            - !Ref AWS::NoValue
+          - !If
+            # KMS Policy for SNS failure-notification topic encryption
+            - IsSnsKmsKeySet
+            - Effect: Allow
+              Action:
+                - 'kms:Decrypt'
+                - 'kms:GenerateDataKey*'
+              Resource: !Ref SnsKmsKeyArn
             - !Ref AWS::NoValue
           - !If
             # SQS Policy
@@ -1009,6 +1031,7 @@ Resources:
         DestinationConfig:
           OnFailure:
             Type: SNS
+            Destination: !Ref FailureNotificationTopic
       Environment:
         Variables:
           CORALOGIX_ENDPOINT: !If
@@ -1133,7 +1156,7 @@ Resources:
     Properties:
       Protocol: email
       Endpoint: !Ref NotificationEmail
-      TopicArn: !Ref LambdaFunction.DestinationTopic
+      TopicArn: !Ref FailureNotificationTopic
   ConfigureLambda:
     Type: Custom::ConfigureLambda
     Properties:
