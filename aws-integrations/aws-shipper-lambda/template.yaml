@@ -716,7 +716,7 @@ Rules:
       - Assert: !Not [!Equals [!Ref SQSIntegrationTopicArn, 'arn:aws:sqs:us-east-1:123456789012:placeholder']]
         AssertDescription: SQSIntegrationTopicArn must be set when IntegrationType is set to Sqs
 Resources:
-  LambdaFunctionOnFailureTopic:
+  LambdaFunctionEventInvokeConfigOnFailureTopic:
     Type: AWS::SNS::Topic
     Properties:
       KmsMasterKeyId: !If
@@ -1032,7 +1032,7 @@ Resources:
         DestinationConfig:
           OnFailure:
             Type: SNS
-            Destination: !Ref LambdaFunctionOnFailureTopic
+            Destination: !Ref LambdaFunctionEventInvokeConfigOnFailureTopic
       Environment:
         Variables:
           CORALOGIX_ENDPOINT: !If
@@ -1157,7 +1157,7 @@ Resources:
     Properties:
       Protocol: email
       Endpoint: !Ref NotificationEmail
-      TopicArn: !Ref LambdaFunctionOnFailureTopic
+      TopicArn: !Ref LambdaFunctionEventInvokeConfigOnFailureTopic
   ConfigureLambda:
     Type: Custom::ConfigureLambda
     Properties:
