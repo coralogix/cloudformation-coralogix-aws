@@ -3,8 +3,8 @@ Description: The module will create a role with an inline policy to allow Coralo
 Parameters:
   EventBusArn:
     Type: String
-    Description: The ARN corresponding to the Event Bus that will receive events via the PutEvents method.
-    AllowedPattern: '^arn:aws[\w-]*:events:[a-z]{2}-[a-z]+-[\w-]+:[0-9]{12}:event-bus\/[\.\-_A-Za-z0-9]+$'
+    Description: ARN of the Event Bus that will receive events via the PutEvents method. To target an EventBridge global endpoint, provide a comma-separated list starting with the endpoint ARN followed by one or more event-bus ARNs that back it (e.g. `arn:aws:events:<region>:<account-id>:endpoint/<name>,arn:aws:events:<region>:<account-id>:event-bus/<name>`).
+    AllowedPattern: '^(arn:aws[\w-]*:events:[a-z]{2}-[a-z]+-[\w-]+:[0-9]{12}:event-bus\/[\.\-_A-Za-z0-9]+|arn:aws[\w-]*:events:[a-z]{2}-[a-z]+-[\w-]+:[0-9]{12}:endpoint\/[\.\-_A-Za-z0-9]+,arn:aws[\w-]*:events:[a-z]{2}-[a-z]+-[\w-]+:[0-9]{12}:event-bus\/[\.\-_A-Za-z0-9]+(,arn:aws[\w-]*:events:[a-z]{2}-[a-z]+-[\w-]+:[0-9]{12}:event-bus\/[\.\-_A-Za-z0-9]+)*)$'
     MaxLength: 2048
   RoleName:
     Type: String
@@ -83,4 +83,4 @@ Resources:
               - Effect: Allow
                 Action:
                   - events:PutEvents
-                Resource: !Ref EventBusArn
+                Resource: !Split [',', !Ref EventBusArn]
