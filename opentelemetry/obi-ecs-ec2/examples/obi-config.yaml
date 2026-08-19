@@ -1,0 +1,66 @@
+# Example OBI (OpenTelemetry eBPF Instrumentation) configuration for ECS EC2.
+# This mirrors the template's embedded default. Upload it to S3 and set
+# S3ConfigBucket / S3ConfigKey to override the embedded config.
+#
+# OBI exports OTLP to the node-local Coralogix collector (host networking →
+# localhost), which forwards to Coralogix.
+discovery:
+  # Instrument every process with a listening port. Narrow this (e.g. a port
+  # range or exe_path globs) to scope instrumentation.
+  instrument:
+    - open_ports: "1-65535"
+  exclude_instrument:
+    - exe_path: "*ebpf-instrument*"
+    - exe_path: "*otelcol*"
+    - exe_path: "*obi*"
+attributes:
+  select:
+    '*':
+      include:
+        - gen_ai.*
+ebpf:
+  buffer_sizes:
+    http: 2048
+    kafka: 4096
+    mysql: 4096
+    postgres: 4096
+  payload_extraction:
+    http:
+      aws:
+        enabled: true
+      elasticsearch:
+        enabled: true
+      genai:
+        anthropic:
+          enabled: true
+        embedding:
+          enabled: true
+        gemini:
+          enabled: true
+        mcp:
+          enabled: true
+        openai:
+          enabled: true
+        qwen:
+          enabled: true
+        rerank:
+          enabled: true
+        retrieval:
+          enabled: true
+      graphql:
+        enabled: true
+      jsonrpc:
+        enabled: true
+      sqlpp:
+        enabled: true
+  redis_db_cache:
+    enabled: true
+health_check:
+  port: 0
+otel_traces_export:
+  endpoint: "http://localhost:4317"
+otel_metrics_export:
+  endpoint: "http://localhost:4318"
+prometheus_export:
+  port: 9090
+  path: /metrics
