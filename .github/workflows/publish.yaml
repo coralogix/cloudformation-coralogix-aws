@@ -16,6 +16,9 @@ jobs:
   Publish:
     name: publish
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - name: Checkout when triggered by commit
         uses: actions/checkout@v4
@@ -32,10 +35,11 @@ jobs:
           persist-credentials: false
           fetch-depth: 0
 
-      - uses: aws-actions/configure-aws-credentials@v4
+      - uses: aws-actions/configure-aws-credentials@v6
         with:
-          aws-access-key-id: ${{ secrets.PUBLISH_ACCESS_KEY }}
-          aws-secret-access-key: ${{ secrets.PUBLISH_SECRET_ACCESS_KEY }}
+          audience: sts.amazonaws.com
+          role-to-assume: arn:aws:iam::597078901540:role/github-actions-cloudformation-coralogix-aws-publish
+          role-session-name: cloudformation-coralogix-aws-${{ github.run_id }}
           aws-region: eu-central-1
           
       - name: Get changed files
