@@ -5,6 +5,15 @@
 <!-- ### version / full date -->
 <!-- * [Update/Bug fix] message that describes the changes that you apply -->
 
+### 0.1.1 / 11 Aug 2026
+* [Update] Refresh the `CustomDomain` example domains to the regional format (`eu1.coralogix.com`, `eu2.coralogix.com`, `ap2.coralogix.com`).
+* [Feature] Add `US3` (`us3.coralogix.com`) as a supported `CoralogixRegion`.
+
+### 0.1.0 / 4 Aug 2026
+* [Feature] Add support for retrieving the Coralogix API key from AWS Secrets Manager, including a rule to allow an empty API key parameter.
+* [Feature] Add customer-managed key (CMK/KMS) encryption support for the Firehose delivery stream and associated resources.
+* [Update] Set an explicit `DeliveryStreamName` only for the non-Secrets-Manager path, and gate the `IntegrationStatusNotifier` on the new `IsNotSecretDeploy` condition so it is omitted on the Secrets Manager migration path.
+
 ### 0.0.13 / 28 Feb 2026
 * [Fix] Scope `sts:AssumeRole` IAM permission to `arn:aws:iam::*:role/*` instead of `*` when `CrossAccountEnabled` is true.
 

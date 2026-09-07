@@ -21,7 +21,7 @@
    - [Terraform Module](#terraform-module)
 4. [Configuration Parameters](#configuration-parameters)
    - [Universal Configuration](#universal-configuration)
-   - [S3/CloudTrail/VpcFlow/S3Csv Configuration](#s3cloudtrailvpcflows3csv-configuration)
+   - [S3, CloudTrail, VpcFlow, S3Csv and CloudFront Configuration](#s3-cloudtrail-vpcflow-s3csv-cloudfront-configuration)
    - [CloudWatch Configuration](#cloudwatch-configuration)
    - [SNS Configuration](#sns-configuration)
    - [SQS Configuration](#sqs-configuration)
@@ -112,21 +112,90 @@ Use the tables below as a guide to configure your deployment. The configuration 
 
 ### Universal configuration
 
-Use an existing Coralogix [Send-Your-Data API key](https://coralogix.com/docs/send-your-data-management-api/) to make the connection or create one as you fill our pre-made template. Additionally, make sure your integration is [Region-specific](https://coralogix.com/docs/coralogix-domain/).
+Metrics delivery, REST log delivery, and direct Coralogix OTLP log delivery
+require an existing Coralogix
+[Send-Your-Data API key](https://coralogix.com/docs/send-your-data-management-api/)
+and the appropriate [region](https://coralogix.com/docs/coralogix-domain/).
+Collector OTLP log delivery does not use Coralogix authentication: leave
+`ApiKey` empty and provide `OTLPEndpoint`.
 
 > [!NOTE]
 > Always deploy the AWS Lambda function in the same AWS region as your resource, such as the S3 bucket.
+
+#### Log export routes
+
+The shipper supports two `LogExportProtocol` values and three effective log
+routes:
+
+1. **Coralogix REST (default):** `coralogix_rest` preserves the existing
+   direct-delivery behavior and credentials. Existing deployments remain
+   backward compatible because this is the default.
+1. **Direct Coralogix OTLP/gRPC:** set `otlp_grpc` and leave `OTLPEndpoint`
+   empty. The shipper derives `https://ingress.<domain>:443` from the bare
+   domain selected by `CoralogixRegion` or `CustomDomain` and authenticates
+   with the existing Send-Your-Data API key as Bearer authorization.
+
+`CustomDomain` must be an ASCII DNS hostname. Each label may contain letters,
+digits, and internal hyphens only; schemes, ports, paths, URI userinfo, and
+leading or trailing hyphens are rejected.
+
+1. **Collector OTLP/gRPC:** set `otlp_grpc` and provide a non-empty
+   `OTLPEndpoint`. The Collector endpoint takes precedence over
+   `CORALOGIX_DOMAIN`; the shipper sends no Coralogix API key or authorization
+   metadata on this route. This is the only route without application-layer
+   authentication.
+
+> [!IMPORTANT]
+> Direct Coralogix OTLP always uses the public
+> `ingress.<domain>:443` endpoint. It does not inherit `UsePrivateLink`.
+> A Lambda in private-only subnets therefore needs public egress (for example,
+> through NAT) or must use `OTLPEndpoint` to send through a reachable
+> Collector. The templates reject direct OTLP + PrivateLink unless a Collector
+> `OTLPEndpoint` is supplied.
+
+`OTLPEndpoint` must be an `http://` or `https://` origin without a path or
+query or URI userinfo. Plaintext `http://` is intended only for a private network.
+`https://` validates the listener certificate against bundled WebPKI roots.
+An unauthenticated Collector must remain private; attach the
+Lambda to appropriate VPC subnets and security groups. See the
+[Collector enrichment example](examples/otlp-grpc-collector/) for a generic
+transform processor that adds `gateway.enriched=true`.
+
+OTLP requests group records with the same application and subsystem into one
+resource while keeping multiple resources in shared, size-limited requests.
+Structured JSON bodies retain nested arrays and objects. Because OTLP
+`AnyValue` has no null variant, JSON `null` maps to the OTLP string `"null"`.
+The configured Collector can perform additional gateway enrichment before
+forwarding logs.
+
+Direct Coralogix OTLP requests use gzip compression. Collector OTLP requests
+are sent without compression so collectors are not required to enable gzip.
+
+OTLP delivery is at-least-once. If any size-split request fails, or if a
+successful OTLP response reports one or more rejected log records, the logical
+batch fails so existing Lambda retry or DLQ handling can run. A retry may
+duplicate records accepted before the failure. A response with zero rejected
+records is a full success; any accompanying message is logged as a warning
+without exposing its contents.
+
+There is no automatic fallback between Collector OTLP, direct Coralogix OTLP,
+and REST. To roll back, set `LogExportProtocol=coralogix_rest`, clear
+`OTLPEndpoint`, restore the Coralogix REST API key and region/domain settings,
+and verify REST delivery before removing Collector networking.
 
 | Parameter                    | Description                                                                                                                                                                                                                                                                                                                        | Default Value | Required           |
 |------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------|--------------------|
 | Application name             | This will also be the name of the CloudFormation stack that creates your integration. It can include letters (A–Z and a–z), numbers (0–9) and dashes (-).                                                                                                                                                                          |               | :heavy_check_mark: |
 | IntegrationType              | Choose the AWS service that you wish to integrate with Coralogix. Can be one of: S3, CloudTrail, VpcFlow, CloudWatch, S3Csv, SNS, SQS, CloudFront, Kinesis, Kafka, MSK, EcrScan.                                                                                                                                                   | S3            | :heavy_check_mark: |
-| CoralogixRegion              | Your data source should be in the same region as the integration stack. You may choose from one of [the default Coralogix regions](https://coralogix.com/docs/coralogix-domain/): [Custom, EU1, EU2, AP1, AP2, AP3, US1, US2]. If this value is set to Custom, you must specify the Custom Domain to use via the CustomDomain parameter. | Custom        | :heavy_check_mark: |
+| LogExportProtocol            | Log delivery protocol: `coralogix_rest` or `otlp_grpc`.                                                                                                                                                                                                                                                                            | coralogix_rest | :heavy_check_mark: |
+| DisableLogSeverityDetection  | Disable keyword-based log severity detection for every log integration and both REST and OTLP/gRPC delivery. When `true`, protocol-level severity is always `Info`; the original log body and any `severity` field remain unchanged. This setting does not affect metrics. | false | |
+| OTLPEndpoint                 | Collector `http://` or `https://` origin for `otlp_grpc`, reachable from the Lambda VPC. Required for log-mode OTLP/gRPC when `UsePrivateLink=true`. A non-empty value selects unauthenticated Collector delivery; an empty value selects direct Coralogix OTLP.                                                                    |               |                    |
+| CoralogixRegion              | Coralogix region used by metrics, REST logs, and direct Coralogix OTLP. Choose from [Custom, EU1, EU2, AP1, AP2, AP3, US1, US2]. If set to Custom, specify `CustomDomain`. Ignored for Collector OTLP.                                                                                                                                | Custom        | Metrics, REST logs, direct OTLP |
 | CustomDomain                 | If you choose a custom domain name for your private cluster, Coralogix will send telemetry from the specified address (e.g. custom.coralogix.com).                                                                                                                                                                                 |               |                    |
 | ApplicationName              | The name of the application for which the integration is configured. [Advanced configuration](#advanced-configuration) specifies dynamic value retrieval options.                                                                                                                                                                  |               | :heavy_check_mark: |
 | SubsystemName                | Specify the [name of your subsystem](https://coralogix.com/docs/application-and-subsystem-names/). For a dynamic value, refer to the Advanced configuration section. For CloudWatch, leave this field empty to use the log group name.                                                                                             |               | :heavy_check_mark: |
-| ApiKey                       | The Send-Your-Data [API key](https://coralogix.com/docs/send-your-data-api-key/) validates your authenticity. This value can be a direct Coralogix API key or an AWS Secret Manager ARN containing the API Key.<br>*Note that the parameter expects the API key in plain text or stored in a secret manager.*                          |               | :heavy_check_mark: |
-| StoreAPIKeyInSecretsManager  | Enable this to store your API key securely. Otherwise, it will remain exposed in plain text as an environment variable in the Lambda function console.                                                                                                                                                                             | True          | :heavy_check_mark: |
+| ApiKey                       | Send-Your-Data [API key](https://coralogix.com/docs/send-your-data-api-key/) or AWS Secrets Manager ARN. Required for metrics, REST logs, and direct Coralogix OTLP; leave empty for Collector OTLP because that route sends no Coralogix authentication.                                                                            |               | Metrics, REST logs, direct OTLP |
+| StoreAPIKeyInSecretsManager  | When `ApiKey` is used, enable this to store the key securely instead of exposing it as a Lambda environment variable. Not used for Collector OTLP.                                                                                                                                                                                   | True          | When `ApiKey` is used |
 | ReservedConcurrentExecutions | The number of concurrent executions that are reserved for the function, leave empty so the Lambda will use unreserved account. concurrency.                                                                                                                                                                                         | n/a           |                    |
 | LambdaAssumeRoleARN          | A role that the Lambda will assume, leave empty to use the default permissions.<br> Note that if this parameter is used, all **S3** and **ECR** API calls from the Lambda will be made with the permissions of the assumed role.                                                                                                   |               |                    |
 | ExecutionRoleARN             | The ARN of a user defined role that will be used as the execution role for the Lambda function.                                                                                                                                                                                                                                     |               |                    |
@@ -159,7 +228,7 @@ This is the most flexible type of integration, as it is based on receiving log f
 > [!NOTE]
 > The S3 integration supports generic data. You can ingest any generic text, JSON, and CSV data stored in your S3 bucket.
 
-**Maintain S3 notifications via SNS or SQS**
+#### Maintain S3 notifications via SNS or SQS
 
 If you don’t want to send data directly as it enters S3, you can also use SNS/SQS to maintain notifications before any data is sent from your bucket to Coralogix. For this, you need to set the `SNSTopicArn` or `SQSTopicArn` parameters.
 
@@ -192,12 +261,12 @@ Coralogix can be configured to receive data directly from your CloudWatch log gr
 If your log group name is longer than 70, the Lambda function you will see the permission for that log group as: `allow-trigger-from-<the log group first 65 characters and the last 5 characters>`. This is because of length limit in AWS for permission name.
 
 > [!NOTE]
-> The `CloudWatchLogGroupName` parameter will get a list of log groups and then add them to the Lambda as triggers, each log group will also add permission to the Lambda, in some cases when there are a lot of log groups this will cause an error because the code 
-> tries to create too many permissions for the Lambda (AWS have a limitation for the number of permission that you can have for a Lambda), and this is why we have the CloudWatchLogGroupPrefix parameter, this parameter will add only permission to the Lambda 
-> using a wildcard( * ).for example, in case I have the log groups: log1,log2,log3 instead that the code will create for each of the log group permission to trigger the shipper Lambda then you can set `CloudWatchLogGroupPrefix = log`, and then it will create 
+> The `CloudWatchLogGroupName` parameter will get a list of log groups and then add them to the Lambda as triggers, each log group will also add permission to the Lambda, in some cases when there are a lot of log groups this will cause an error because the code
+> tries to create too many permissions for the Lambda (AWS have a limitation for the number of permission that you can have for a Lambda), and this is why we have the CloudWatchLogGroupPrefix parameter, this parameter will add only permission to the Lambda
+> using a wildcard( * ).for example, in case I have the log groups: log1,log2,log3 instead that the code will create for each of the log group permission to trigger the shipper Lambda then you can set `CloudWatchLogGroupPrefix = log`, and then it will create
 > only 1 permission for all of the log groups to trigger the shipper Lambda, but you will still need to set `CloudWatchLogGroupName = log1,log2,log3`. When using this parameter, you will not be able to see the log groups as triggers for the Lambda.
 
-    If you need to add multiple log groups to the Lambda function using regex, refer to our [Lambda manager](https://github.com/coralogix/coralogix-aws-serverless/tree/master/src/lambda-manager#coralogix-lambda-manager)
+If you need to add multiple log groups to the Lambda function using regex, refer to our [Lambda manager](https://github.com/coralogix/coralogix-aws-serverless/tree/master/src/lambda-manager#coralogix-lambda-manager).
 
 ### SNS configuration
 
@@ -249,10 +318,25 @@ These parameters are optional and allow you to receive notification emails, excl
 | Parameter         | Description                                                                                                                                                                                                | Default Value | Required           |
 |-------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------|--------------------|
 | NotificationEmail | A failure notification will be sent to this email. address.                                                                                                                                                 |               |                    |
+| SnsKmsKeyArn      | Optional KMS key ARN (not an alias) to encrypt the Lambda failure-notification SNS topic. Leave empty for no encryption. The key policy must allow `sns.amazonaws.com` and the Lambda execution role to use `kms:Decrypt` and `kms:GenerateDataKey*`. |               |                    |
 | BlockingPattern   | Enter a regular expression to identify lines excluded from being sent to Coralogix. For example, use `MainActivity.java:\d{3}` to match log lines with `MainActivity` followed by exactly three digits.    |               |                    |
+| LogStreamFilter   | Regular expression to filter CloudWatch log events by log stream name. Only events from matching streams are shipped to Coralogix. Example: `^develop/` to ship only develop branch logs from Amplify. |               |                    |
 | SamplingRate      | Send messages at a specific rate, such as 1 out of every N logs. For example, if your value is 10, a message will be sent for every 10th log.                                                              | 1             | :heavy_check_mark: |
 | AddMetadata       | Add AWS event metadata to the log message. Comma-separated values are expected. Options for S3 are `bucket_name`,`key_name`. For CloudWatch, use `stream_name`, `loggroup_name` . For Kafka/MSK, use `topic_name` |               |                    |
 | CustomMetadata    | Add custom metadata to the log message. Comma-separated values are expected. Options are key1=value1,key2=value2                                                                                                |               |                    |
+
+#### Log Stream Filtering Example
+
+AWS Amplify Hosting (SSR/WEB_COMPUTE) writes all branch logs to a **single CloudWatch log group** (`/aws/amplify/<app-id>`), with each branch writing to its own log stream using the naming pattern `<branch-name>/<instance-id>`.
+
+To ship `develop` branch logs to your **Stage** Coralogix environment and `main` branch logs to your **Prod** environment, deploy two shipper stacks pointing to the same log group but with different filters:
+
+| Stack | LogStreamFilter | Coralogix Environment |
+|-------|-----------------|------------------------|
+| Stage | `^develop/`     | Stage                  |
+| Prod  | `^main/`        | Prod                   |
+
+This avoids duplicated ingestion - each shipper only processes events from matching streams before sending to Coralogix.
 
 ### Lambda configuration (optional)
 
@@ -264,8 +348,14 @@ These are the default presets for Lambda. Read [Troubleshooting](#troubleshootin
 | FunctionTimeout       | Set a timeout for the Lambda function in seconds.                                                             | 300             | :heavy_check_mark: |
 | LogLevel              | Specify the log level for the Lambda function, choosing from the following options: INFO, WARN, ERROR, DEBUG. | WARN            | :heavy_check_mark: |
 | LambdaLogRetention    | Set the CloudWatch log retention period (in days) for logs generated by the Lambda function.                  | 5               | :heavy_check_mark: |
-| FunctionRunTime       | Select the runtime type for the Lambda. Allowed values are `provided.al2023` or `provided.al2`.                            | provided.al2023 | :heavy_check_mark: |
+| FunctionRunTime       | Select the runtime type for the Lambda. Only `provided.al2023` is supported.                                              | provided.al2023 | :heavy_check_mark: |
 | FunctionArchitectures | Define the Lambda function architectures. Allowed values are `arm64` or `x86_64`.                                    | arm64           | :heavy_check_mark: |
+
+> [!IMPORTANT]
+> Starting with v1.4.12, `provided.al2` is no longer supported. Existing stacks
+> configured with `FunctionRunTime=provided.al2` must change the parameter to
+> `provided.al2023` when upgrading. Release artifacts are built for Amazon
+> Linux 2023 and are not compatible with the Amazon Linux 2 runtime.
 
 ### VPC configuration (optional)
 
@@ -305,31 +395,31 @@ The `AddMetadata` parameter allows you to add metadata to the log message. The m
 > Metadata is not added by default. You must specify the metadata keys you want in the `AddMetadata` parameter. For example, if you want to add the bucket name and key name to the log message, set the `AddMetadata` parameter to `s3.object.key,s3.bucket`.
 > Some metadata keys will overlap as some integrations share the same metadata. For example, both Kafka and MSK have the same metadata key `kafka.topic` or both Kinesis and CloudWatch metadata will be included when a CloudWatch log stream is ingested from a Kinesis stream.
 
-##### Dynamic subsystem or application name
+#### Dynamic subsystem or application name
 
 As of `v1.1.0`, you can use dynamic values for the application and subsystem name parameters based on the internal metadata defined above.
 
 To do this, use the following syntax:
 
-```
+```text
 {{ metadata.key | r'regex' }}
 ```
 
 For example, if you want to use the bucket name as the subsystem name, set the `SubsystemName` parameter to:
 
-```
+```text
 {{ s3.bucket }}
 ```
 
 If you want to use the log group name as the application name, set the `ApplicationName` parameter to:
 
-```
+```text
 {{ cw.log.group }}
 ```
 
 To extract only a specific portion of the metadata value, you can utilize a regular expression. For example, if there is `s3.object.key` value in the `AWSLogs/112322232/ELB1/elb.log` and we want to extract the last part as the subsystem name, we would set the `SubsystemName` parameter to:
 
-```
+```text
 {{ s3.object.key | r'AWSLogs\/.+\/(.*)$' }}
 ```
 
@@ -337,37 +427,39 @@ This would result in a SubsystemName value of `elb.log` as this is the part of t
 
 If you want to use a json key value as the application name, you would set the `ApplicationName` parameter to:
 
-```
+```text
 {{ $.eventSource }}
 ```
+
 Assume the log is a CloudTrail log and the eventSource is `s3.amazonaws.com` then the application name will be `s3.amazonaws.com`.
 
 > [!IMPORTANT]
->  The regex must be a valid regex pattern.
->  The regex must define a capture group for part of the string that you want to use as the value.
->  The metadata key must exist in the list defined above and be a part of the integration type that is deployed.
->  Dynamic values are only supported for the `ApplicationName` and `SubsystemName` parameters, the `CustomMetadata` parameter is not supported.
+> The regex must be a valid regex pattern.
+> The regex must define a capture group for part of the string that you want to use as the value.
+> The metadata key must exist in the list defined above and be a part of the integration type that is deployed.
+> Dynamic values are only supported for the `ApplicationName` and `SubsystemName` parameters, the `CustomMetadata` parameter is not supported.
 
 #### Fallback Behavior
 
 The dynamic metadata system follows predictable fallback rules:
 
 **Template Values (e.g., `{{ cw.log.group | r'...' }}`):**
+
 - If the metadata key exists and regex matches → uses the captured group
 - If the metadata key exists but regex fails → uses the raw metadata value
 - If the metadata key doesn't exist → uses defaults (`unknown-application`/`unknown-subsystem`)
 
 **Non-Template Values (e.g., `"MyStaticApp"`):**
-- Always uses the exact configured value, regardless of available metadata
 
+- Always uses the exact configured value, regardless of available metadata
 
 ### Advanced configuration
 
-**AWS PrivateLink**
+#### AWS PrivateLink
 
 If you want to bypass using the public internet, you can use AWS PrivateLink to facilitate secure connections between your VPCs and AWS. This option is available under the [VPC Configuration](#vpc-configuration-optional) tab. To turn it on, either unselect the **Use Private Link** checkbox in the Coralogix UI or set the parameter to `true`. For additional instructions on AWS PrivateLink, please [follow our dedicated tutorial](https://coralogix.com/docs/coralogix-amazon-web-services-aws-privatelink-endpoints/).
 
-**Dynamic values**
+#### Dynamic values
 
 > [!NOTE]
 > The following method for using dynamic values will change to the method defined above in `coralogix-aws-shipper v1.1.0` and later. This approach will no longer be supported. Please check the new method in the [Metadata](#metadata) section.
@@ -397,9 +489,8 @@ To enable the DLQ, provide the following parameters.
 | DLQRetryLimit | The number of times a failed event should be retried before being saved in S3. | 3             | :heavy_check_mark: |
 | DLQRetryDelay | The delay in seconds between retries of failed events.                         | 900           | :heavy_check_mark: |
 
-
 > [!NOTE]
-> In the template we use `arn:aws:s3:::*` for the S3 integration because of CF limitation. It is not an option to loop through the s3 bucket and specify permissions to each one. After the Lambda is created you can manually change the permissions to only allow 
+> In the template we use `arn:aws:s3:::*` for the S3 integration because of CF limitation. It is not an option to loop through the s3 bucket and specify permissions to each one. After the Lambda is created you can manually change the permissions to only allow
 > access to your S3 buckets.
 
 ## Log Transformation (Starlark)
@@ -418,6 +509,7 @@ Starlark is a Python-like configuration language. For the complete language spec
 - [Starlark Language Specification](https://github.com/bazelbuild/starlark/blob/master/spec.md)
 
 **Quick reference for log transformation scripts:**
+
 - **Data types:** `None`, `bool`, `int`, `float`, `string`, `list`, `dict`, `tuple`
 - **String methods:** `split()`, `strip()`, `lower()`, `upper()`, `replace()`, `startswith()`, `endswith()`, `find()`, `format()`
 - **List methods:** `append()`, `extend()`, `insert()`, `pop()`, `remove()`, `clear()`
@@ -440,6 +532,7 @@ The system automatically detects which type you're using, so you only need to se
 ### Writing a Transform Script
 
 Your script must define a `transform(event)` function that:
+
 - Takes a single `event` argument (a parsed JSON object or string)
 - Returns a **list** of events (can be empty, single, or multiple)
 
@@ -497,20 +590,23 @@ def transform(event):
 > [!TIP]
 > To inspect the exact shape of your events, use `print(event)` in your script and set the `LogLevel` parameter to `DEBUG`. The event will appear in CloudWatch Logs for the Lambda function.
 
-**Example: Simple passthrough**
+#### Example: Simple passthrough
+
 ```python
 def transform(event):
     return [event]
 ```
 
-**Example: Unnest a JSON array**
+#### Example: Unnest a JSON array
 
 If your logs arrive as batched JSON with a nested array:
+
 ```json
 {"logs": [{"msg": "log1"}, {"msg": "log2"}, {"msg": "log3"}]}
 ```
 
 Use this script to unnest them into individual log entries:
+
 ```python
 def transform(event):
     if "logs" in event and type(event["logs"]) == "list":
@@ -518,7 +614,8 @@ def transform(event):
     return [event]
 ```
 
-**Example: Filter out debug logs**
+#### Example: Filter out debug logs
+
 ```python
 def transform(event):
     if event.get("level") == "DEBUG":
@@ -526,7 +623,8 @@ def transform(event):
     return [event]
 ```
 
-**Example: Enrich logs with metadata**
+#### Example: Enrich logs with metadata
+
 ```python
 def transform(event):
     event["processed"] = True
@@ -538,16 +636,30 @@ def transform(event):
 
 The following helper functions are available in your Starlark scripts:
 
-| Function            | Description                                      |
-|---------------------|--------------------------------------------------|
-| `parse_json(str)`   | Parse a JSON string into a Starlark value        |
-| `to_json(value)`    | Convert a Starlark value to a JSON string        |
+| Function                             | Description                                                  |
+|--------------------------------------|--------------------------------------------------------------|
+| `parse_json(str)`                    | Parse a JSON string into a Starlark value                    |
+| `to_json(value)`                     | Convert a Starlark value to a JSON string                    |
+| `re_match(pattern, str)`             | Return `True` if `str` matches the regex `pattern`           |
+| `re_sub(pattern, replacement, str)`  | Replace all matches of `pattern` in `str` with `replacement` |
+
+`re_match` and `re_sub` use the Rust [`regex`](https://docs.rs/regex/latest/regex/) crate (not PCRE). Lookahead, lookbehind, and backreferences are not supported. In `re_sub`, capture groups can be referenced in the replacement string with `$1`, `$2`, and so on (`$$` for a literal `$`).
+
+#### Example: Redact sensitive values with regex
+
+```python
+def transform(event):
+    msg = event.get("message", "")
+    if re_match(r"password=\S+", msg):
+        event["message"] = re_sub(r"password=\S+", "password=***", msg)
+    return [event]
+```
 
 ### Using S3 for Script Storage
 
 When the `StarlarkScript` value starts with `s3://`, the Lambda function automatically fetches the script from S3. The CloudFormation template automatically adds the necessary permissions when `StarlarkScript` is set.
 
-```
+```yaml
 StarlarkScript: s3://my-config-bucket/starlark/transform.star
 ```
 
@@ -555,7 +667,7 @@ StarlarkScript: s3://my-config-bucket/starlark/transform.star
 
 You can host your script on any HTTP/HTTPS endpoint:
 
-```
+```yaml
 StarlarkScript: https://raw.githubusercontent.com/myorg/scripts/main/transform.star
 ```
 
@@ -587,7 +699,7 @@ AWS Firehose does not support PrivateLink endpoints as a destination because Fir
 
 ### When to use this workflow
 
-This workflow is designed to bypass the limitations of using Firehose with the Coralogix PrivateLink endpoint. If PrivateLink is not required, we recommend using the default Firehose integration for CloudWatch Stream Metrics, available [here](https://coralogix.com/docs/integrations/aws/amazon-data-firehose/aws-cloudwatch-metric-streams-with-amazon-data-firehose/).
+This workflow is designed to bypass the limitations of using Firehose with the Coralogix PrivateLink endpoint. If PrivateLink is not required, we recommend using the default [Firehose CloudWatch metrics stream integration](https://coralogix.com/docs/integrations/aws/amazon-data-firehose/aws-cloudwatch-metric-streams-with-amazon-data-firehose/).
 
 ### How does it work?
 
@@ -608,44 +720,157 @@ To enable CloudWatch metrics streaming via Firehose (PrivateLink), you must prov
 | StoreAPIKeyInSecretsManager | Enable this to store your API Key securely. Otherwise, it will remain exposed in plain text as an environment variable in the Lambda function console.                                                                                                                                                                             | True          |                    |
 | MetricsFilter               | The filter for the metrics to include in the stream that will get created, should be valid json that contains the keys `Namespace` and `MetricNames`, for example: `[{"Namespace": "AWS/EC2", "MetricNames": ["CPUUtilization", "NetworkOut"]},{"Namespace": "AWS/S3", "MetricNames": ["BucketSizeBytes"]}]`. Can't use this parameter with `ExcludeMetricsFilters` parameter.   |        n/a       |                    |
 | ExcludeMetricsFilters     | The filter for the metrics to exclude from the stream that will get created, should be valid json that contains the keys `Namespace` and `MetricNames`, for example: `[{"Namespace": "AWS/EC2", "MetricNames": ["CPUUtilization", "NetworkOut"]}]`. Can't use this parameter with `MetricsFilter` parameter.   |        n/a       |                    |
+| MetricsTagEnrichmentEnabled | When `TelemetryMode` is `metrics`, resolve AWS resource tags via the **Resource Groups Tagging API** and attach them to streamed metric datapoints (YACE-compatible namespace map and associator). When `true`, the stack adds the required IAM statements. Set `false` to disable lookups (for example if the Lambda cannot reach the tagging API from its VPC). | `true` |                    |
+| MetricsContinueOnResourceFailure | When `TelemetryMode` is `metrics`, if `true`, tagging or resource-discovery errors cause the function to **skip AWS tags** for affected namespaces and still ship metrics. If `false`, the invocation **fails** instead (no Coralogix delivery for that batch). | `true` |                    |
+| MetricsFileCacheEnabled | When `TelemetryMode` is `metrics`, persist a per-namespace cache of discovered resources under `MetricsFileCachePath` on the Lambda filesystem between invocations to reduce `GetResources` traffic. | `true` |                    |
+| MetricsFileCachePath | Directory used for the metrics resource cache files (typically Lambda ephemeral storage, e.g. `/tmp`). | `/tmp` |                    |
+| MetricsFileCacheExpiration | Maximum age of cache files before they are refreshed. Human-readable duration (e.g. `1h`, `30m`); same style as Go `ParseDuration` for familiarity. | `1h` |                    |
+| BatchMetrics | When `TelemetryMode` is `metrics`, set to `true` to batch OpenTelemetry metric messages from a single Firehose payload into one aggregated request to Coralogix (`BATCH_METRICS` env). When `false`, behavior matches the previous per-message pattern. | `false` |                    |
+| MetricsBatchMaxSize | Maximum size in **MB** of the aggregated encoded protobuf batch when `BatchMetrics` is `true` (maps to `METRICS_BATCH_MAX_SIZE`). | `4` |                    |
+
+**Static labels on metrics:** The **`CustomMetadata`** parameter applies when `TelemetryMode=metrics` as well as for logs: comma-separated `key=value` pairs are added as labels on transformed metric datapoints. Only the **first** `=` in each pair separates key from value, so values may contain `=`.
+
+**VPC / PrivateLink:** With tag enrichment enabled, the Lambda must reach `tagging.amazonaws.com` (NAT gateway, interface VPC endpoint, or equivalent). See [AWS PrivateLink](https://coralogix.com/docs/integrations/aws/aws-privatelink/aws-privatelink/) and the [firehose-metrics-private-link example](examples/firehose-metrics-private-link/).
 
 #### Batching (optional)
 
-- `BATCH_METRICS`: When enabled (`1`, `true`, or `yes`), the Lambda batches all OpenTelemetry metric messages contained in a single Firehose event into one aggregated `ExportMetricsServiceRequest` and sends a single POST request to `POST /v1/metrics`. This reduces network overhead versus sending one request per message. Default: disabled.
-  - Environment variable only (not a stack parameter).
+- **`BatchMetrics`** stack parameter (sets **`BATCH_METRICS`** env): When enabled (`true`), the Lambda batches all OpenTelemetry metric messages contained in a single Firehose event into one aggregated `ExportMetricsServiceRequest` and sends a single POST request to `POST /v1/metrics`. This reduces network overhead versus sending one request per message. Default: disabled.
   - Works only with `TELEMETRY_MODE=metrics`.
   - Note: Larger events can produce larger single requests; ensure they fit within your network and service limits.
- - `METRICS_BATCH_MAX_SIZE`: Maximum size in megabytes for the aggregated encoded protobuf payload before it is flushed and sent. Default: `4`. Applies only when `BATCH_METRICS` is enabled. If a single transformed message exceeds this size, it is sent by itself.
+- **`METRICS_BATCH_MAX_SIZE`** (from **`MetricsBatchMaxSize`** parameter): Maximum size in megabytes for the aggregated encoded protobuf payload before it is flushed and sent. Default: `4`. Applies only when batching is enabled. If a single transformed message exceeds this size, it is sent by itself.
+
+## AWS GovCloud (US)
+
+The Coralogix AWS Shipper runs in **AWS GovCloud (US)** partitions (`us-gov-east-1`, `us-gov-west-1`) using the dedicated `template-govcloud.yaml`. GovCloud deployments enable **FIPS 140-3 compliance** by default: the Lambda is configured with `AWS_USE_FIPS_ENDPOINT=true` (routing all SDK calls to FIPS service endpoints) and `ENABLE_AWS_FIPS=true` (switching the AWS SDK HTTP client to the AWS-LC FIPS-validated TLS provider).
+
+> [!NOTE]
+> FIPS is enabled at runtime via environment variables on a single shipper binary; there is no separate GovCloud build. To opt out, remove `AWS_USE_FIPS_ENDPOINT` and `ENABLE_AWS_FIPS` from `template-govcloud.yaml` before deployment.
+
+### Terraform deployment (recommended)
+
+We recommend deploying the GovCloud shipper with the Coralogix Terraform module. The same module used in commercial regions, [`terraform-coralogix-aws`](https://github.com/coralogix/terraform-coralogix-aws/tree/master/modules/coralogix-aws-shipper), supports GovCloud through the `govcloud_deployment = true` flag, which selects the GovCloud template and the matching FIPS-enabled Lambda artifact.
+
+### Manual deployment with CloudFormation/SAM
+
+If Terraform is not an option, you can deploy `template-govcloud.yaml` directly. The shipper Lambda package is **downloaded from Coralogix’s published artifacts** and uploaded to a GovCloud S3 bucket before deployment, since the AWS Serverless Application Repository is not available in GovCloud.
+
+#### Prerequisites
+
+- AWS CLI configured for **GovCloud** (`aws-us-gov`) with the correct region (e.g. `us-gov-west-1` or `us-gov-east-1`).
+- An **S3 bucket in that GovCloud region** for Lambda deployment packages.
+- For metrics, REST logs, or direct Coralogix OTLP: Coralogix ingress domain
+  (`CustomDomain`, e.g. `cx….coralogix.com`) and **API key** (or Secrets
+  Manager ARN). For Collector OTLP, use `OTLPEndpoint` and leave `ApiKey`
+  empty.
+- Integration parameters ready (e.g. `IntegrationType`, `S3BucketName`, SNS/SQS ARNs, CloudWatch log groups) for your use case.
+
+#### Step 1 — Download the shipper Lambda (`bootstrap.zip`)
+
+Coralogix publishes the same package the AWS Serverless Application Repository uses. Download it over HTTPS and save it as `bootstrap.zip`. Pick **one** regional URL (the object path is identical across regions):
+
+| Region | Base URL |
+| --- | --- |
+| Asia Pacific (Hong Kong) | `https://coralogix-serverless-repo-ap-east-1.s3.ap-east-1.amazonaws.com` |
+| Europe (Frankfurt) | `https://coralogix-serverless-repo-eu-central-1.s3.eu-central-1.amazonaws.com` |
+| US East (N. Virginia) | `https://coralogix-serverless-repo-us-east-1.s3.us-east-1.amazonaws.com` |
+
+Example (Frankfurt):
+
+```bash
+curl -fLsS -o bootstrap.zip \
+  'https://coralogix-serverless-repo-eu-central-1.s3.eu-central-1.amazonaws.com/coralogix-aws-shipper.zip'
+```
+
+> [!NOTE]
+> These URLs point at the current published object; there is no version in the path. Keep your own copy or checksum if you need a pinned release.
+
+#### Step 2 — Package the custom resource (`custom-resource.zip`)
+
+Package the GovCloud custom resource so the zip contains a single top-level `index.py` (handler `index.lambda_handler`):
+
+```bash
+cd custom-resource-govcloud
+zip -j custom-resource.zip index.py
+cd ..
+```
+
+#### Step 3 — Upload to GovCloud S3
+
+```bash
+GOVCLOUD_BUCKET="your-govcloud-artifacts-bucket"
+GOVCLOUD_REGION="us-gov-west-1"
+VERSION="1.4.8"
+PREFIX="coralogix-aws-shipper"
+
+aws s3 cp bootstrap.zip \
+  "s3://${GOVCLOUD_BUCKET}/${PREFIX}/${VERSION}/bootstrap.zip" \
+  --region "${GOVCLOUD_REGION}"
+
+aws s3 cp custom-resource-govcloud/custom-resource.zip \
+  "s3://${GOVCLOUD_BUCKET}/${PREFIX}/${VERSION}/custom-resource.zip" \
+  --region "${GOVCLOUD_REGION}"
+```
+
+#### Step 4 — Deploy the stack
+
+Minimal example (adjust parameters for your integration):
+
+```bash
+aws cloudformation deploy \
+  --template-file template-govcloud.yaml \
+  --stack-name coralogix-shipper \
+  --region "${GOVCLOUD_REGION}" \
+  --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM \
+  --parameter-overrides \
+    LambdaCodeBucket="${GOVCLOUD_BUCKET}" \
+    LambdaCodeKey="${PREFIX}/${VERSION}/bootstrap.zip" \
+    CustomResourceCodeBucket="${GOVCLOUD_BUCKET}" \
+    CustomResourceCodeKey="${PREFIX}/${VERSION}/custom-resource.zip" \
+    CustomDomain="YOUR_CORALOGIX_DOMAIN" \
+    ApiKey="YOUR_API_KEY_OR_SECRET_ARN" \
+    ApplicationName="your-app" \
+    IntegrationType="S3" \
+    S3BucketName="your-log-bucket"
+```
+
+Change `IntegrationType` and add the parameters required for that integration (refer to [Configuration parameters](#configuration-parameters)).
+
+#### Step 5 — Verify
+
+- The CloudFormation stack reaches **CREATE_COMPLETE** or **UPDATE_COMPLETE**.
+- Confirm the shipper Lambda and `{stack-name}-custom-resource` reference the S3 keys you uploaded.
+- Confirm the shipper Lambda has `AWS_USE_FIPS_ENDPOINT=true` and `ENABLE_AWS_FIPS=true` set.
+- On cold start the Lambda log group `/aws/lambda/<stack-name>` should contain `AWS FIPS mode enabled for SDK HTTP client`.
+- If something fails, check the custom resource log group `/aws/lambda/<stack-name>-custom-resource` and the main shipper Lambda’s log group.
 
 ## Troubleshooting
 
-**Parameter max value**
+### Parameter max value
 
 If you tried to deploy the integration and received the `length is greater than 4094` error, you can upload the value of the parameter to an S3 bucket as txt. Then, pass the file URL as the parameter value (this option is available for `KafkaTopic` and `CloudWatchLogGroupName` parameters).
 
-**Timeout errors**
+### Timeout errors
 
 If you receive the `Task timed out after` message, increase the Lambda timeout value. You can do this from the AWS Lambda function settings under **Configuration** > **General Configuration**.
 
-**Not enough memory**
+### Not enough memory
 
 If you receive the `Task out of memory` message, increase the Lambda maximum צemory value. You can do this from the AWS Lambda function settings under **Configuration** > **General Configuration**.
 
-**Verbose logs**
+### Verbose logs
 
 To add more verbosity to your function logs, set the `RUST_LOG` parameter to `DEBUG`.
 
-**Trigger failed on deployment** 
+### Trigger failed on deployment
 
 If the deployment fails while assigning the trigger, ensure that no notifications are enabled for the S3 bucket. For CloudWatch, note that the maximum number of notifications per Log Group is 2.
 
 > [!WARNING]
 > Don't forget to revert it to `WARN` after troubleshooting.
 
-**Changing defaults**
+### Changing defaults
 
 Set the `MAX_ELAPSED_TIME` variable for the default change (default = 250). The `BATCHES_MAX_SIZE` (in MB) defines the maximum batch size before sending data to Coralogix. This value is limited by the maximum payload accepted by the Coralogix endpoint (default = 4). The `BATCHES_MAX_CONCURRENCY` sets the maximum number of concurrent batches that can be sent.
-
 
 ## Support
 

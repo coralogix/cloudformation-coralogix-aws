@@ -2,6 +2,8 @@
 
 The module will create a role with an inline policy to allow Coralogix to send events to an EventBridge event bus.
 
+> **Note**: this template is for the legacy **Alerts webhook** EventBridge integration. For the Coralogix **Notification Center Cases** integration (global endpoint) use [coralogix-eventbridge-iam-integration](../coralogix-eventbridge-iam-integration) instead.
+
 ## Fields
 
 | Parameter              | Description                                                                                                                                        | Default Value | Required           |

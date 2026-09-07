@@ -4,6 +4,19 @@
 <!-- To add a new entry write: -->
 <!-- ### version / full date -->
 <!-- * [Update/Bug fix] message that describes the changes that you apply -->
+
+### 1.0.2 / 11 Aug 2026
+* [Update] Migrate Coralogix endpoints to the regional domain format `<region>.coralogix.com` (`coralogix.com`, `coralogix.us`, `coralogix.in`, `coralogixsg.com`, `cx498.coralogix.com` -> `eu1`/`us1`/`ap1`/`ap2`/`us2.coralogix.com`).
+* [Feature] Add `US3` (`us3.coralogix.com`) as a supported `CoralogixRegion`.
+
+### 1.0.1 / 08 Apr 2026
+* [FEAT] Add support for GovCloud deployments to example CF
+
+### 1.0.0 / 11 Mar 2026
+### 🛑 Breaking changes 🛑
+* [FEAT] Transition from Parameter Store to S3 configuration
+* [UPDATE] Updated example CF to match new S3 configuration
+
 ### 0.0.11 / 09 Oct 2025
 * [FIX] Changed telemetry.metrics to new syntax
 * [UPDATE] DB spanmetric added to the config

@@ -5,6 +5,36 @@
 <!-- ### version / full date -->
 <!-- * [Update/Bug fix] message that describes the changes that you apply -->
 
+### 1.0.13 / 2026-08-11
+* [Update] Migrate Coralogix endpoints to the regional domain format `<region>.coralogix.com` (`coralogix.com`, `coralogix.us`, `coralogix.in`, `coralogixsg.com`, `cx498.coralogix.com` -> `eu1`/`us1`/`ap1`/`ap2`/`us2.coralogix.com`).
+* [Feature] Add `US3` (`us3.coralogix.com`) as a supported `CoralogixRegion`.
+
+### 1.0.12 / 2026-07-21
+- [Update] Default `SupervisedImageVersion` is now `v0.11.0`.
+- [Feature] Added `ProfilingInitialFallbackConfigs` so the main collector and profiling agents can use different initial fallback URLs. Both require `S3ConfigBucket` and must reference that bucket.
+
+### 1.0.11 / 2026-07-13
+- [Feature] Added supervised mode with embedded Supervisor configuration and `nop` startup configurations for both the main and profiling collectors. S3 remains available as an explicit profiling startup-config override.
+- [Feature] Added optional S3 overrides for the collector and Supervisor configurations while keeping S3 required in collector mode.
+- [Feature] Added `InitialFallbackConfigs`. In CloudFormation, fallback URLs must be written as one comma-separated value; the empty default configures no startup fallback.
+
+### 1.0.10 / 2026-04-06
+- [Bug fix] Fixed IAM S3 policies granting wildcard access when profiling is disabled (empty bucket param resolved to `arn:aws:s3:::/*`).
+- [Update] Profiling S3 bucket ARNs are now conditionally included in IAM policies only when `ProfilingEnabled` is true.
+- [Update] Added CloudFormation Rules to validate `ProfilingS3ConfigBucket` and `ProfilingS3ConfigKey` are non-empty when profiling is enabled.
+- [Update] Moved profiling S3 parameters into the "Profiling Configuration" parameter group for consistency.
+
+### 1.0.9 / 2026-03-17
+- [Update] Removed `template-multi-config.yaml`; template now uses S3-only configuration (aligned with Coralogix UI deployment flow).
+- [Update] Removed `examples` folder and `comprehensive-config.yaml`; canonical config is maintained in the [telemetry-shippers integration chart](https://github.com/coralogix/telemetry-shippers/tree/master/otel-ecs-ec2).
+- [Update] README now links to integration chart config and reflects S3-only template parameters.
+
+### 1.0.8 / 2026-03-16
+- [Update] Added conditional profiling deployment using `ProfilingEnabled` with separate profiling task/service resources.
+- [Update] Added profiling-specific parameters: `ProfilingS3ConfigBucket`, `ProfilingS3ConfigKey`, and `ProfilingMemory`.
+- [Update] Added profiling task startup command and mounts for `debugfs`/`tracefs` with `service.profilesSupport` enabled.
+- [Update] Extended IAM S3 read permissions (`GetObject`, `GetObjectVersion`, `ListBucket`) to support both config and profiling S3 buckets.
+
 ### 1.0.7 / 2025-10-09
 - [Update] Split template into two versions: `template.yaml` (S3-only for UI integration) and `template-legacy.yaml` (full-featured for direct deployment)
 - [Update] Changed environment variable from `PRIVATE_KEY` to `CORALOGIX_PRIVATE_KEY` for consistency
