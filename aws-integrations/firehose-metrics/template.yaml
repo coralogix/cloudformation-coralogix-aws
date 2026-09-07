@@ -529,12 +529,6 @@ Resources:
       Handler: index.handler
       Code:
         ZipFile: |
-          import sys
-          import subprocess
-
-          subprocess.check_call([sys.executable, "-m", "pip", "install", '--upgrade', 'boto3', '--target', '/tmp/'])
-          sys.path.insert(0, '/tmp/')
-
           import boto3
           import cfnresponse
           import json
