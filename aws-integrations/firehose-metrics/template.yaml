@@ -143,7 +143,7 @@ Rules:
         AssertDescription: "You must provide either ApiKey or ApiKeySecretArn"
 
 Metadata:
-  SemanticVersion: 0.1.1
+  SemanticVersion: 0.1.2
   AWS::CloudFormation::Interface: 
     ParameterGroups: 
       - Label: 

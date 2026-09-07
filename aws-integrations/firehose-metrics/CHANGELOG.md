@@ -5,6 +5,10 @@
 <!-- ### version / full date -->
 <!-- * [Update/Bug fix] message that describes the changes that you apply -->
 
+### 0.1.2 / 7 Sep 2026
+* [Fix] Add AWS GovCloud (`aws-us-gov` partition) compatibility by replacing hardcoded `arn:aws:` prefixes with `arn:${AWS::Partition}:` across all IAM policy ARNs.
+* [Update] Bump the CloudWatch Metric Stream custom resource Lambda runtime from EOL `python3.8` to `python3.12`.
+
 ### 0.1.1 / 11 Aug 2026
 * [Update] Refresh the `CustomDomain` example domains to the regional format (`eu1.coralogix.com`, `eu2.coralogix.com`, `ap2.coralogix.com`).
 * [Feature] Add `US3` (`us3.coralogix.com`) as a supported `CoralogixRegion`.
