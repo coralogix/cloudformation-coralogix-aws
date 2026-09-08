@@ -1,26 +1,12 @@
 name: Sync ecs-ec2 template with integration-definitions
 
-# The ecs-ec2 template is not a SAM app, so it has no SemanticVersion and cannot go through
-# synchronizing.yaml. It is synced by overwriting template.yaml in the current latest revision,
-# without creating a revision or changing any version.
+# ecs-ec2 is not a SAM app, so it has no SemanticVersion and cannot use synchronizing.yaml.
+# Syncs by overwriting template.yaml in the latest revision -- no new revision, no version
+# change. That is how this integration has always shipped template-only changes, and it is safe
+# because check_immutability only compares fields.yaml field names and types, while
+# integrations-service re-uploads every revision on each deploy.
 #
-# That matches what this integration has always done. Every integration-version bump in its
-# history coincided with a change to what the UI collects (fields.yaml field names) or what the
-# deploy command passes (commands.yaml) -- 0.3.0 dropped ConfigSource, 0.7.0 added three
-# profiling fields, 0.9.0 added SupervisorEnabled. Template-only parameters never bumped it:
-# InitialFallbackConfigs, SupervisedImageVersion and TaskRoleArn were all added without
-# appearing in either file. Content-only changes, such as the domain migration in 0.9.0+0.0.48,
-# updated the template in place.
-#
-# In-place editing is safe here: check_immutability compares only fields.yaml field names and
-# types, so template content is explicitly mutable, and integrations-service re-uploads every
-# revision on each deploy, so the change reaches S3.
-#
-# The two cases that genuinely change the contract are refused rather than synced, because they
-# need fields.yaml or commands.yaml authored by hand in a new, deliberately versioned revision.
-#
-# Review happens on the pull request in this repository, so pushes merge the downstream pull
-# request automatically. Manual runs leave it open, which is how the first backfill is handled.
+# Pushes merge the downstream PR; manual runs leave it open, which is how the backfill is run.
 
 on:
   push:
@@ -29,7 +15,7 @@ on:
       - 'opentelemetry/ecs-ec2/template.yaml'
   workflow_dispatch:
 
-# Everything cross-repository uses GH_TOKEN, so the default token needs no write scope.
+# All cross-repo work uses GH_TOKEN.
 permissions:
   contents: read
 
@@ -66,8 +52,7 @@ jobs:
           set -euo pipefail
           manifest=${INTEGRATION_DIR}/manifest.yaml
 
-          # Latest revision that is not marked testing. Same reader telemetry-shippers uses, so
-          # both workflows agree on which revision is current.
+          # Latest non-testing revision, same reader telemetry-shippers uses.
           revision=$(awk '
             /^[[:space:]]*-[[:space:]]+revision:/ {
               if (rev && !testing) last=rev
@@ -94,8 +79,7 @@ jobs:
           dir="${INTEGRATION_DIR}/v${revision}"
           new=$(mktemp)
 
-          # Fetched as a single file at the commit that triggered the run. A nested checkout
-          # would land inside this repo's tree and be swept up by the commit action.
+          # Single file at the triggering commit; a nested checkout would be swept into the commit.
           gh api "repos/${{ github.repository }}/contents/${TEMPLATE_PATH}?ref=${{ github.sha }}" \
             -H "Accept: application/vnd.github.raw" > "$new"
           if [ ! -s "$new" ]; then
@@ -116,14 +100,10 @@ jobs:
           passed=$( { grep -oE '^[[:space:]]+[A-Za-z][A-Za-z0-9]*=' "$dir/commands.yaml" || true; } \
                      | tr -d ' =' | sort -u)
 
-          # Refusal 1: a parameter with no Default must be supplied at deploy time, or
-          # CloudFormation rejects the stack with "Parameters: [X] must have values". commands.yaml
-          # is the check because it is the documented deploy command and this path leaves it
-          # frozen; fields.yaml is not, because its field names do not map to parameter names --
-          # that mapping is hardcoded in the frontend (S3BucketName -> S3ConfigBucket), so a name
-          # match there would not prove a value is actually delivered.
-          # Note this covers the CLI path only. The console launch URL is assembled from that
-          # frontend map, which cannot be validated from this repository.
+          # Refusal 1: a parameter with no Default must be supplied or CloudFormation rejects the
+          # stack. Checked against commands.yaml, which this path leaves frozen -- not fields.yaml,
+          # whose names do not map to parameter names (S3BucketName -> S3ConfigBucket, mapped in
+          # the frontend). Covers the CLI path only; the console URL is built from that map.
           required=$(yq -r '.Parameters | to_entries[] | select(.value.Default == null) | .key' \
                        "$new" | sort -u)
           unsupplied=$(comm -23 <(echo "$required") <(echo "$passed") || true)
@@ -135,8 +115,7 @@ jobs:
             exit 1
           fi
 
-          # Refusal 2: removing a parameter commands.yaml still passes breaks the documented
-          # deploy command, which is part of the revision's contract.
+          # Refusal 2: removing a parameter commands.yaml still passes breaks the deploy command.
           removed=$(comm -23 <(echo "$old_params") <(echo "$new_params") || true)
           if [ -n "$removed" ]; then
             still_passed=$(comm -12 <(echo "$removed") <(echo "$passed") || true)
@@ -194,8 +173,7 @@ jobs:
         if: env.changed == 'true'
         run: |
           set -euo pipefail
-          # Built line by line: a heredoc body would have to sit at column 0, which cannot
-          # appear inside this YAML block.
+          # Line by line: a heredoc body would need column 0, impossible inside this YAML block.
           {
             printf '%s\n\n' "Updates \`template.yaml\` in \`v${revision}\` from \`${SOURCE_REPO}\`."
             printf '%s\n\n' "Source commit: ${COMMIT_URL}"
