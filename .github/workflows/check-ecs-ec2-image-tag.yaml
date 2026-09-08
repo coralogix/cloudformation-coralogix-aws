@@ -7,10 +7,10 @@ on:
   pull_request:
     paths:
       - 'opentelemetry/ecs-ec2/template.yaml'
-      # TEMPORARY-TEST-TRIGGER: so this check also runs on the pull request that introduces it,
-      # which touches no template. REMOVE BEFORE MERGING.
-      - '.github/workflows/check-ecs-ec2-image-tag.yaml'
   workflow_dispatch:
+
+permissions:
+  contents: read
 
 env:
   TEMPLATE: opentelemetry/ecs-ec2/template.yaml
@@ -28,9 +28,9 @@ jobs:
           sudo chmod +x /usr/local/bin/yq
 
       # SupervisedImageVersion pins an image tag built and released from telemetry-shippers.
-      # Naming a tag that is not published yet makes every stack fail on image pull, and
-      # nothing downstream would catch it, so compare against the released version.
-      - name: Compare against telemetry-shippers
+      # Naming a tag that is not published makes every stack fail on image pull, and nothing
+      # downstream would catch it.
+      - name: Verify the tag is a released supervised image
         run: |
           set -euo pipefail
 
@@ -40,21 +40,23 @@ jobs:
             exit 0
           fi
 
-          released=$(gh api \
-            "repos/coralogix/telemetry-shippers/contents/otel-supervised-cdot/CURRENT_IMAGE_VERSION" \
-            -H "Accept: application/vnd.github.raw" | tr -d '[:space:]')
+          # The exact tag is looked up in the release changelog rather than compared against
+          # CURRENT_IMAGE_VERSION: ordering only proves a tag is not newer than the latest
+          # release, so an unreleased v0.12.9 would pass while the image does not exist.
+          changelog=$(gh api \
+            "repos/coralogix/telemetry-shippers/contents/otel-supervised-cdot/CHANGELOG.md" \
+            -H "Accept: application/vnd.github.raw")
 
-          echo "template=${template_tag} released=${released}"
-
-          # Passing means the template is at or behind the released tag. Ahead means the image
-          # does not exist yet.
-          newest=$(printf '%s\n%s\n' "${template_tag#v}" "${released#v}" | sort -V | tail -1)
-          if [ "$template_tag" != "$released" ] && [ "$newest" = "${template_tag#v}" ]; then
-            echo "::error::SupervisedImageVersion ${template_tag} is ahead of the released ${released}."
-            echo "Release the supervised image in telemetry-shippers first, or lower the default."
-            exit 1
+          tag_re=$(printf '%s' "$template_tag" | sed 's/\./\\./g')
+          if printf '%s\n' "$changelog" | grep -qE "^## ${tag_re}( |$)"; then
+            echo "SupervisedImageVersion ${template_tag} is a released image."
+            exit 0
           fi
-          echo "Image tag is released."
+
+          echo "::error::SupervisedImageVersion ${template_tag} is not a released supervised image."
+          echo "Release it in telemetry-shippers first, or pin one of:"
+          printf '%s\n' "$changelog" | grep -oE '^## v[0-9]+\.[0-9]+\.[0-9]+' | sed 's/^## /  /' | head -5
+          exit 1
         env:
           # Cross-repository read, so the repo-scoped default token is not enough.
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
