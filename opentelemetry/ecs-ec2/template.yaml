@@ -1,7 +1,7 @@
 AWSTemplateFormatVersion: 2010-09-09
 Description: |
   Create an OTEL ECS Daemon Service on an ECS Cluster.
-  NOTE: Contains conditional IAM roles (only created for s3 and Parameter Store). 
+  NOTE: Contains conditional IAM roles (only created for s3 and Parameter Store).
   IAM warning appears even when no IAM resources are created - this is expected and safe to acknowledge.
 
 Metadata:
@@ -18,7 +18,7 @@ Metadata:
           - SupervisedImageRepository
           - SupervisedImageVersion
           - InitialFallbackConfigs
-      
+
       - Label:
           default: "S3 Configuration"
         Parameters:
@@ -34,13 +34,13 @@ Metadata:
           - ProfilingS3ConfigKey
           - ProfilingInitialFallbackConfigs
           - ProfilingMemory
-      
+
       - Label:
           default: "Container Configuration"
         Parameters:
           - Image
           - Memory
-      
+
       - Label:
           default: "Health Check Configuration"
         Parameters:
@@ -49,12 +49,12 @@ Metadata:
           - HealthCheckTimeout
           - HealthCheckRetries
           - HealthCheckStartPeriod
-      
+
       - Label:
           default: "IAM Role Configuration"
         Parameters:
           - TaskRoleArn
-    
+
     ParameterLabels:
       S3ConfigBucket:
         default: "S3 Bucket Name"
@@ -191,7 +191,7 @@ Parameters:
       Initial Supervisor fallback configuration URLs for the main collector agent, written as a comma-separated list.
       Example: s3://<BUCKET>.s3.<REGION>.amazonaws.com/<ACCOUNT_ID>/<GROUP_NAME>/<COLLECTOR_VERSION>/<REMOTE_CONFIG_NAME>/config.yaml
     Default: ""
-  
+
   Image:
     Description: |
       The OpenTelemetry Collector Image to use.
@@ -374,7 +374,7 @@ Mappings:
       Domain: us3.coralogix.com
 
 Resources:
-  OtelTaskDefinition: 
+  OtelTaskDefinition:
     Type: AWS::ECS::TaskDefinition
     Properties:
       ExecutionRoleArn: !Ref OtelTaskExecutionRole
@@ -392,7 +392,7 @@ Resources:
         - Name: hostfs
           Host:
             SourcePath: "/var/lib/docker/"
-  
+
         - Name: docker-socket
           Host:
             SourcePath: /var/run/docker.sock
@@ -545,7 +545,7 @@ Resources:
               Protocol: tcp
               AppProtocol: grpc
               ContainerPort: 4317
-            
+
             # otel http endpoint
             - HostPort: 4318
               Protocol: tcp
@@ -579,7 +579,7 @@ Resources:
           Environment:
             - Name: CORALOGIX_DOMAIN
               Value: !FindInMap [CoralogixRegionMap, !Ref CoralogixRegion, Domain]
-           
+
             - Name: CORALOGIX_PRIVATE_KEY
               Value: !Ref CoralogixApiKey
 

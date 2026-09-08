@@ -28,6 +28,13 @@ on:
     paths:
       - 'opentelemetry/ecs-ec2/template.yaml'
   workflow_dispatch:
+  # TEMPORARY-TEST-TRIGGER: verifies the sync end to end from this pull request, because
+  # workflow_dispatch is only offered once a workflow sits on the default branch. The wait and
+  # merge steps are gated on github.event_name == 'push', so on a pull_request they skip and the
+  # downstream pull request is left open for review. REMOVE BEFORE MERGING.
+  pull_request:
+    paths:
+      - 'opentelemetry/ecs-ec2/template.yaml'
 
 # Everything cross-repository uses GH_TOKEN, so the default token needs no write scope.
 permissions:
