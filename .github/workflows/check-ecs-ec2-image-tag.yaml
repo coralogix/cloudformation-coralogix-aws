@@ -1,0 +1,65 @@
+name: Check ecs-ec2 supervised image tag
+
+# The ecs-ec2 template syncs to integration-definitions and auto-merges there, so this pull
+# request is the last gate before customers get it.
+
+on:
+  pull_request:
+    paths:
+      - 'opentelemetry/ecs-ec2/template.yaml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  TEMPLATE: opentelemetry/ecs-ec2/template.yaml
+
+jobs:
+  image_tag_released:
+    runs-on: ubuntu-latest
+    name: Supervised image tag is released
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install yq
+        run: |
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+
+      # SupervisedImageVersion pins an image tag built and released from telemetry-shippers.
+      # Naming a tag that is not published makes every stack fail on image pull, and nothing
+      # downstream would catch it.
+      - name: Verify the tag is a released supervised image
+        run: |
+          set -euo pipefail
+
+          template_tag=$(yq -r '.Parameters.SupervisedImageVersion.Default' "${TEMPLATE}")
+          if [ -z "$template_tag" ] || [ "$template_tag" = "null" ]; then
+            echo "::notice::SupervisedImageVersion has no default, nothing to check"
+            exit 0
+          fi
+
+          # The exact tag is looked up in the release changelog rather than compared against
+          # CURRENT_IMAGE_VERSION: ordering only proves a tag is not newer than the latest
+          # release, so an unreleased v0.12.9 would pass while the image does not exist.
+          changelog=$(gh api \
+            "repos/coralogix/telemetry-shippers/contents/otel-supervised-cdot/CHANGELOG.md" \
+            -H "Accept: application/vnd.github.raw")
+
+          tag_re=$(printf '%s' "$template_tag" | sed 's/\./\\./g')
+          if printf '%s\n' "$changelog" | grep -qE "^## ${tag_re}( |$)"; then
+            echo "SupervisedImageVersion ${template_tag} is a released image."
+            exit 0
+          fi
+
+          echo "::error::SupervisedImageVersion ${template_tag} is not a released supervised image."
+          echo "Release it in telemetry-shippers first, or pin one of:"
+          printf '%s\n' "$changelog" | grep -oE '^## v[0-9]+\.[0-9]+\.[0-9]+' | sed 's/^## /  /' | head -5
+          exit 1
+        env:
+          # The default repo-scoped token, not GH_TOKEN: this workflow runs on pull_request, so a
+          # branch contributor could edit it alongside the template and read whatever secret it is
+          # given. GH_TOKEN can push and admin-merge in integration-definitions; this token cannot,
+          # and reading a public repo needs nothing more.
+          GITHUB_TOKEN: ${{ github.token }}

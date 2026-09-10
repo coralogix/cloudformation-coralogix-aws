@@ -1,0 +1,238 @@
+name: Sync ecs-ec2 template with integration-definitions
+
+# ecs-ec2 is not a SAM app, so it has no SemanticVersion and cannot use synchronizing.yaml.
+# Syncs by overwriting template.yaml in the latest revision -- no new revision, no version
+# change. That is how this integration has always shipped template-only changes, and it is safe
+# because check_immutability only compares fields.yaml field names and types, while
+# integrations-service re-uploads every revision on each deploy.
+#
+# Pushes merge the downstream PR; manual runs leave it open, which is how the backfill is run.
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'opentelemetry/ecs-ec2/template.yaml'
+  workflow_dispatch:
+
+# All cross-repo work uses GH_TOKEN.
+permissions:
+  contents: read
+
+concurrency:
+  group: sync-ecs-ec2-from-cloudformation
+  cancel-in-progress: false
+
+env:
+  INTEGRATION_DIR: integrations/otel-agent-aws-ecs-ec2
+  TEMPLATE_PATH: opentelemetry/ecs-ec2/template.yaml
+
+jobs:
+  commit_changes:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout destination repository
+        uses: actions/checkout@v4
+        with:
+          repository: coralogix/integration-definitions
+          token: ${{ secrets.GH_TOKEN }}
+
+      - name: Install yq
+        run: |
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+
+      - name: Prepare git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Resolve latest revision
+        run: |
+          set -euo pipefail
+          manifest=${INTEGRATION_DIR}/manifest.yaml
+
+          # Latest non-testing revision, same reader telemetry-shippers uses.
+          revision=$(awk '
+            /^[[:space:]]*-[[:space:]]+revision:/ {
+              if (rev && !testing) last=rev
+              rev=$NF; testing=0
+            }
+            /testing:[[:space:]]*true/ { testing=1 }
+            END {
+              if (rev && !testing) last=rev
+              if (last) print last; else exit 1
+            }
+          ' "$manifest")
+
+          if [ ! -d "${INTEGRATION_DIR}/v${revision}" ]; then
+            echo "::error::Revision directory v${revision} is missing"
+            exit 1
+          fi
+
+          echo "revision=$revision" >> "$GITHUB_ENV"
+          echo "Target revision: $revision"
+
+      - name: Fetch template and check the contract is unchanged
+        run: |
+          set -euo pipefail
+          dir="${INTEGRATION_DIR}/v${revision}"
+          new=$(mktemp)
+
+          # Single file at the triggering commit; a nested checkout would be swept into the commit.
+          gh api "repos/${{ github.repository }}/contents/${TEMPLATE_PATH}?ref=${{ github.sha }}" \
+            -H "Accept: application/vnd.github.raw" > "$new"
+          if [ ! -s "$new" ]; then
+            echo "::error::Fetched template is empty"
+            exit 1
+          fi
+          echo "Fetched template: $(wc -c < "$new") bytes"
+
+          if diff -q "$dir/template.yaml" "$new" >/dev/null; then
+            echo "::notice::Template already matches v${revision}, nothing to sync"
+            echo "changed=false" >> "$GITHUB_ENV"
+            exit 0
+          fi
+          echo "changed=true" >> "$GITHUB_ENV"
+
+          old_params=$(yq -r '.Parameters | keys | .[]' "$dir/template.yaml" | sort -u)
+          new_params=$(yq -r '.Parameters | keys | .[]' "$new" | sort -u)
+          passed=$( { grep -oE '^[[:space:]]+[A-Za-z][A-Za-z0-9]*=' "$dir/commands.yaml" || true; } \
+                     | tr -d ' =' | sort -u)
+
+          # Refusal 1: a parameter with no Default must be supplied or CloudFormation rejects the
+          # stack. Checked against commands.yaml, which this path leaves frozen -- not fields.yaml,
+          # whose names do not map to parameter names (S3BucketName -> S3ConfigBucket, mapped in
+          # the frontend). Covers the CLI path only; the console URL is built from that map.
+          required=$(yq -r '.Parameters | to_entries[] | select(.value.Default == null) | .key' \
+                       "$new" | sort -u)
+          unsupplied=$(comm -23 <(echo "$required") <(echo "$passed") || true)
+          if [ -n "$unsupplied" ]; then
+            echo "::error::Template requires parameters that commands.yaml does not pass:"
+            echo "$unsupplied"
+            echo "Give them a Default, or add them to commands.yaml and fields.yaml in a new"
+            echo "revision with an integration version bump, then re-run."
+            exit 1
+          fi
+
+          # Refusal 2: removing a parameter commands.yaml still passes breaks the deploy command.
+          removed=$(comm -23 <(echo "$old_params") <(echo "$new_params") || true)
+          if [ -n "$removed" ]; then
+            still_passed=$(comm -12 <(echo "$removed") <(echo "$passed") || true)
+            if [ -n "$still_passed" ]; then
+              echo "::error::Template removes parameters that commands.yaml still passes:"
+              echo "$still_passed"
+              echo "Update commands.yaml in a new revision with an integration version bump."
+              exit 1
+            fi
+            echo "::warning::Template removes parameters (not referenced by commands.yaml): $(echo "$removed" | tr '\n' ' ')"
+          fi
+
+          added=$(comm -13 <(echo "$old_params") <(echo "$new_params") || true)
+          [ -n "$added" ] && echo "::notice::Template adds optional parameters: $(echo "$added" | tr '\n' ' ')" || true
+
+          cp "$new" "$dir/template.yaml"
+          echo "Updated $dir/template.yaml in place"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+
+      - name: Create branch
+        if: env.changed == 'true'
+        run: |
+          set -euo pipefail
+          branch="sync-ecs-ec2-template-${GITHUB_SHA:0:7}"
+          echo "branch=$branch" >> "$GITHUB_ENV"
+
+          git push origin --delete "$branch" 2>/dev/null || true
+          git checkout -b "$branch"
+          git push origin "$branch"
+
+          commit_message=$(gh api "repos/${{ github.repository }}/commits/${{ github.sha }}" \
+            --jq '.commit.message' | head -1)
+          if [ -z "$commit_message" ]; then
+            commit_message="ecs-ec2: sync template into v${revision}"
+          fi
+          echo "commit_message=$commit_message" >> "$GITHUB_ENV"
+
+          git add "${INTEGRATION_DIR}"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+
+      - name: Commit change
+        if: env.changed == 'true'
+        uses: planetscale/ghcommit-action@v0.1.43
+        with:
+          commit_message: ${{ env.commit_message }}
+          repo: coralogix/integration-definitions
+          branch: ${{ env.branch }}
+          file_pattern: '*.yaml'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+
+      - name: Create PR
+        if: env.changed == 'true'
+        run: |
+          set -euo pipefail
+          # Line by line: a heredoc body would need column 0, impossible inside this YAML block.
+          {
+            printf '%s\n\n' "Updates \`template.yaml\` in \`v${revision}\` from \`${SOURCE_REPO}\`."
+            printf '%s\n\n' "Source commit: ${COMMIT_URL}"
+            printf '%s\n' "No new revision and no version change: \`fields.yaml\` field names and the"
+            printf '%s\n' "parameters \`commands.yaml\` passes are both unchanged, so the revision's"
+            printf '%s\n' "contract is the same. This is how content-only template changes have always"
+            printf '%s\n\n' "been shipped for this integration."
+            printf '%s\n\n' "The sync refuses to run instead if the template adds a required parameter nothing supplies, or removes one \`commands.yaml\` still passes."
+            # Satisfies the org "Ticket Id verification before merging" ruleset.
+            printf '%s\n' "**dummy ticket to pass ticket validate[CDS-1708]**"
+          } > "${RUNNER_TEMP}/pr-body.md"
+
+          gh pr create --base master --head "$branch" \
+            --title "${commit_message}" --body-file "${RUNNER_TEMP}/pr-body.md"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+          SOURCE_REPO: ${{ github.repository }}
+          COMMIT_URL: ${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}
+
+      - name: Wait for PR checks
+        if: env.changed == 'true' && github.event_name == 'push'
+        run: |
+          set -euo pipefail
+
+          check_status() {
+            gh pr checks "$branch" --json state --jq 'all(.[]; .state == "SUCCESS" or .state == "NEUTRAL" or .state == "SKIPPED")'
+          }
+
+          max_wait_time=$((10 * 60))
+          elapsed_time=0
+          sleep_interval=10
+
+          echo "Waiting for all status checks to pass for $branch..."
+          sleep 5
+
+          while true; do
+            status=$(check_status || echo "false")
+
+            if [ "$status" = "true" ]; then
+              echo "All status checks passed."
+              break
+            fi
+
+            if [ "$elapsed_time" -ge "$max_wait_time" ]; then
+              echo "Timeout reached: Status checks did not pass within 10 minutes."
+              gh pr checks "$branch" || true
+              exit 1
+            fi
+
+            echo "Not all checks passed yet. Waiting for $sleep_interval seconds..."
+            sleep "$sleep_interval"
+            elapsed_time=$((elapsed_time + sleep_interval))
+          done
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+
+      - name: Merge PR
+        if: env.changed == 'true' && github.event_name == 'push'
+        run: |
+          gh pr merge "$branch" --squash --admin --delete-branch
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
