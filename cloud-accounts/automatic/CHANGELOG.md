@@ -1,5 +1,15 @@
 # Changelog
 
+## [3.0.0] - 2026-09-08
+
+### Added
+
+Support for ingesting logs from CloudWatch log groups.
+
+- Add `<RoleName>-logs` for CloudWatch Logs delivery to Coralogix-owned Firehose streams.
+- Add `<RoleName>-lm` for least-privilege Lambda manager execution.
+- Extend the Coralogix-assumed role to manage generated `cx-lc-*-lm` Lambda manager functions and `cx-lc-*-ebr` EventBridge rules, and to pass `<RoleName>-lm` to Lambda.
+
 ## [2.0.0] - 2026-07-03
 
 ### Changed
