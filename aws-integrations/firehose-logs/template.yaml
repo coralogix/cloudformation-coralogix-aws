@@ -69,9 +69,27 @@ Parameters:
     Type: String
     Description: Optional - If using Kinesis Stream As Source of logs, enter the ARN of the Kinesis stream, else leave blank.
     Default: ""
-  
+  EnableBackupBucketVersioning:
+    Type: String
+    Description: >-
+      Enable S3 versioning on the delivery-failure backup bucket so overwritten or deleted
+      backup objects can be recovered.
+    AllowedValues:
+      - 'true'
+      - 'false'
+    Default: 'false'
+  EnableBackupBucketSecureTransportPolicy:
+    Type: String
+    Description: >-
+      Attach a bucket policy to the delivery-failure backup bucket that denies any request
+      made without TLS (aws:SecureTransport = false).
+    AllowedValues:
+      - 'true'
+      - 'false'
+    Default: 'false'
+
 Metadata:
-  SemanticVersion: 0.1.1
+  SemanticVersion: 0.2.0
   AWS::CloudFormation::Interface: 
     ParameterGroups: 
       - Label: 
@@ -86,11 +104,16 @@ Metadata:
           default: "Others"
         Parameters: 
           - CloudwatchRetentionDays
-      - Label: 
+      - Label:
           default: "Logs Streaming"
-        Parameters: 
+        Parameters:
           - IntegrationTypeLogs
           - KinesisStreamAsSourceARN
+      - Label:
+          default: "Backup Bucket"
+        Parameters:
+          - EnableBackupBucketVersioning
+          - EnableBackupBucketSecureTransportPolicy
  
 Mappings:
   CoralogixRegionMap:
@@ -130,6 +153,8 @@ Conditions:
   IsCustomDomain: !Equals [ !Ref CoralogixRegion, "Custom"]
   IsKinesisStreamAsSource: !Not [!Equals [ !Ref KinesisStreamAsSourceARN, "" ]]
   IsNotSecretDeploy: !Equals [!Ref ApiKeySecretArn, ""]
+  IsBackupBucketVersioningEnabled: !Equals [ !Ref EnableBackupBucketVersioning, "true" ]
+  IsBackupBucketSecureTransportPolicyEnabled: !Equals [ !Ref EnableBackupBucketSecureTransportPolicy, "true" ]
   
 Resources:
   BackupDataBucket:
@@ -139,11 +164,34 @@ Resources:
       - 'firehose-${StackGUID}-backup-logs'
       - { StackGUID: !Select [0, !Split ["-", !Select [2, !Split ["/", !Ref AWS::StackId ]]]] }
       AccessControl: Private
+      VersioningConfiguration:
+        !If
+          - IsBackupBucketVersioningEnabled
+          - Status: Enabled
+          - !Ref 'AWS::NoValue'
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
         IgnorePublicAcls: true
         RestrictPublicBuckets: true
+  BackupDataBucketPolicy:
+    Condition: IsBackupBucketSecureTransportPolicyEnabled
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref BackupDataBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Sid: DenyInsecureTransport
+          Effect: Deny
+          Principal: '*'
+          Action: 's3:*'
+          Resource:
+          - !Sub 'arn:aws:s3:::${BackupDataBucket}'
+          - !Sub 'arn:aws:s3:::${BackupDataBucket}/*'
+          Condition:
+            Bool:
+              'aws:SecureTransport': 'false'
   DeliveryStreamLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:

@@ -39,6 +39,8 @@ For a more detailed description of the settigns and architecture of this AWS Kin
 | Parameter | Description | Default Value | Required |
 |---|---|---|---|
 | CloudwatchRetentionDays | Days of retention in Cloudwatch retention days | 1 | |
+| EnableBackupBucketVersioning | Enable S3 versioning on the delivery-failure backup bucket | _Allowed Values:_<br>- true<br>- false<br>_Default_: false | |
+| EnableBackupBucketSecureTransportPolicy | Attach a bucket policy denying non-TLS (`aws:SecureTransport = false`) requests to the delivery-failure backup bucket | _Allowed Values:_<br>- true<br>- false<br>_Default_: false | |
 
 ## Notes:
 
