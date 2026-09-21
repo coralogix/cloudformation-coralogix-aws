@@ -5,6 +5,10 @@
 <!-- ### version / full date -->
 <!-- * [Update/Bug fix] message that describes the changes that you apply -->
 
+### 0.2.0 / 21 Sep 2026
+* [Feature] Add optional `EnableBackupBucketVersioning` parameter (default `false`) to enable S3 versioning on the delivery-failure backup bucket, so overwritten or deleted backup objects can be recovered.
+* [Feature] Add optional `EnableBackupBucketSecureTransportPolicy` parameter (default `false`) to attach a bucket policy that denies any request to the backup bucket made without TLS (`aws:SecureTransport = false`).
+
 ### 0.1.1 / 11 Aug 2026
 * [Update] Refresh the `CustomDomain` example domains to the regional format (`eu1.coralogix.com`, `eu2.coralogix.com`, `ap2.coralogix.com`).
 * [Feature] Add `US3` (`us3.coralogix.com`) as a supported `CoralogixRegion`.
