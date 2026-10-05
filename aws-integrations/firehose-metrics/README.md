@@ -34,6 +34,7 @@ For a more detailed description of the settigns and architecture of this AWS Kin
 | IncludeLinkedAccountsMetrics | Enable cross-account observability to include metrics from linked source accounts (requires CloudWatch OAM setup between monitoring and source accounts) | false | |
 | CrossAccountEnabled | Enable Lambda cross-account tag enrichment. When true, Lambda assumes per-account roles from `CrossAccountRoles`. | false | |
 | CrossAccountRoles | JSON map of source account IDs to role ARNs used for tag enrichment. Example: `{"123456789123":"arn:aws:iam::123456789123:role/CoralogixMetricsReader"}` | {} | |
+| DerivedLabels | JSON array of rules (`target`, `sources`, `exclude_values`) that add the `target` label, copied from the first resource tag in `sources` that exists, isn't empty and isn't in `exclude_values`. Example: `[{"target":"cost_center","sources":["CostCenter","Department"],"exclude_values":["none"]}]`. Requires `EnableMetricsTagsProcessors`. Empty disables it. See the [Lambda README](https://github.com/coralogix/cloudwatch-metric-streams-lambda-transformation#configuration). | | |
 
 ## Optional Parameters
 | Parameter | Description | Default Value | Required |
