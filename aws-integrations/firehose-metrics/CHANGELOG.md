@@ -5,6 +5,9 @@
 <!-- ### version / full date -->
 <!-- * [Update/Bug fix] message that describes the changes that you apply -->
 
+### 0.1.3 / 5 Oct 2026
+* [Feature] Add `DerivedLabels` parameter, passed to the Lambda processor as `DERIVED_LABELS`, to add labels copied from existing resource tags.
+
 ### 0.1.2 / 7 Sep 2026
 * [Fix] Add AWS GovCloud (`aws-us-gov` partition) compatibility by replacing hardcoded `arn:aws:` prefixes with `arn:${AWS::Partition}:` across all IAM policy ARNs.
 * [Update] Bump the CloudWatch Metric Stream custom resource Lambda runtime from EOL `python3.8` to `python3.12`.
