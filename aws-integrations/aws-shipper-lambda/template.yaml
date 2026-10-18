@@ -24,7 +24,7 @@ Metadata:
       - kinesis
       - cloudfront
     HomePageUrl: https://coralogix.com
-    SemanticVersion: 1.4.17
+    SemanticVersion: 1.4.18
     SourceCodeUrl: https://github.com/coralogix/coralogix-aws-shipper
   AWS::CloudFormation::Interface:
     ParameterGroups:
@@ -1081,8 +1081,8 @@ Resources:
         Key:
           Fn::If:
             - CpuArchIsx8664
-            - coralogix-aws-shipper-x86-64.zip
-            - coralogix-aws-shipper.zip
+            - coralogix-aws-shipper-x86-64-1.4.18.zip
+            - coralogix-aws-shipper-arm64-1.4.18.zip
       Role: !If
         - ExecutionRoleARNIsSet
         - !Ref ExecutionRoleARN
@@ -1705,7 +1705,7 @@ Resources:
       CodeUri:
         Bucket:
           Fn::Sub: coralogix-serverless-repo-${AWS::Region}
-        Key: coralogix-aws-shipper-custom-resource.zip
+        Key: coralogix-aws-shipper-custom-resource-1.4.18.zip
   CustomResourceWaiter:
     Type: AWS::Serverless::Function
     Metadata:

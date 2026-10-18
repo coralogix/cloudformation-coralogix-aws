@@ -1,5 +1,23 @@
 # Changelog
 
+## v1.4.18 / 2026-10-18
+
+### 🚀 Enhancements 🚀
+
+- **GovCloud artifacts are hosted by Coralogix:** the artifact bucket and key parameters
+  in `template-govcloud.yaml` are now optional, so GovCloud deployments no longer need to
+  stage the Lambda packages first. Your own bucket still works.
+
+### 🧰 Bug fixes 🧰
+
+- **Stack updates now pick up the new Lambda:** the template referenced keys that did not
+  change between releases, so updating a stack left the function on its previous code.
+
+### 🔐 Security 🔐
+
+- **Artifacts carry checksums:** each one has a `<key>.sha256` alongside it, verifiable
+  with `sha256sum -c`.
+
 ## v1.4.17 / 2026-10-14
 
 ### 🧰 Bug fixes 🧰
