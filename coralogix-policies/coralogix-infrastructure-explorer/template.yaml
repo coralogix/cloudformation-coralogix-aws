@@ -118,7 +118,6 @@ Resources:
               - Effect: Allow
                 Action:
                   - "rds:DescribeDBInstances"
-                  - "rds:ListTagsForResource"
                 Resource: "*"
 
 Outputs:

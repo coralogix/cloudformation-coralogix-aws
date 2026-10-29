@@ -4,7 +4,7 @@
 
 ### 0.0.6 / 28.10.2026 Add RDS describe permissions
 
-- [update] Add `CoralogixDescribeRdsPolicy` granting `rds:DescribeDBInstances` and `rds:ListTagsForResource`, required to scan RDS instances
+- [update] Add `CoralogixDescribeRdsPolicy` granting `rds:DescribeDBInstances`, required to scan RDS instances
 
 ### 0.0.5 /4.9.2025 Add output to the role that the module will create
 
