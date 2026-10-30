@@ -1,5 +1,14 @@
 # Changelog
 
+## [4.0.0] - 2026-10-29
+
+### Added
+
+Support for ingesting logs from S3 buckets.
+
+- Shared `<RoleName>-sh` stock S3 log shipper execution role, with same-account object reads and S3-scoped KMS decrypt. Customer key policies must also grant access.
+- Scoped S3 notification, shipper Lambda, owned SNS topic, same-account Lambda subscription, and shared-role pass permissions.
+
 ## [3.0.0] - 2026-09-08
 
 ### Added

@@ -1,8 +1,8 @@
 AWSTemplateFormatVersion: 2010-09-09
-Description: Creates IAM roles allowing Coralogix to collect metrics and manage CloudWatch Logs ingestion in your AWS account.
+Description: Creates IAM roles allowing Coralogix to collect metrics and manage CloudWatch and S3 log ingestion in your AWS account.
 
 Metadata:
-  SemanticVersion: 3.0.0
+  SemanticVersion: 4.0.0
   AWS::CloudFormation::Interface:
     ParameterGroups:
       - Label:
@@ -42,7 +42,7 @@ Parameters:
   RoleName:
     Type: String
     Default: coralogix-cloud-account
-    Description: The name of the main IAM role that will be created. Static service roles use this name with -fh, -ms, -logs, and -lm suffixes.
+    Description: The name of the main IAM role that will be created. Static service roles use this name with -fh, -ms, -logs, -lm, and -sh suffixes.
     AllowedPattern: '[\w+=,.@-]+'
     MaxLength: 56
   ExternalIdSecret:
@@ -273,13 +273,64 @@ Resources:
                   StringEquals:
                     iam:PassedToService: logs.amazonaws.com
 
+  CoralogixS3ShipperExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${RoleName}-sh"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: CoralogixS3ShipperExecution
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: ReadSameAccountObjects
+                Effect: Allow
+                Action: [s3:GetObject, s3:GetObjectVersion]
+                Resource: !Sub arn:${AWS::Partition}:s3:::*/*
+                Condition:
+                  StringEquals:
+                    s3:ResourceAccount: !Ref AWS::AccountId
+                  ArnLike:
+                    lambda:SourceFunctionArn: !Sub arn:${AWS::Partition}:lambda:*:${AWS::AccountId}:function:cx-s3-*-sh
+              - Sid: DecryptSameAccountS3Objects
+                Effect: Allow
+                Action: kms:Decrypt
+                Resource: !Sub arn:${AWS::Partition}:kms:*:${AWS::AccountId}:key/*
+                Condition:
+                  StringEquals:
+                    kms:CallerAccount: !Ref AWS::AccountId
+                  StringLike:
+                    kms:ViaService: !Sub s3.*.${AWS::URLSuffix}
+                  ArnLike:
+                    lambda:SourceFunctionArn: !Sub arn:${AWS::Partition}:lambda:*:${AWS::AccountId}:function:cx-s3-*-sh
+              - Sid: CreateShipperLogGroups
+                Effect: Allow
+                Action: logs:CreateLogGroup
+                Resource: !Sub arn:${AWS::Partition}:logs:*:${AWS::AccountId}:log-group:/aws/lambda/cx-s3-*-sh
+                Condition:
+                  ArnLike:
+                    lambda:SourceFunctionArn: !Sub arn:${AWS::Partition}:lambda:*:${AWS::AccountId}:function:cx-s3-*-sh
+              - Sid: WriteShipperLogs
+                Effect: Allow
+                Action: [logs:CreateLogStream, logs:PutLogEvents]
+                Resource: !Sub arn:${AWS::Partition}:logs:*:${AWS::AccountId}:log-group:/aws/lambda/cx-s3-*-sh:log-stream:*
+                Condition:
+                  ArnLike:
+                    lambda:SourceFunctionArn: !Sub arn:${AWS::Partition}:lambda:*:${AWS::AccountId}:function:cx-s3-*-sh
+
   CoralogixAwsMetricsRole:
     Type: AWS::IAM::Role
     Properties:
       RoleName: !Ref RoleName
       Tags:
         - Key: CoralogixCloudAccountTemplateVersion
-          Value: "3"
+          Value: "4"
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -395,6 +446,54 @@ Resources:
                 Condition:
                   StringEquals:
                     iam:PassedToService: lambda.amazonaws.com
+              - Sid: ManageSourceNotifications
+                Effect: Allow
+                Action: s3:PutBucketNotification
+                Resource: !Sub arn:${AWS::Partition}:s3:::*
+                Condition:
+                  StringEquals:
+                    s3:ResourceAccount: !Ref AWS::AccountId
+              - Sid: ManageS3Shippers
+                Effect: Allow
+                Action:
+                  - lambda:CreateFunction
+                  - lambda:DeleteFunction
+                  - lambda:UpdateFunctionCode
+                  - lambda:UpdateFunctionConfiguration
+                  - lambda:PutFunctionConcurrency
+                  - lambda:RemovePermission
+                Resource: !Sub arn:${AWS::Partition}:lambda:*:${AWS::AccountId}:function:cx-s3-*-sh
+              - Sid: AddS3ShipperInvokePermission
+                Effect: Allow
+                Action: lambda:AddPermission
+                Resource: !Sub arn:${AWS::Partition}:lambda:*:${AWS::AccountId}:function:cx-s3-*-sh
+                Condition:
+                  StringEquals:
+                    lambda:Principal: [s3.amazonaws.com, sns.amazonaws.com]
+              - Sid: PassS3ShipperRole
+                Effect: Allow
+                Action: iam:PassRole
+                Resource: !GetAtt CoralogixS3ShipperExecutionRole.Arn
+                Condition:
+                  StringEquals:
+                    iam:PassedToService: lambda.amazonaws.com
+              - Sid: ManageOwnedSnsTopics
+                Effect: Allow
+                Action: [sns:CreateTopic, sns:DeleteTopic, sns:SetTopicAttributes]
+                Resource: !Sub arn:${AWS::Partition}:sns:*:${AWS::AccountId}:cx-s3-*-sns
+              - Sid: SubscribeS3Shippers
+                Effect: Allow
+                Action: sns:Subscribe
+                Resource: !Sub arn:${AWS::Partition}:sns:*:${AWS::AccountId}:*
+                Condition:
+                  StringEquals:
+                    sns:Protocol: lambda
+                  StringLike:
+                    sns:Endpoint: !Sub arn:${AWS::Partition}:lambda:*:${AWS::AccountId}:function:cx-s3-*-sh
+              - Sid: UnsubscribeS3Shippers
+                Effect: Allow
+                Action: sns:Unsubscribe
+                Resource: !Sub arn:${AWS::Partition}:sns:*:${AWS::AccountId}:*
 
 Outputs:
   CoralogixAwsMetricsRoleArn:

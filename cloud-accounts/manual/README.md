@@ -30,6 +30,14 @@ The customer-controlled identity that runs the generated Terraform or OpenTofu c
 
 Terraform or OpenTofu owns those service roles and all generated Firehose monitoring resources after onboarding.
 
+### S3 log collection
+
+The v1 bootstrap stays read-only. Generated account-level Terraform owns the shared `<RoleName>-sh` shipper role, stock shipper Lambda, invoke permission and selected routing. The execution identity needs Lambda/SNS lifecycle and subscription permissions, S3 notification replacement, and pass-role on `<RoleName>-sh` to `lambda.amazonaws.com`. The shared role's same-account S3/KMS read envelope is broader than selected buckets; customer key policies must also grant decrypt access. Terraform state/plans and Lambda configuration can contain the account SendData key: use encrypted restricted state and protect sensitive generated files.
+
+**Direct and provisioned-SNS delivery transfer the entire bucket-notification document to one native Terraform resource per bucket.** The generated root aggregates its selected rules, rejects unrelated observed notifications during initial handover, and clears the document on destroy. Independently managed routes are unsupported. Review the complete plan and avoid new notifications between generation and apply. Existing-SNS delivery manages only the shipper/permission/matching subscription; bucket routing, topic/key policies and upstream format/filter correctness remain customer-owned. These ownership modes cannot be mixed on a bucket. Switching ownership requires staged deletion, apply/confirmation and customer handover before creating the replacement configuration. Direct/provisioned-SNS switches retain ownership and are supported.
+
+Apply all same-bucket changes sequentially. Best-effort owned-topic sharing inspection occurs while preparing deletion/update, not continuously in Terraform; do not repurpose topics between generation and apply. Existing customer topics and source buckets are never deleted by the S3 module. Configurations remain pending until exact-generation confirmation; confirmation does not verify ingestion. There is no DLQ, and finite AWS retries, duplicate/unordered delivery and transition gaps remain delivery limitations.
+
 ## Parameters
 
 | Parameter | Description | Default value | Required |
