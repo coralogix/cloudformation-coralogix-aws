@@ -31,7 +31,7 @@ The Coralogix-assumed role keeps AWS `ReadOnlyAccess` and `AWSResourceExplorerFu
 
 | Parameter | Description | Default value | Required |
 |---|---|---|---|
-| `CoralogixRegion` | Coralogix region for your account. Allowed values are `staging`, `EU1`, `EU2`, `AP1`, `AP2`, `AP3`, `US1`, `US2`, `gov1`, and `CustomEndpoint`. | `EU1` | :heavy_check_mark: |
+| `CoralogixRegion` | Coralogix region for your account. Allowed values are `staging`, `EU1`, `EU2`, `AP1`, `AP2`, `AP3`, `US1`, `US2`, `US3`, `gov1`, and `CustomEndpoint`. | `EU1` | :heavy_check_mark: |
 | `CoralogixCompanyId` | Numeric Coralogix company ID. Used to build `<ExternalIdSecret>@<CoralogixCompanyId>` when `ExternalIdSecret` is provided. | | :heavy_check_mark: |
 | `RoleName` | Name of the main IAM role to create. Static service roles use this name with `-fh`, `-ms`, `-logs`, and `-lm` suffixes. | `coralogix-cloud-account` | |
 | `ExternalIdSecret` | Optional external ID secret for `sts:AssumeRole`. When blank, the trust policy has no external ID condition and the `ExternalId` output is omitted. | | |
