@@ -24,7 +24,7 @@ Metadata:
       - kinesis
       - cloudfront
     HomePageUrl: https://coralogix.com
-    SemanticVersion: 1.4.23
+    SemanticVersion: 1.5.0
     SourceCodeUrl: https://github.com/coralogix/coralogix-aws-shipper
   AWS::CloudFormation::Interface:
     ParameterGroups:
@@ -41,6 +41,7 @@ Metadata:
           - LogExportProtocol
           - DisableLogSeverityDetection
           - OTLPEndpoint
+          - OtlpHeaders
       - Label:
           default: S3/CloudTrail/VpcFlow/S3Csv/CloudFront configuration
         Parameters:
@@ -474,6 +475,11 @@ Parameters:
     # Deliberately loose on path/query: the runtime validates those with a precise error.
     AllowedPattern: '^$|^https?://\S+$'
     ConstraintDescription: OTLPEndpoint must be empty or an http:// or https:// origin with no spaces
+  OtlpHeaders:
+    Type: String
+    NoEcho: true
+    Description: Semicolon-separated key=value pairs sent as gRPC metadata on every export to OtlpEndpoint, e.g. x-api-key=value;tenant=name. Only the Collector route sends them; values are treated as secrets. Keys must be lowercase a-z, 0-9, '_', '.', '-' and values printable ASCII.
+    Default: ''
   MetricsFilter:
     Type: String
     Description: The filter for the metrics to include in the stream, should be valid json that contains the keys Namespace and MetricNames
@@ -1090,8 +1096,8 @@ Resources:
         Key:
           Fn::If:
             - CpuArchIsx8664
-            - coralogix-aws-shipper-x86-64-1.4.23.zip
-            - coralogix-aws-shipper-arm64-1.4.23.zip
+            - coralogix-aws-shipper-x86-64-1.5.0.zip
+            - coralogix-aws-shipper-arm64-1.5.0.zip
       Role: !If
         - ExecutionRoleARNIsSet
         - !Ref ExecutionRoleARN
@@ -1146,6 +1152,10 @@ Resources:
           OTLP_ENDPOINT: !If
             - UseCollectorOtlp
             - !Ref OTLPEndpoint
+            - !Ref AWS::NoValue
+          OTLP_HEADERS: !If
+            - UseCollectorOtlp
+            - !Ref OtlpHeaders
             - !Ref AWS::NoValue
           CORALOGIX_DOMAIN: !If
             - NeedsCoralogixDomain
@@ -1715,7 +1725,7 @@ Resources:
       CodeUri:
         Bucket:
           Fn::Sub: coralogix-serverless-repo-${AWS::Region}
-        Key: coralogix-aws-shipper-custom-resource-1.4.23.zip
+        Key: coralogix-aws-shipper-custom-resource-1.5.0.zip
   CustomResourceWaiter:
     Type: AWS::Serverless::Function
     Metadata:
