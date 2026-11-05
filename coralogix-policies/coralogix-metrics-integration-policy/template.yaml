@@ -19,6 +19,7 @@ Parameters:
       - AP3
       - US1
       - US2
+      - US3
       - CustomEndpoint
   RoleName:
     Type: String
@@ -62,6 +63,9 @@ Mappings:
     US2:
       ID: 739076534691
       RoleSuffix: us2
+    US3:
+      ID: 826308361216
+      RoleSuffix: us3
     CustomEndpoint:
       ID: 000000000000
       RoleSuffix: custom

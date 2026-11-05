@@ -2,6 +2,10 @@
 
 ## AwsMetrics
 
+### 5.11.2026 Add US3 region
+
+- Add `US3` to `CoralogixRegion`, trusting `coralogix-ingestion-us3` in AWS account `826308361216`
+
 ### 4.9.2025 Add output to the role that the module will create
 
 - Add output `ExternalId` to the role that the module will create
