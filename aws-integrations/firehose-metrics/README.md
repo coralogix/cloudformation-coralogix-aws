@@ -35,6 +35,8 @@ For a more detailed description of the settigns and architecture of this AWS Kin
 | CrossAccountEnabled | Enable Lambda cross-account tag enrichment. When true, Lambda assumes per-account roles from `CrossAccountRoles`. | false | |
 | CrossAccountRoles | JSON map of source account IDs to role ARNs used for tag enrichment. Example: `{"123456789123":"arn:aws:iam::123456789123:role/CoralogixMetricsReader"}` | {} | |
 | DerivedLabels | JSON array of rules (`target`, `sources`, `exclude_values`) that add the `target` label, copied from the first resource tag in `sources` that exists, isn't empty and isn't in `exclude_values`. Example: `[{"target":"cost_center","sources":["CostCenter","Department"],"exclude_values":["none"]}]`. Requires `EnableMetricsTagsProcessors`. Empty disables it. See the [Lambda README](https://github.com/coralogix/cloudwatch-metric-streams-lambda-transformation#configuration). | | |
+| LambdaS3Bucket | S3 bucket that holds the Lambda processor package. It must be in the stack's region. Empty uses `coralogix-serverless-repo-<region>`. | | |
+| LambdaS3Key | S3 key of the Lambda processor package. CloudFormation updates the function code only when the bucket or key changes, so stack updates with the default key keep the code from when the function was created. Point it at a versioned copy to choose the build. | firehose-metrics-transformer.zip | |
 
 ## Optional Parameters
 | Parameter | Description | Default Value | Required |

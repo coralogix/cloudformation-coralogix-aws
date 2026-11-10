@@ -5,6 +5,9 @@
 <!-- ### version / full date -->
 <!-- * [Update/Bug fix] message that describes the changes that you apply -->
 
+### 0.1.4 / 10 Nov 2026
+* [Feature] Add `LambdaS3Bucket` and `LambdaS3Key` parameters to set where the Lambda processor package is loaded from. CloudFormation only updates the function code when these change, so a versioned key lets a stack update deploy a new build.
+
 ### 0.1.3 / 5 Oct 2026
 * [Feature] Add `DerivedLabels` parameter, passed to the Lambda processor as `DERIVED_LABELS`, to add labels copied from existing resource tags.
 
