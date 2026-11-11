@@ -2,6 +2,10 @@
 
 ## infrastructure explorer
 
+### 0.0.6 / 5.11.2026 Add US3 region
+
+- [update] Add `US3` to `CoralogixRegion`, trusting `coralogix-ingestion-us3` in AWS account `826308361216`
+
 ### 0.0.5 /4.9.2025 Add output to the role that the module will create
 
 - [update] Add output `ExternalId` to the role that the module will create
