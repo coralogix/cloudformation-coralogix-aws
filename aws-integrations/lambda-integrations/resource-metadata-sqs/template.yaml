@@ -16,7 +16,7 @@ Metadata:
       - metadata
       - sqs
     HomePageUrl: https://coralogix.com
-    SemanticVersion: 0.3.2
+    SemanticVersion: 0.3.3
     SourceCodeUrl: https://github.com/coralogix/coralogix-aws-serverless
   AWS::CloudFormation::Interface:
     ParameterGroups:
@@ -127,7 +127,7 @@ Metadata:
 Parameters:
   CoralogixRegion:
     Type: String
-    Description: The Coralogix location region [EU1, EU2, AP1, AP2, US1, US2, Custom]
+    Description: The Coralogix location region [EU1, EU2, AP1, AP2, US1, US2, US3, Custom]
     AllowedValues:
       - EU1
       - EU2
@@ -136,6 +136,7 @@ Parameters:
       - AP3
       - US1
       - US2
+      - US3
       - Custom
     Default: Custom
   CustomDomain:
@@ -303,6 +304,8 @@ Mappings:
       MetadataUrl: coralogix.us
     US2:
       MetadataUrl: cx498.coralogix.com
+    US3:
+      MetadataUrl: us3.coralogix.com
     Custom:
       MetadataUrl: ""
 Conditions:
