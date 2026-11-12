@@ -2,6 +2,9 @@
 
 ## resource-metadata-sqs
 
+### 0.3.3 / 12.11.2026
+* [Update] Add US3 region to the list of regions.
+
 ### 0.3.2 / 20.02.2025
 * [Feature] Assume cross-account IAM role when querying AWS Config aggregator in a different account (`ConfigCrossAccountRole` parameter)
 

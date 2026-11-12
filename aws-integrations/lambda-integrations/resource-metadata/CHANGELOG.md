@@ -2,6 +2,9 @@
 
 ## resource-metadata
 
+### 1.2.13 / 12.11.2026
+* [Update] Add US3 region to the list of regions.
+
 ### 1.2.12 / 04.12.2025
 * [Update] Update Node.js version to 22.x
 
