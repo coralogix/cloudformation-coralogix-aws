@@ -124,7 +124,9 @@ Parameters:
     Type: String
     Description: >-
       JSON array of rules that add a label copied from existing resource tags in the Lambda processor.
-      Each rule has `target`, `sources` and optional `exclude_values`. Leave empty to disable.
+      Each rule has `target`, `sources` and optional `exclude_values` and `drop_values`. `drop_values`
+      drops data points where any final label with the `target` key matches (requires processor v0.1.17
+      or later). Leave empty to disable.
     Default: ''
 
 Rules:
@@ -155,7 +157,7 @@ Rules:
         AssertDescription: "You must provide either ApiKey or ApiKeySecretArn"
 
 Metadata:
-  SemanticVersion: 0.1.3
+  SemanticVersion: 0.1.4
   AWS::CloudFormation::Interface: 
     ParameterGroups: 
       - Label: 

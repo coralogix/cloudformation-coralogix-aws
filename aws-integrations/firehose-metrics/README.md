@@ -34,7 +34,7 @@ For a more detailed description of the settigns and architecture of this AWS Kin
 | IncludeLinkedAccountsMetrics | Enable cross-account observability to include metrics from linked source accounts (requires CloudWatch OAM setup between monitoring and source accounts) | false | |
 | CrossAccountEnabled | Enable Lambda cross-account tag enrichment. When true, Lambda assumes per-account roles from `CrossAccountRoles`. | false | |
 | CrossAccountRoles | JSON map of source account IDs to role ARNs used for tag enrichment. Example: `{"123456789123":"arn:aws:iam::123456789123:role/CoralogixMetricsReader"}` | {} | |
-| DerivedLabels | JSON array of rules (`target`, `sources`, `exclude_values`) that add the `target` label, copied from the first resource tag in `sources` that exists, isn't empty and isn't in `exclude_values`. Example: `[{"target":"cost_center","sources":["CostCenter","Department"],"exclude_values":["none"]}]`. Requires `EnableMetricsTagsProcessors`. Empty disables it. See the [Lambda README](https://github.com/coralogix/cloudwatch-metric-streams-lambda-transformation#configuration). | | |
+| DerivedLabels | JSON array of rules (`target`, `sources`, `exclude_values`, `drop_values`) that add the `target` label, copied from the first resource tag in `sources` that exists, isn't empty and isn't in `exclude_values`. Example: `[{"target":"cost_center","sources":["CostCenter","Department"],"exclude_values":["none"]}]`. Optional `drop_values` drops data points where any final label with the `target` key matches (case-insensitive), see the notes below. Requires `EnableMetricsTagsProcessors`. Empty disables it. See the [Lambda README](https://github.com/coralogix/cloudwatch-metric-streams-lambda-transformation#configuration). | | |
 
 ## Optional Parameters
 | Parameter | Description | Default Value | Required |
@@ -49,6 +49,8 @@ For a more detailed description of the settigns and architecture of this AWS Kin
 * For cross-account enrichment, each linked account role (for example `CoralogixMetricsReader`) must trust the monitoring account Lambda role and allow `sts:AssumeRole`:
   - Principal: `arn:aws:iam::<monitoring-account-id>:role/<stack-name>-lambda`
   - Action: `sts:AssumeRole`
+
+* `drop_values` in `DerivedLabels` requires processor v0.1.17 or later. Existing Lambda functions are not updated automatically; update the deployed function code before configuring `drop_values`. Older processors reject the entire `DERIVED_LABELS` configuration when this field is present, disabling derived labels and forwarding data without filtering. Filtering uses cached resource tags, so new resources and tag changes may be forwarded with stale or missing labels until the cache refreshes (`FILE_CACHE_EXPIRATION` Lambda environment variable, default one hour). See [Dropping data points](https://github.com/coralogix/cloudwatch-metric-streams-lambda-transformation#dropping-data-points) for matching rules and limitations.
 
 * `LambdaMetricsTagsProcessors` lambda function code is deployed to the following s3 regions: [ _us-east-1 us-east-2 us-west-1 us-west-2 ap-south-1 ap-northeast-2 ap-southeast-1 ap-southeast-2 ap-northeast-1 ca-central-1 eu-central-1 eu-west-1 eu-west-2 eu-west-3 eu-north-1 eu-south-1 sa-east-1_ ]. If you are using a different region, please contact Coralogix support.
 
