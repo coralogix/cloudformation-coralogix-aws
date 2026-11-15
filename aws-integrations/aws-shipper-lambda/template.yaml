@@ -1099,8 +1099,8 @@ Resources:
         Key:
           Fn::If:
             - CpuArchIsx8664
-            - coralogix-aws-shipper-x86-64-1.5.1.zip
-            - coralogix-aws-shipper-arm64-1.5.1.zip
+            - coralogix-aws-shipper-x86-64-1.5.2.zip
+            - coralogix-aws-shipper-arm64-1.5.2.zip
       Role: !If
         - ExecutionRoleARNIsSet
         - !Ref ExecutionRoleARN
@@ -1728,7 +1728,7 @@ Resources:
       CodeUri:
         Bucket:
           Fn::Sub: coralogix-serverless-repo-${AWS::Region}
-        Key: coralogix-aws-shipper-custom-resource-1.5.1.zip
+        Key: coralogix-aws-shipper-custom-resource-1.5.2.zip
   CustomResourceWaiter:
     Type: AWS::Serverless::Function
     Metadata:
