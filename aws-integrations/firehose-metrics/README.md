@@ -52,6 +52,23 @@ For a more detailed description of the settigns and architecture of this AWS Kin
 
 * `drop_values` in `DerivedLabels` requires processor v0.1.17 or later. Existing Lambda functions are not updated automatically; update the deployed function code before configuring `drop_values`. Older processors reject the entire `DERIVED_LABELS` configuration when this field is present, disabling derived labels and forwarding data without filtering. Filtering uses cached resource tags, so until the cache refreshes (`FILE_CACHE_EXPIRATION` Lambda environment variable, default one hour) new resources and tag changes are filtered using stale or missing labels, which can forward or drop data incorrectly. All Lambda environment variables together are limited to 4 KB ([AWS limit](https://docs.aws.amazon.com/lambda/latest/dg/configuration-envvars.html)), so a large `drop_values` list can fail the stack update. See [Dropping data points](https://github.com/coralogix/cloudwatch-metric-streams-lambda-transformation#dropping-data-points) for matching rules, S3 backup behaviour and limitations.
 
+  To update an existing function to the latest published code (stack updates don't, because `S3Key` is fixed):
+
+  ```sh
+  aws lambda update-function-code --region <region> \
+    --function-name <stack-name>-metrics-transform \
+    --s3-bucket coralogix-serverless-repo-<region> \
+    --s3-key firehose-metrics-transformer.zip
+  ```
+
+  To confirm, the function's `CodeSha256` must equal the SHA-256 of the published ZIP. A match shows the latest published code, not a specific version:
+
+  ```sh
+  aws lambda get-function --region <region> --function-name <stack-name>-metrics-transform \
+    --query Configuration.CodeSha256 --output text
+  aws s3 cp s3://coralogix-serverless-repo-<region>/firehose-metrics-transformer.zip - | openssl dgst -sha256 -binary | base64
+  ```
+
 * `LambdaMetricsTagsProcessors` lambda function code is deployed to the following s3 regions: [ _us-east-1 us-east-2 us-west-1 us-west-2 ap-south-1 ap-northeast-2 ap-southeast-1 ap-southeast-2 ap-northeast-1 ca-central-1 eu-central-1 eu-west-1 eu-west-2 eu-west-3 eu-north-1 eu-south-1 sa-east-1_ ]. If you are using a different region, please contact Coralogix support.
 
 ## Deploy the Cloudformation template using aws cli
