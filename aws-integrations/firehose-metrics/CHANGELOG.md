@@ -5,6 +5,9 @@
 <!-- ### version / full date -->
 <!-- * [Update/Bug fix] message that describes the changes that you apply -->
 
+### 0.1.4 / 15 Nov 2026
+* [Feature] Document optional `drop_values` in `DerivedLabels` rules: data points where any final label with the `target` key matches a value (case-insensitive) are dropped before they reach Coralogix. Requires processor v0.1.17 or later; existing Lambda functions are not updated automatically. The template passes `DerivedLabels` through unchanged.
+
 ### 0.1.3 / 5 Oct 2026
 * [Feature] Add `DerivedLabels` parameter, passed to the Lambda processor as `DERIVED_LABELS`, to add labels copied from existing resource tags.
 
