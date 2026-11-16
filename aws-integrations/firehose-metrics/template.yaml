@@ -107,8 +107,9 @@ Parameters:
     Description: >-
       Version of the Lambda metrics tags processor (0.1.18 or later), deployed from the write-once
       firehose-metrics-transformer-<version>.zip. Changing it updates the function code on stack update.
-    AllowedPattern: '^[0-9]+\.[0-9]+\.[0-9]+$'
-    ConstraintDescription: Must be a version like 0.1.18.
+    # X.Y.Z and at least 0.1.18, the first version published under a versioned key.
+    AllowedPattern: '^(0\.1\.(1[89]|[2-9][0-9]|[1-9][0-9]{2,})|0\.([2-9]|[1-9][0-9]+)\.(0|[1-9][0-9]*)|[1-9][0-9]*\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*))$'
+    ConstraintDescription: Must be a version like 0.1.18, and 0.1.18 or later.
     Default: '0.1.18'
   IncludeLinkedAccountsMetrics:
     Type: String
