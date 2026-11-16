@@ -102,6 +102,14 @@ Parameters:
       - 'true'
       - 'false'
     Default: 'true'
+  LambdaProcessorVersion:
+    Type: String
+    Description: >-
+      Version of the Lambda metrics tags processor (0.1.18 or later), deployed from the write-once
+      firehose-metrics-transformer-<version>.zip. Changing it updates the function code on stack update.
+    AllowedPattern: '^[0-9]+\.[0-9]+\.[0-9]+$'
+    ConstraintDescription: Must be a version like 0.1.18.
+    Default: '0.1.18'
   IncludeLinkedAccountsMetrics:
     Type: String
     Description: Enable cross-account observability to include metrics from linked source accounts (requires CloudWatch OAM setup)
@@ -157,7 +165,7 @@ Rules:
         AssertDescription: "You must provide either ApiKey or ApiKeySecretArn"
 
 Metadata:
-  SemanticVersion: 0.1.4
+  SemanticVersion: 0.1.5
   AWS::CloudFormation::Interface: 
     ParameterGroups: 
       - Label: 
@@ -182,6 +190,7 @@ Metadata:
           - EnableAddtionalStatistics
           - AddtionalStatisticsConfigurations
           - EnableMetricsTagsProcessors
+          - LambdaProcessorVersion
           - IncludeLinkedAccountsMetrics
           - CrossAccountEnabled
           - CrossAccountRoles
@@ -305,7 +314,7 @@ Resources:
     Properties:
       Code:
         S3Bucket: !Sub 'coralogix-serverless-repo-${AWS::Region}'
-        S3Key: firehose-metrics-transformer.zip
+        S3Key: !Sub 'firehose-metrics-transformer-${LambdaProcessorVersion}.zip'
       FunctionName: !Sub '${AWS::StackName}-metrics-transform'
       Handler: bootstrap
       Runtime: provided.al2023
