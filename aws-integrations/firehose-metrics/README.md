@@ -31,6 +31,7 @@ For a more detailed description of the settigns and architecture of this AWS Kin
 | IncludeNamespacesMetricNames | A string json list of namespaces and metric_names to include to the metric stream. JSON stringify the input to avoid format errors. <br>e.g. {"AWS/EC2":["CPUUtilization","NetworkOut"],"AWS/S3":["BucketSizeBytes"]} | | |
 | AddtionalStatisticsConfigurations | A json list of additional statistics to include to the metric stream following [MetricStream StatisticsConfiguration](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-cloudwatch-metricstream-metricstreamstatisticsconfiguration.html). <br>JSON stringify the input to avoid format errors. | "p50","p75","p95","p99" of the following <br>- AWS/EBS:[VolumeTotalReadTime,VolumeTotalWriteTime]<br>- AWS/ELB:[Latency,Duration], <br>- AWS/Lambda:[PostRuntimeExtensionsDuration]<br>- AWS/S3:[FirstByteLatency,TotalRequestLatency] | |
 | EnableMetricsTagsProcessors | Enable the lambda metrics tags processor function. Set to false to remove the processor | true | |
+| LambdaProcessorVersion | Version of the Lambda metrics tags processor to deploy (0.1.18 or later), from the write-once `firehose-metrics-transformer-<version>.zip`. Changing it updates the function code on stack update. See [releases](https://github.com/coralogix/cloudwatch-metric-streams-lambda-transformation/releases). | 0.1.18 | |
 | IncludeLinkedAccountsMetrics | Enable cross-account observability to include metrics from linked source accounts (requires CloudWatch OAM setup between monitoring and source accounts) | false | |
 | CrossAccountEnabled | Enable Lambda cross-account tag enrichment. When true, Lambda assumes per-account roles from `CrossAccountRoles`. | false | |
 | CrossAccountRoles | JSON map of source account IDs to role ARNs used for tag enrichment. Example: `{"123456789123":"arn:aws:iam::123456789123:role/CoralogixMetricsReader"}` | {} | |
@@ -50,24 +51,9 @@ For a more detailed description of the settigns and architecture of this AWS Kin
   - Principal: `arn:aws:iam::<monitoring-account-id>:role/<stack-name>-lambda`
   - Action: `sts:AssumeRole`
 
-* `drop_values` in `DerivedLabels` requires processor v0.1.17 or later. Existing Lambda functions are not updated automatically; update the deployed function code before configuring `drop_values`. Older processors forward data without filtering: v0.1.16 rejects the entire `DERIVED_LABELS` configuration when this field is present, which also disables derived labels, and v0.1.15 and earlier ignore `DERIVED_LABELS`. Filtering uses cached resource tags, so until the cache refreshes (`FILE_CACHE_EXPIRATION` Lambda environment variable, default one hour) new resources and tag changes are filtered using stale or missing labels, which can forward or drop data incorrectly. All Lambda environment variables together are limited to 4 KB ([AWS limit](https://docs.aws.amazon.com/lambda/latest/dg/configuration-envvars.html)), so a large `drop_values` list can fail the stack update. See [Dropping data points](https://github.com/coralogix/cloudwatch-metric-streams-lambda-transformation#dropping-data-points) for matching rules, S3 backup behaviour and limitations.
+* `drop_values` in `DerivedLabels` requires processor v0.1.17 or later; the default `LambdaProcessorVersion` (0.1.18) supports it. If an existing stack runs an older processor, first update it to this template with your current `DerivedLabels`, wait for the update to complete, then add `drop_values` in a separate update: code and configuration aren't updated atomically, so the old code could receive `drop_values` and forward the data. Older processors forward data without filtering: v0.1.16 rejects the entire `DERIVED_LABELS` configuration when this field is present, which also disables derived labels, and v0.1.15 and earlier ignore `DERIVED_LABELS`. Filtering uses cached resource tags, so until the cache refreshes (`FILE_CACHE_EXPIRATION` Lambda environment variable, default one hour) new resources and tag changes are filtered using stale or missing labels, which can forward or drop data incorrectly. All Lambda environment variables together are limited to 4 KB ([AWS limit](https://docs.aws.amazon.com/lambda/latest/dg/configuration-envvars.html)), so a large `drop_values` list can fail the stack update. See [Dropping data points](https://github.com/coralogix/cloudwatch-metric-streams-lambda-transformation#dropping-data-points) for matching rules, S3 backup behaviour and limitations.
 
-  To update an existing function to the latest published code (stack updates don't, because `S3Key` is fixed):
-
-  ```sh
-  aws lambda update-function-code --region <region> \
-    --function-name <stack-name>-metrics-transform \
-    --s3-bucket coralogix-serverless-repo-<region> \
-    --s3-key firehose-metrics-transformer.zip
-  ```
-
-  To confirm, the function's `CodeSha256` must equal the SHA-256 of the published ZIP. A match shows the latest published code, not a specific version:
-
-  ```sh
-  aws lambda get-function --region <region> --function-name <stack-name>-metrics-transform \
-    --query Configuration.CodeSha256 --output text
-  aws s3 cp s3://coralogix-serverless-repo-<region>/firehose-metrics-transformer.zip - | openssl dgst -sha256 -binary | base64
-  ```
+  To upgrade the processor, update the stack with a newer `LambdaProcessorVersion`. The function code is updated in place.
 
 * `LambdaMetricsTagsProcessors` lambda function code is deployed to the following s3 regions: [ _us-east-1 us-east-2 us-west-1 us-west-2 ap-south-1 ap-northeast-2 ap-southeast-1 ap-southeast-2 ap-northeast-1 ca-central-1 eu-central-1 eu-west-1 eu-west-2 eu-west-3 eu-north-1 eu-south-1 sa-east-1_ ]. If you are using a different region, please contact Coralogix support.
 

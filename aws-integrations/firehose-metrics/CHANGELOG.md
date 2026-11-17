@@ -5,6 +5,9 @@
 <!-- ### version / full date -->
 <!-- * [Update/Bug fix] message that describes the changes that you apply -->
 
+### 0.1.5 / 16 Nov 2026
+* [Feature] Add `LambdaProcessorVersion` (default `0.1.18`): the Lambda processor is deployed from the versioned, write-once `firehose-metrics-transformer-<version>.zip` instead of the unversioned `firehose-metrics-transformer.zip`. Update the stack with a newer version to upgrade. Updating an existing stack to this template version updates the function to 0.1.18.
+
 ### 0.1.4 / 15 Nov 2026
 * [Feature] Document optional `drop_values` in `DerivedLabels` rules: data points where any final label with the `target` key matches a value (case-insensitive) are dropped before they reach Coralogix. Requires processor v0.1.17 or later; existing Lambda functions are not updated automatically. The template passes `DerivedLabels` through unchanged.
 
