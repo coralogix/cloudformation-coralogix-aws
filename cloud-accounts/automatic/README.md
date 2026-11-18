@@ -1,6 +1,6 @@
 # Coralogix Cloud Account Automatic Integration
 
-This CloudFormation template creates named IAM roles that allow Coralogix to collect AWS account metrics and manage CloudWatch and S3 log ingestion through the Coralogix Cloud Accounts feature.
+This CloudFormation template creates named IAM roles that allow Coralogix to collect AWS account metrics, including over AWS PrivateLink, and manage CloudWatch and S3 log ingestion through the Coralogix Cloud Accounts feature.
 
 The published template URL is:
 
@@ -17,16 +17,19 @@ https://cgx-cloudformation-templates.s3.amazonaws.com/cloud-accounts/automatic/t
 
 ## IAM Permissions
 
-This template creates six IAM roles:
+This template creates seven IAM roles:
 
 * `coralogix-cloud-account` by default, or the custom `RoleName` value. Coralogix assumes this role.
-* `<RoleName>-fh`, a service role trusted by Kinesis Data Firehose.
+* `<RoleName>-fh`, a service role trusted by Kinesis Data Firehose. It can also invoke PrivateLink shipper functions as Firehose processors.
 * `<RoleName>-ms`, a service role trusted by CloudWatch Metric Streams.
 * `<RoleName>-logs`, a service role trusted by CloudWatch Logs that can write only to customer `cx-*` Firehose delivery streams.
 * `<RoleName>-lm`, an execution role for generated Coralogix `cx-lc-*-lm` Lambda manager functions. It can write only to their Lambda log groups; inspect, create, and delete subscriptions on customer log groups; tag and untag those log groups; query the Resource Groups Tagging API for the manager's tag index; and pass only `<RoleName>-logs` to CloudWatch Logs. It cannot modify its own Lambda configuration or permissions.
 * `<RoleName>-sh`, an execution role for stock S3 shippers named `cx-s3-*-sh`. It reads same-account S3 objects/versions, decrypts same-account KMS keys for S3 use, and writes shipper Lambda logs. Supported `lambda:SourceFunctionArn` conditions restrict these credentials to shipper functions. Customer key policies must also grant this role decrypt access. This is an account-level read envelope: configured buckets/prefixes are **not per-config IAM boundaries**.
+* `<RoleName>-plsh`, an execution role for PrivateLink metrics shippers named `cx-<uuid>-sh`. It writes shipper Lambda logs and manages the Lambda VPC network interfaces.
 
 The Coralogix-assumed role keeps AWS `ReadOnlyAccess` and `AWSResourceExplorerFullAccess`. An inline policy allows only the actions needed to manage Coralogix-owned `cx-*` Firehose delivery streams, CloudWatch Metric Streams, backup S3 buckets/objects, generated `cx-lc-*-lm` Lambda manager functions, and generated `cx-lc-*-ebr` EventBridge rules/targets. Its Lambda permissions include the configuration reads used by AWS SDK waiters and setting reserved concurrency on generated managers. `lambda:AddPermission` is restricted to generated manager functions and requests whose principal is `events.amazonaws.com`; AWS provides no IAM condition keys for constraining that API's requested action, source ARN, or statement ID. It can pass the Firehose, Metric Streams, and Lambda manager roles only to their intended AWS services. Because it creates the manager Lambda and its `cx-*` Firehose stream, its effective access includes the `<RoleName>-lm` and `<RoleName>-logs` permissions, including account-wide subscription management and configuration of the stream's HTTP endpoint. It has no CloudTrail management or direct CloudWatch Logs subscription actions.
+
+For PrivateLink metrics delivery, the inline policy also allows managing PrivateLink shipper functions, passing `<RoleName>-plsh` to Lambda, and managing VPCs, subnets, security groups, and interface VPC endpoints, including cross-region endpoints (`vpce:AllowMultiRegion`). EC2 resources must be created with the `coralogix:cloud-account-owner` tag, and only resources carrying that tag can be modified or deleted.
 
 ## Parameters
 
@@ -34,7 +37,7 @@ The Coralogix-assumed role keeps AWS `ReadOnlyAccess` and `AWSResourceExplorerFu
 |---|---|---|---|
 | `CoralogixRegion` | Coralogix region for your account. Allowed values are `staging`, `EU1`, `EU2`, `AP1`, `AP2`, `AP3`, `US1`, `US2`, `gov1`, and `CustomEndpoint`. | `EU1` | :heavy_check_mark: |
 | `CoralogixCompanyId` | Numeric Coralogix company ID. Used to build `<ExternalIdSecret>@<CoralogixCompanyId>` when `ExternalIdSecret` is provided. | | :heavy_check_mark: |
-| `RoleName` | Name of the main IAM role to create. Static service roles use this name with `-fh`, `-ms`, `-logs`, `-lm`, and `-sh` suffixes. | `coralogix-cloud-account` | |
+| `RoleName` | Name of the main IAM role to create. Static service roles use this name with `-fh`, `-ms`, `-logs`, `-lm`, `-sh`, and `-plsh` suffixes. | `coralogix-cloud-account` | |
 | `ExternalIdSecret` | Optional external ID secret for `sts:AssumeRole`. When blank, the trust policy has no external ID condition and the `ExternalId` output is omitted. | | |
 | `CustomAWSAccountId` | Custom 12-digit Coralogix AWS account ID. Required only when `CoralogixRegion` is `CustomEndpoint`. | | |
 | `CustomRoleSuffix` | Custom suffix for the trusted `coralogix-ingestion-<suffix>` role. Required only when `CoralogixRegion` is `CustomEndpoint`. | | |
