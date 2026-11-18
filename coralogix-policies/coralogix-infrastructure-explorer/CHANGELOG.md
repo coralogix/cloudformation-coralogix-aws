@@ -2,6 +2,11 @@
 
 ## infrastructure explorer
 
+### 0.0.7 / 18.11.2026 Add GovCloud (gov1) region
+
+- [update] Add `gov1` to `CoralogixRegion`, trusting `coralogix-ingestion-gov1` in AWS GovCloud account `309801239943`
+- [update] Use `${AWS::Partition}` in the trust principal ARN so the role deploys in `aws-us-gov`
+
 ### 0.0.6 / 5.11.2026 Add US3 region
 
 - [update] Add `US3` to `CoralogixRegion`, trusting `coralogix-ingestion-us3` in AWS account `826308361216`
