@@ -177,7 +177,7 @@ Rules:
         AssertDescription: "You must provide either ApiKey or ApiKeySecretArn"
 
 Metadata:
-  SemanticVersion: 0.1.7
+  SemanticVersion: 0.1.8
   AWS::CloudFormation::Interface: 
     ParameterGroups: 
       - Label: 
@@ -216,8 +216,8 @@ Mappings:
   # with a pull request; keep their format.
   ProcessorDefault:
     Version:
-      Commercial: '0.1.19' # bump-consumers: commercial
-      GovCloud: '0.1.19' # bump-consumers: govcloud
+      Commercial: '0.1.20' # bump-consumers: commercial
+      GovCloud: '0.1.20' # bump-consumers: govcloud
   CoralogixRegionMap:
     EU1:
       LogUrl: eu1.coralogix.com
