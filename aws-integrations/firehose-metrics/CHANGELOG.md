@@ -5,6 +5,9 @@
 <!-- ### version / full date -->
 <!-- * [Update/Bug fix] message that describes the changes that you apply -->
 
+### 0.1.7 / 19 Nov 2026
+* [Update] The default `LambdaProcessorVersion` in commercial regions moves from 0.1.18 to 0.1.19, the same as GovCloud: commercial stacks with `LambdaProcessorVersion` empty update the processor in place; GovCloud stacks are unchanged. Stacks with an explicit `LambdaProcessorVersion` keep it: clear or change it to upgrade. From now on both defaults (the `ProcessorDefault` mapping) move through pull requests from the processor's release automation and normally hold the same version: the commercial default once a release is published, the GovCloud default once it has passed the GovCloud smoke test. Each move is listed here.
+
 ### 0.1.6 / 18 Nov 2026
 * [Update] AWS GovCloud: the processor is loaded from the Coralogix distribution bucket `coralogix-public-artifacts-<region>`, which holds the FIPS build from 0.1.19 on. `LambdaProcessorVersion` now defaults to empty, which deploys 0.1.18 in commercial regions, as before, and 0.1.19 in GovCloud. In GovCloud, 0.1.18 is rejected. Commercial stacks are unchanged: updating to this template with the previous `LambdaProcessorVersion`, or with it cleared, makes no changes. Existing GovCloud stacks keep their stored `LambdaProcessorVersion` (0.1.18 if created from 0.1.5) on update, and 0.1.18 is rejected: when updating a GovCloud stack to this template, clear `LambdaProcessorVersion` or set it to 0.1.19 or later. Its processor then loads from the distribution bucket. Stacks with `EnableMetricsTagsProcessors` set to false are not affected.
 
