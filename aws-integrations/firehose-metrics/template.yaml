@@ -106,8 +106,9 @@ Parameters:
     Type: String
     Description: >-
       Version of the Lambda metrics tags processor (0.1.18 or later; in GovCloud 0.1.19 or later), deployed
-      from the write-once firehose-metrics-transformer-<version>.zip. Leave empty for the default: 0.1.18,
-      or 0.1.19 in GovCloud. Changing it updates the function code on stack update.
+      from the write-once firehose-metrics-transformer-<version>.zip. Leave empty for this template's
+      default for the partition, normally the same in commercial regions and GovCloud (see the CHANGELOG). Changing it updates the
+      function code on stack update.
     # Empty, or X.Y.Z and at least 0.1.18, the first version published under a versioned key.
     AllowedPattern: '^$|^(0\.1\.(1[89]|[2-9][0-9]|[1-9][0-9]{2,})|0\.([2-9]|[1-9][0-9]+)\.(0|[1-9][0-9]*)|[1-9][0-9]*\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*))$'
     ConstraintDescription: Must be empty or a version like 0.1.18, and 0.1.18 or later.
@@ -166,7 +167,7 @@ Rules:
       - !Equals [!Ref EnableMetricsTagsProcessors, 'true']
     Assertions:
       - Assert: !Not [!Equals [!Ref LambdaProcessorVersion, '0.1.18']]
-        AssertDescription: In GovCloud, LambdaProcessorVersion must be 0.1.19 or later (the earliest processor in the GovCloud distribution buckets), or empty to deploy 0.1.19.
+        AssertDescription: In GovCloud, LambdaProcessorVersion must be 0.1.19 or later (the earliest processor in the GovCloud distribution buckets), or empty for this template's default.
   ApiKeyOrSecretArnRequired:
     Assertions:
       - Assert:
@@ -176,7 +177,7 @@ Rules:
         AssertDescription: "You must provide either ApiKey or ApiKeySecretArn"
 
 Metadata:
-  SemanticVersion: 0.1.6
+  SemanticVersion: 0.1.7
   AWS::CloudFormation::Interface: 
     ParameterGroups: 
       - Label: 
@@ -208,6 +209,15 @@ Metadata:
           - DerivedLabels
           
 Mappings:
+  # Default processor per partition. Both normally hold the same version: a release becomes
+  # the commercial default once released and the GovCloud default once it has passed the
+  # GovCloud smoke test, so a commercial-only fix or a GovCloud hold never blocks the other.
+  # cloudwatch-metric-streams-lambda-transformation's ci/bump-consumers.sh moves each line
+  # with a pull request; keep their format.
+  ProcessorDefault:
+    Version:
+      Commercial: '0.1.19' # bump-consumers: commercial
+      GovCloud: '0.1.19' # bump-consumers: govcloud
   CoralogixRegionMap:
     EU1:
       LogUrl: eu1.coralogix.com
@@ -327,7 +337,7 @@ Resources:
     Properties:
       Code:
         # GovCloud loads from the Coralogix distribution bucket, which holds only the FIPS
-        # build, under the plain key, from 0.1.19 on. Commercial is unchanged.
+        # build, under the plain key, from 0.1.19 on.
         S3Bucket: !If
           - IsGovCloud
           - !Sub 'coralogix-public-artifacts-${AWS::Region}'
@@ -337,7 +347,10 @@ Resources:
           - Version: !If
               - LambdaProcessorVersionIsSet
               - !Ref LambdaProcessorVersion
-              - !If [IsGovCloud, '0.1.19', '0.1.18']
+              - !If
+                - IsGovCloud
+                - !FindInMap [ProcessorDefault, Version, GovCloud]
+                - !FindInMap [ProcessorDefault, Version, Commercial]
       FunctionName: !Sub '${AWS::StackName}-metrics-transform'
       Handler: bootstrap
       Runtime: provided.al2023
