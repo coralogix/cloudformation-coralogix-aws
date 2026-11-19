@@ -5,6 +5,9 @@
 <!-- ### version / full date -->
 <!-- * [Update/Bug fix] message that describes the changes that you apply -->
 
+### 0.1.8 / 19 Nov 2026
+* [Update] Default `LambdaProcessorVersion`: processor 0.1.20 (commercial and GovCloud). Stacks with `LambdaProcessorVersion` empty update the processor in place; stacks with an explicit version keep it.
+
 ### 0.1.7 / 19 Nov 2026
 * [Update] The default `LambdaProcessorVersion` in commercial regions moves from 0.1.18 to 0.1.19, the same as GovCloud: commercial stacks with `LambdaProcessorVersion` empty update the processor in place; GovCloud stacks are unchanged. Stacks with an explicit `LambdaProcessorVersion` keep it: clear or change it to upgrade. From now on both defaults (the `ProcessorDefault` mapping) move through pull requests from the processor's release automation and normally hold the same version: the commercial default once a release is published, the GovCloud default once it has passed the GovCloud smoke test. Each move is listed here.
 
