@@ -672,7 +672,6 @@ Resources:
                   - ec2:DescribeVpcEndpoints
                   - ec2:DescribeVpcEndpointServices
                   - ec2:DescribeVpcs
-                  - ec2:GetSecurityGroupsForVpc
                 Resource: "*"
               - Sid: ManagePrivateLinkShippers
                 Effect: Allow
