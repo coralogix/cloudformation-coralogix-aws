@@ -1,5 +1,18 @@
 # Changelog
 
+## [4.0.0] - 2026-11-20
+
+### Added
+
+Support for ingesting logs from S3 buckets.
+
+- Shared `<RoleName>-shipper` stock S3 log shipper execution role, with same-account object reads and S3-scoped KMS decrypt. Customer key policies must also grant access.
+- Scoped S3 notification, shipper Lambda, owned SNS topic, same-account Lambda subscription, and shared-role pass permissions.
+
+### Changed
+
+- Allow the partition-appropriate CloudWatch Logs principal alongside S3/SNS for same-account shipper AddPermission management, preparing a future additional destination without implementing its transport.
+
 ## [3.1.0] - 2026-11-05
 
 ### Added
