@@ -2,6 +2,15 @@
 
 ## AwsMetrics
 
+### 18.11.2026 Add GovCloud (gov1) region
+
+- Add `gov1` to `CoralogixRegion`, trusting `coralogix-ingestion-gov1` in AWS GovCloud account `309801239943`
+- Use `${AWS::Partition}` in the trust principal ARN so the role deploys in `aws-us-gov`
+
+### 5.11.2026 Add US3 region
+
+- Add `US3` to `CoralogixRegion`, trusting `coralogix-ingestion-us3` in AWS account `826308361216`
+
 ### 4.9.2025 Add output to the role that the module will create
 
 - Add output `ExternalId` to the role that the module will create

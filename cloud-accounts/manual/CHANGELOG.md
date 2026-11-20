@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.1.0] - 2026-11-05
+
+### Added
+
+- Add `US3` to `CoralogixRegion`, trusting `coralogix-ingestion-us3` in AWS account `826308361216`.
+
 ## [1.0.0] - 2026-07-15
 
 ### Added

@@ -19,6 +19,8 @@ Parameters:
       - AP3
       - US1
       - US2
+      - US3
+      - gov1
       - CustomEndpoint
   RoleName:
     Type: String
@@ -62,6 +64,12 @@ Mappings:
     US2:
       ID: 739076534691
       RoleSuffix: us2
+    US3:
+      ID: 826308361216
+      RoleSuffix: us3
+    gov1:
+      ID: 309801239943
+      RoleSuffix: gov1
     CustomEndpoint:
       ID: 000000000000
       RoleSuffix: custom
@@ -79,7 +87,7 @@ Resources:
           - Effect: Allow
             Principal:
               AWS: !Sub
-                - "arn:aws:iam::${aws_account_id}:role/coralogix-ingestion-${role_suffix}"
+                - "arn:${AWS::Partition}:iam::${aws_account_id}:role/coralogix-ingestion-${role_suffix}"
                 - aws_account_id: !If
                     - IsCustomAWSAccountId
                     - !Ref CustomAWSAccountId
