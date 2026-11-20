@@ -171,6 +171,17 @@ Lambda to appropriate VPC subnets and security groups. See the
 [Collector enrichment example](examples/otlp-grpc-collector/) for a generic
 transform processor that adds `gateway.enriched=true`.
 
+`OtlpHeaders` adds custom gRPC metadata (HTTP/2 headers) to every export on the
+Collector route, for gateways that authenticate with their own header — for
+example `x-api-key=value;tenant=name`. The value is semicolon-separated
+`key=value` pairs: keys are lowercased and may contain `a-z`, `0-9`, `_`, `.`,
+`-` only, values must be non-empty printable ASCII, and duplicates are
+rejected. Keys reserved by gRPC (`grpc-*`) and binary keys (`*-bin`) are not
+supported. The parameter is `NoEcho` and treated as a secret. Only the
+Collector route sends these headers — the direct Coralogix routes keep their
+own credentials and ignore `OtlpHeaders`. Transaction Search spans use the
+same `OTLPEndpoint` route and send the same `OtlpHeaders`.
+
 OTLP requests group records with the same application and subsystem into one
 resource while keeping multiple resources in shared, size-limited requests.
 Structured JSON bodies retain nested arrays and objects. Because OTLP
@@ -200,7 +211,7 @@ and verify REST delivery before removing Collector networking.
 | LogExportProtocol            | Log delivery protocol: `coralogix_rest` or `otlp_grpc`.                                                                                                                                                                                                                                                                            | coralogix_rest | :heavy_check_mark: |
 | DisableLogSeverityDetection  | Disable keyword-based log severity detection for every log integration and both REST and OTLP/gRPC delivery. When `true`, protocol-level severity is always `Info`; the original log body and any `severity` field remain unchanged. This setting does not affect metrics. | false | |
 | OTLPEndpoint                 | Collector `http://` or `https://` origin for `otlp_grpc`, reachable from the Lambda VPC. Required for log-mode OTLP/gRPC when `UsePrivateLink=true`. A non-empty value selects unauthenticated Collector delivery; an empty value selects direct Coralogix OTLP.                                                                    |               |                    |
-| CoralogixRegion              | Coralogix region used by metrics, REST logs, and direct Coralogix OTLP. Choose from [Custom, EU1, EU2, AP1, AP2, AP3, US1, US2]. If set to Custom, specify `CustomDomain`. Ignored for Collector OTLP.                                                                                                                                | Custom        | Metrics, REST logs, direct OTLP |
+| CoralogixRegion              | Coralogix region used by metrics, REST logs, and direct Coralogix OTLP. Choose from [Custom, EU1, EU2, AP1, AP2, AP3, US1, US2, US3]. If set to Custom, specify `CustomDomain`. Ignored for Collector OTLP.                                                                                                                                | Custom        | Metrics, REST logs, direct OTLP |
 | CustomDomain                 | If you choose a custom domain name for your private cluster, Coralogix will send telemetry from the specified address (e.g. custom.coralogix.com).                                                                                                                                                                                 |               |                    |
 | ApplicationName              | The name of the application for which the integration is configured. [Advanced configuration](#advanced-configuration) specifies dynamic value retrieval options.                                                                                                                                                                  |               | :heavy_check_mark: |
 | SubsystemName                | Specify the [name of your subsystem](https://coralogix.com/docs/application-and-subsystem-names/). For a dynamic value, refer to the Advanced configuration section. For CloudWatch, leave this field empty to use the log group name.                                                                                             |               | :heavy_check_mark: |
@@ -570,7 +581,7 @@ When metadata is attached through `AddMetadata` or `CustomMetadata`, the existin
 }
 ```
 
-The post-metadata script may modify or remove any of these fields; metadata is not attached again afterward. Application/subsystem routing, automatic severity, and the timestamp are determined before this final body transformation. If a script returns multiple events, every result inherits those values from its source log.
+The post-metadata script may modify or remove any of these fields; metadata is not attached again afterward. Automatic severity and the timestamp are determined before this final body transformation, and every result a script returns inherits them from its source log. Application and subsystem names are also resolved first, from the raw log. A name that reads a body field (a `{{ $.path }}` template or a plain path such as `app`) is then read again from each result, and the new value is used only where the field's value changed: it differs from the same path in the enriched body the script received. Missing, unchanged or non-scalar values keep the earlier name, a literal name stays as it is, and a script can set a field such as `cx_application_name` for routing without affecting configurations that do not.
 
 Example:
 
@@ -763,7 +774,7 @@ To enable CloudWatch metrics streaming via Firehose (PrivateLink), you must prov
 | ApiKey                      | The Send-Your-Data [API key](https://coralogix.com/docs/send-your-data-api-key/) validates your authenticity. This value can be a direct Coralogix API Key or an AWS Secret Manager ARN containing the API key.<br>*Note that the parameter expects the API key in plain text or stored in secret manager.*                          |               | :heavy_check_mark: |
 | ApplicationName             | The name of the application for which the integration is configured. [Advanced configuration](#advanced-configuration) specifies dynamic value retrieval options.                                                                                                                                                                  |               | :heavy_check_mark: |
 | SubsystemName               | Specify the [name of your subsystem](https://coralogix.com/docs/application-and-subsystem-names/). For a dynamic value, refer to the Advanced Configuration section. For CloudWatch, leave this field empty to use the log group name.                                                                                             |               | :heavy_check_mark: |
-| CoralogixRegion             | Your data source should be in the same region as the integration stack. You may choose from one of [the default Coralogix regions](https://coralogix.com/docs/coralogix-domain/): [Custom, EU1, EU2, AP1, AP2, AP3, US1, US2]. If this value is set to Custom, specify the custom domain to use via the `CustomDomain` parameter. | Custom        | :heavy_check_mark: |
+| CoralogixRegion             | Your data source should be in the same region as the integration stack. You may choose from one of [the default Coralogix regions](https://coralogix.com/docs/coralogix-domain/): [Custom, EU1, EU2, AP1, AP2, AP3, US1, US2, US3]. If this value is set to Custom, specify the custom domain to use via the `CustomDomain` parameter. | Custom        | :heavy_check_mark: |
 | S3BucketName                | The S3 bucket that will be used to store records that have failed processing                                                                                                                                                                                                                                                        |               | :heavy_check_mark: |
 | LambdaSubnetID              | Specify the ID of the subnet for the integration deployment.                                                                                                                                                                                                                                                             |               | :heavy_check_mark: |
 | LambdaSecurityGroupID       | Specify the ID of the Security Group wfor the integration deployment.                                                                                                                                                                                                                                                     |               | :heavy_check_mark: |
@@ -892,7 +903,7 @@ The Coralogix AWS Shipper runs in **AWS GovCloud (US)** partitions (`us-gov-east
 
 ### GovCloud builds and the eMudhra CA compromise
 
-`template-govcloud.yaml` deploys **1.4.23**, which fixes the eMudhra CA compromise (CVE-2026-111943) on the NIST-validated AWS-LC FIPS v3 module.
+`template-govcloud.yaml` deploys **1.5.0**, which fixes the eMudhra CA compromise (CVE-2026-111943) on the NIST-validated AWS-LC FIPS v3 module.
 
 Earlier releases force a trade-off, because GovCloud had no build of its own until 1.4.23:
 

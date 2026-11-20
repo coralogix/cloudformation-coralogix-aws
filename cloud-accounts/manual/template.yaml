@@ -32,6 +32,7 @@ Parameters:
       - AP3
       - US1
       - US2
+      - US3
       - gov1
       - CustomEndpoint
   CoralogixCompanyId:
@@ -89,6 +90,9 @@ Mappings:
     US2:
       AwsAccountId: "739076534691"
       RoleSuffix: us2
+    US3:
+      AwsAccountId: "826308361216"
+      RoleSuffix: us3
     gov1:
       AwsAccountId: "309801239943"
       RoleSuffix: gov1

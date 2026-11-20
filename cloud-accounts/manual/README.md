@@ -32,7 +32,7 @@ Terraform or OpenTofu owns those service roles and all generated Firehose monito
 
 ### S3 log collection
 
-The v1 bootstrap stays read-only. Generated account-level Terraform owns the shared `<RoleName>-sh` shipper role, stock shipper Lambda, invoke permission and selected routing. The execution identity needs Lambda/SNS lifecycle and subscription permissions, S3 notification replacement, and pass-role on `<RoleName>-sh` to `lambda.amazonaws.com`. The shared role's same-account S3/KMS read envelope is broader than selected buckets; customer key policies must also grant decrypt access. Terraform state/plans and Lambda configuration can contain the account SendData key: use encrypted restricted state and protect sensitive generated files.
+The v1 bootstrap stays read-only. Generated account-level Terraform owns the shared `<RoleName>-shipper` shipper role, stock shipper Lambda, invoke permission and selected routing. The execution identity needs Lambda/SNS lifecycle and subscription permissions, S3 notification replacement, and pass-role on `<RoleName>-shipper` to `lambda.amazonaws.com`. The shared role's same-account S3/KMS read envelope is broader than selected buckets; customer key policies must also grant decrypt access. Terraform state/plans and Lambda configuration can contain the account SendData key: use encrypted restricted state and protect sensitive generated files.
 
 **Direct and provisioned-SNS delivery transfer the entire bucket-notification document to one native Terraform resource per bucket.** The generated root aggregates its selected rules, rejects unrelated observed notifications during initial handover, and clears the document on destroy. Independently managed routes are unsupported. Review the complete plan and avoid new notifications between generation and apply. Existing-SNS delivery manages only the shipper/permission/matching subscription; bucket routing, topic/key policies and upstream format/filter correctness remain customer-owned. These ownership modes cannot be mixed on a bucket. Switching ownership requires staged deletion, apply/confirmation and customer handover before creating the replacement configuration. Direct/provisioned-SNS switches retain ownership and are supported.
 
@@ -42,7 +42,7 @@ Apply all same-bucket changes sequentially. Best-effort owned-topic sharing insp
 
 | Parameter | Description | Default value | Required |
 |---|---|---|---|
-| `CoralogixRegion` | Coralogix region for your account. Allowed values are `staging`, `EU1`, `EU2`, `AP1`, `AP2`, `AP3`, `US1`, `US2`, `gov1`, and `CustomEndpoint`. | `EU1` | :heavy_check_mark: |
+| `CoralogixRegion` | Coralogix region for your account. Allowed values are `staging`, `EU1`, `EU2`, `AP1`, `AP2`, `AP3`, `US1`, `US2`, `US3`, `gov1`, and `CustomEndpoint`. | `EU1` | :heavy_check_mark: |
 | `CoralogixCompanyId` | Numeric Coralogix company ID. Used to build `<ExternalIdSecret>@<CoralogixCompanyId>` when `ExternalIdSecret` is provided. | | :heavy_check_mark: |
 | `RoleName` | Name of the IAM role to create for Coralogix. | `coralogix-cloud-account` | |
 | `ExternalIdSecret` | Optional external ID secret for `sts:AssumeRole`. When blank, the trust policy has no external ID condition and the `ExternalId` output is omitted. | | |

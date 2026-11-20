@@ -32,6 +32,7 @@ Parameters:
       - AP3
       - US1
       - US2
+      - US3
       - gov1
       - CustomEndpoint
   CoralogixCompanyId:
@@ -42,7 +43,7 @@ Parameters:
   RoleName:
     Type: String
     Default: coralogix-cloud-account
-    Description: The name of the main IAM role that will be created. Static service roles use this name with -fh, -ms, -logs, -lm, -sh, and -plsh suffixes.
+    Description: The name of the main IAM role that will be created. Static service roles use this name with -fh, -ms, -logs, -lm, -shipper, and -plsh suffixes.
     AllowedPattern: '[\w+=,.@-]+'
     MaxLength: 56
   ExternalIdSecret:
@@ -89,6 +90,9 @@ Mappings:
     US2:
       AwsAccountId: "739076534691"
       RoleSuffix: us2
+    US3:
+      AwsAccountId: "826308361216"
+      RoleSuffix: us3
     gov1:
       AwsAccountId: "309801239943"
       RoleSuffix: gov1
@@ -284,10 +288,10 @@ Resources:
                   StringEquals:
                     iam:PassedToService: logs.amazonaws.com
 
-  CoralogixS3ShipperExecutionRole:
+  CoralogixShipperExecutionRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: !Sub "${RoleName}-sh"
+      RoleName: !Sub "${RoleName}-shipper"
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -296,7 +300,7 @@ Resources:
               Service: lambda.amazonaws.com
             Action: sts:AssumeRole
       Policies:
-        - PolicyName: CoralogixS3ShipperExecution
+        - PolicyName: CoralogixShipperExecution
           PolicyDocument:
             Version: "2012-10-17"
             Statement:
@@ -308,7 +312,7 @@ Resources:
                   StringEquals:
                     s3:ResourceAccount: !Ref AWS::AccountId
                   ArnLike:
-                    lambda:SourceFunctionArn: !Sub arn:${AWS::Partition}:lambda:*:${AWS::AccountId}:function:cx-s3-*-sh
+                    lambda:SourceFunctionArn: !Sub arn:${AWS::Partition}:lambda:*:${AWS::AccountId}:function:cx-*-shipper
               - Sid: DecryptSameAccountS3Objects
                 Effect: Allow
                 Action: kms:Decrypt
@@ -319,21 +323,21 @@ Resources:
                   StringLike:
                     kms:ViaService: !Sub s3.*.${AWS::URLSuffix}
                   ArnLike:
-                    lambda:SourceFunctionArn: !Sub arn:${AWS::Partition}:lambda:*:${AWS::AccountId}:function:cx-s3-*-sh
+                    lambda:SourceFunctionArn: !Sub arn:${AWS::Partition}:lambda:*:${AWS::AccountId}:function:cx-*-shipper
               - Sid: CreateShipperLogGroups
                 Effect: Allow
                 Action: logs:CreateLogGroup
-                Resource: !Sub arn:${AWS::Partition}:logs:*:${AWS::AccountId}:log-group:/aws/lambda/cx-s3-*-sh
+                Resource: !Sub arn:${AWS::Partition}:logs:*:${AWS::AccountId}:log-group:/aws/lambda/cx-*-shipper
                 Condition:
                   ArnLike:
-                    lambda:SourceFunctionArn: !Sub arn:${AWS::Partition}:lambda:*:${AWS::AccountId}:function:cx-s3-*-sh
+                    lambda:SourceFunctionArn: !Sub arn:${AWS::Partition}:lambda:*:${AWS::AccountId}:function:cx-*-shipper
               - Sid: WriteShipperLogs
                 Effect: Allow
                 Action: [logs:CreateLogStream, logs:PutLogEvents]
-                Resource: !Sub arn:${AWS::Partition}:logs:*:${AWS::AccountId}:log-group:/aws/lambda/cx-s3-*-sh:log-stream:*
+                Resource: !Sub arn:${AWS::Partition}:logs:*:${AWS::AccountId}:log-group:/aws/lambda/cx-*-shipper:log-stream:*
                 Condition:
                   ArnLike:
-                    lambda:SourceFunctionArn: !Sub arn:${AWS::Partition}:lambda:*:${AWS::AccountId}:function:cx-s3-*-sh
+                    lambda:SourceFunctionArn: !Sub arn:${AWS::Partition}:lambda:*:${AWS::AccountId}:function:cx-*-shipper
               - Sid: ManageShipperNetworkInterfaces
                 Effect: Allow
                 Action:
@@ -385,6 +389,20 @@ Resources:
                   - ec2:DescribeSubnets
                   - ec2:UnassignPrivateIpAddresses
                 Resource: "*"
+              - Sid: DenyShipperCodeNetworkInterfaces
+                Effect: Deny
+                Action:
+                  - ec2:AssignPrivateIpAddresses
+                  - ec2:CreateNetworkInterface
+                  - ec2:DeleteNetworkInterface
+                  - ec2:DescribeNetworkInterfaces
+                  - ec2:DescribeSubnets
+                  - ec2:DetachNetworkInterface
+                  - ec2:UnassignPrivateIpAddresses
+                Resource: "*"
+                Condition:
+                  ArnLike:
+                    lambda:SourceFunctionArn: !Sub arn:${AWS::Partition}:lambda:*:${AWS::AccountId}:function:cx-????????-????-????-????-????????????-sh
 
   CoralogixAwsMetricsRole:
     Type: AWS::IAM::Role
@@ -515,7 +533,7 @@ Resources:
                 Condition:
                   StringEquals:
                     s3:ResourceAccount: !Ref AWS::AccountId
-              - Sid: ManageS3Shippers
+              - Sid: ManageShippers
                 Effect: Allow
                 Action:
                   - lambda:CreateFunction
@@ -524,18 +542,21 @@ Resources:
                   - lambda:UpdateFunctionConfiguration
                   - lambda:PutFunctionConcurrency
                   - lambda:RemovePermission
-                Resource: !Sub arn:${AWS::Partition}:lambda:*:${AWS::AccountId}:function:cx-s3-*-sh
-              - Sid: AddS3ShipperInvokePermission
+                Resource: !Sub arn:${AWS::Partition}:lambda:*:${AWS::AccountId}:function:cx-*-shipper
+              - Sid: AddShipperInvokePermission
                 Effect: Allow
                 Action: lambda:AddPermission
-                Resource: !Sub arn:${AWS::Partition}:lambda:*:${AWS::AccountId}:function:cx-s3-*-sh
+                Resource: !Sub arn:${AWS::Partition}:lambda:*:${AWS::AccountId}:function:cx-*-shipper
                 Condition:
                   StringEquals:
-                    lambda:Principal: [s3.amazonaws.com, sns.amazonaws.com]
-              - Sid: PassS3ShipperRole
+                    lambda:Principal:
+                      - s3.amazonaws.com
+                      - sns.amazonaws.com
+                      - !Sub logs.${AWS::URLSuffix}
+              - Sid: PassShipperRole
                 Effect: Allow
                 Action: iam:PassRole
-                Resource: !GetAtt CoralogixS3ShipperExecutionRole.Arn
+                Resource: !GetAtt CoralogixShipperExecutionRole.Arn
                 Condition:
                   StringEquals:
                     iam:PassedToService: lambda.amazonaws.com
@@ -543,7 +564,7 @@ Resources:
                 Effect: Allow
                 Action: [sns:CreateTopic, sns:DeleteTopic, sns:SetTopicAttributes]
                 Resource: !Sub arn:${AWS::Partition}:sns:*:${AWS::AccountId}:cx-s3-*-sns
-              - Sid: SubscribeS3Shippers
+              - Sid: SubscribeShippers
                 Effect: Allow
                 Action: sns:Subscribe
                 Resource: !Sub arn:${AWS::Partition}:sns:*:${AWS::AccountId}:*
@@ -551,8 +572,8 @@ Resources:
                   StringEquals:
                     sns:Protocol: lambda
                   StringLike:
-                    sns:Endpoint: !Sub arn:${AWS::Partition}:lambda:*:${AWS::AccountId}:function:cx-s3-*-sh
-              - Sid: UnsubscribeS3Shippers
+                    sns:Endpoint: !Sub arn:${AWS::Partition}:lambda:*:${AWS::AccountId}:function:cx-*-shipper
+              - Sid: UnsubscribeShippers
                 Effect: Allow
                 Action: sns:Unsubscribe
                 Resource: !Sub arn:${AWS::Partition}:sns:*:${AWS::AccountId}:*
