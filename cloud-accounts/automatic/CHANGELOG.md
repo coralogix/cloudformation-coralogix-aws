@@ -9,6 +9,7 @@ Support for delivering metrics over AWS PrivateLink.
 - `<RoleName>-plsh` execution role for PrivateLink metrics shippers, with Lambda log and VPC network interface permissions.
 - Tag-scoped VPC, subnet, security group, and interface VPC endpoint management, including cross-region endpoints, for resources tagged `coralogix:cloud-account-owner`.
 - PrivateLink shipper Lambda management and `<RoleName>-plsh` pass permissions; `<RoleName>-fh` can invoke PrivateLink shippers.
+- S3 log shippers can run in the PrivateLink network: `<RoleName>-sh` manages the Lambda VPC network interfaces, and tag-scoped route table management lets the network reach S3 through a gateway VPC endpoint.
 
 ## [4.0.0] - 2026-10-29
 

@@ -334,6 +334,16 @@ Resources:
                 Condition:
                   ArnLike:
                     lambda:SourceFunctionArn: !Sub arn:${AWS::Partition}:lambda:*:${AWS::AccountId}:function:cx-s3-*-sh
+              - Sid: ManageShipperNetworkInterfaces
+                Effect: Allow
+                Action:
+                  - ec2:AssignPrivateIpAddresses
+                  - ec2:CreateNetworkInterface
+                  - ec2:DeleteNetworkInterface
+                  - ec2:DescribeNetworkInterfaces
+                  - ec2:DescribeSubnets
+                  - ec2:UnassignPrivateIpAddresses
+                Resource: "*"
 
   CoralogixPrivateLinkShipperExecutionRole:
     Type: AWS::IAM::Role
@@ -574,9 +584,17 @@ Resources:
                 Condition:
                   "Null":
                     aws:RequestTag/coralogix:cloud-account-owner: "false"
+              - Sid: CreateOwnedRouteTables
+                Effect: Allow
+                Action: ec2:CreateRouteTable
+                Resource: !Sub arn:${AWS::Partition}:ec2:*:${AWS::AccountId}:route-table/*
+                Condition:
+                  "Null":
+                    aws:RequestTag/coralogix:cloud-account-owner: "false"
               - Sid: CreateInOwnedNetworks
                 Effect: Allow
                 Action:
+                  - ec2:CreateRouteTable
                   - ec2:CreateSecurityGroup
                   - ec2:CreateSubnet
                   - ec2:CreateVpcEndpoint
@@ -584,6 +602,7 @@ Resources:
                   - !Sub arn:${AWS::Partition}:ec2:*:${AWS::AccountId}:vpc/*
                   - !Sub arn:${AWS::Partition}:ec2:*:${AWS::AccountId}:subnet/*
                   - !Sub arn:${AWS::Partition}:ec2:*:${AWS::AccountId}:security-group/*
+                  - !Sub arn:${AWS::Partition}:ec2:*:${AWS::AccountId}:route-table/*
                 Condition:
                   "Null":
                     aws:ResourceTag/coralogix:cloud-account-owner: "false"
@@ -595,9 +614,11 @@ Resources:
                   - !Sub arn:${AWS::Partition}:ec2:*:${AWS::AccountId}:subnet/*
                   - !Sub arn:${AWS::Partition}:ec2:*:${AWS::AccountId}:security-group/*
                   - !Sub arn:${AWS::Partition}:ec2:*:${AWS::AccountId}:vpc-endpoint/*
+                  - !Sub arn:${AWS::Partition}:ec2:*:${AWS::AccountId}:route-table/*
                 Condition:
                   StringEquals:
                     ec2:CreateAction:
+                      - CreateRouteTable
                       - CreateSecurityGroup
                       - CreateSubnet
                       - CreateVpc
@@ -605,12 +626,15 @@ Resources:
               - Sid: ManageOwnedNetworkResources
                 Effect: Allow
                 Action:
+                  - ec2:AssociateRouteTable
                   - ec2:AuthorizeSecurityGroupEgress
                   - ec2:AuthorizeSecurityGroupIngress
+                  - ec2:DeleteRouteTable
                   - ec2:DeleteSecurityGroup
                   - ec2:DeleteSubnet
                   - ec2:DeleteVpc
                   - ec2:DeleteVpcEndpoints
+                  - ec2:DisassociateRouteTable
                   - ec2:ModifyVpcAttribute
                   - ec2:ModifyVpcEndpoint
                   - ec2:RevokeSecurityGroupEgress
@@ -620,6 +644,7 @@ Resources:
                   - !Sub arn:${AWS::Partition}:ec2:*:${AWS::AccountId}:subnet/*
                   - !Sub arn:${AWS::Partition}:ec2:*:${AWS::AccountId}:security-group/*
                   - !Sub arn:${AWS::Partition}:ec2:*:${AWS::AccountId}:vpc-endpoint/*
+                  - !Sub arn:${AWS::Partition}:ec2:*:${AWS::AccountId}:route-table/*
                 Condition:
                   "Null":
                     aws:ResourceTag/coralogix:cloud-account-owner: "false"
@@ -640,11 +665,14 @@ Resources:
                 Action:
                   - ec2:DescribeAvailabilityZones
                   - ec2:DescribeNetworkInterfaces
+                  - ec2:DescribePrefixLists
+                  - ec2:DescribeRouteTables
                   - ec2:DescribeSecurityGroups
                   - ec2:DescribeSubnets
                   - ec2:DescribeVpcEndpoints
                   - ec2:DescribeVpcEndpointServices
                   - ec2:DescribeVpcs
+                  - ec2:GetSecurityGroupsForVpc
                 Resource: "*"
               - Sid: ManagePrivateLinkShippers
                 Effect: Allow
