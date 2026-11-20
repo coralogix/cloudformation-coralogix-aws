@@ -379,6 +379,20 @@ Resources:
                   - ec2:DescribeSubnets
                   - ec2:UnassignPrivateIpAddresses
                 Resource: "*"
+              - Sid: DenyShipperCodeNetworkInterfaces
+                Effect: Deny
+                Action:
+                  - ec2:AssignPrivateIpAddresses
+                  - ec2:CreateNetworkInterface
+                  - ec2:DeleteNetworkInterface
+                  - ec2:DescribeNetworkInterfaces
+                  - ec2:DescribeSubnets
+                  - ec2:DetachNetworkInterface
+                  - ec2:UnassignPrivateIpAddresses
+                Resource: "*"
+                Condition:
+                  ArnLike:
+                    lambda:SourceFunctionArn: !Sub arn:${AWS::Partition}:lambda:*:${AWS::AccountId}:function:cx-????????-????-????-????-????????????-sh
 
   CoralogixAwsMetricsRole:
     Type: AWS::IAM::Role
