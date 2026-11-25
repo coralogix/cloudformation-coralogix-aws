@@ -626,6 +626,10 @@ Resources:
                 Condition:
                   "Null":
                     aws:RequestTag/coralogix:cloud-account-owner: "false"
+              - Sid: EnableVpcEndpointPrivateDns
+                Effect: Allow
+                Action: route53:AssociateVPCWithHostedZone
+                Resource: "*"
               - Sid: CreateInOwnedNetworks
                 Effect: Allow
                 Action:

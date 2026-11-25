@@ -31,7 +31,7 @@ The Coralogix-assumed role keeps AWS `ReadOnlyAccess` and `AWSResourceExplorerFu
 
 Shipper `lambda:AddPermission` management is limited to same-account `function:cx-*-shipper` and `StringEquals` principals S3, SNS, or `logs.${AWS::URLSuffix}` (`logs.amazonaws.com` in standard/GovCloud, `logs.amazonaws.com.cn` in China). The CloudWatch principal prepares a future additional destination; it creates no function invoke policy or runtime transport. Existing CloudWatch Logs → Firehose delivery remains supported.
 
-For PrivateLink delivery of metrics and S3 logs, the inline policy also allows managing PrivateLink shipper functions, passing `<RoleName>-plsh` to Lambda, and managing VPCs, subnets, route tables, security groups, and interface and S3 gateway VPC endpoints, including cross-region endpoints (`vpce:AllowMultiRegion`). EC2 resources must be created with the `coralogix:cloud-account-owner` tag, and only resources carrying that tag can be modified or deleted.
+For PrivateLink delivery of metrics and S3 logs, the inline policy also allows managing PrivateLink shipper functions, passing `<RoleName>-plsh` to Lambda, and managing VPCs, subnets, route tables, security groups, and interface and S3 gateway VPC endpoints, including cross-region endpoints (`vpce:AllowMultiRegion`). Enabling private DNS on the endpoint requires `route53:AssociateVPCWithHostedZone`, which is granted on all resources because the hosted zone is owned by AWS. EC2 resources must be created with the `coralogix:cloud-account-owner` tag, and only resources carrying that tag can be modified or deleted.
 
 ## Parameters
 
