@@ -397,12 +397,24 @@ Resources:
                 Effect: Allow
                 Action:
                   - ec2:AssignPrivateIpAddresses
-                  - ec2:CreateNetworkInterface
                   - ec2:DeleteNetworkInterface
                   - ec2:DescribeNetworkInterfaces
                   - ec2:DescribeSubnets
                   - ec2:UnassignPrivateIpAddresses
                 Resource: "*"
+              - Sid: CreateShipperNetworkInterfaces
+                Effect: Allow
+                Action: ec2:CreateNetworkInterface
+                Resource: !Sub arn:${AWS::Partition}:ec2:*:${AWS::AccountId}:network-interface/*
+              - Sid: CreateShipperNetworkInterfacesInOwnedNetworks
+                Effect: Allow
+                Action: ec2:CreateNetworkInterface
+                Resource:
+                  - !Sub arn:${AWS::Partition}:ec2:*:${AWS::AccountId}:subnet/*
+                  - !Sub arn:${AWS::Partition}:ec2:*:${AWS::AccountId}:security-group/*
+                Condition:
+                  "Null":
+                    aws:ResourceTag/coralogix:cloud-account-owner: "false"
               - Sid: DenyShipperCodeNetworkInterfaces
                 Effect: Deny
                 Action:
@@ -619,6 +631,13 @@ Resources:
                 Condition:
                   "Null":
                     aws:RequestTag/coralogix:cloud-account-owner: "false"
+                  StringEquals:
+                    ec2:VpceServiceOwner:
+                      - amazon
+                      - !If
+                        - IsCustomEndpoint
+                        - !Ref CustomAWSAccountId
+                        - !FindInMap [CoralogixEnvironment, !Ref CoralogixRegion, AwsAccountId]
               - Sid: CreateOwnedRouteTables
                 Effect: Allow
                 Action: ec2:CreateRouteTable
@@ -630,6 +649,9 @@ Resources:
                 Effect: Allow
                 Action: route53:AssociateVPCWithHostedZone
                 Resource: "*"
+                Condition:
+                  "ForAnyValue:StringEquals":
+                    aws:CalledVia: ec2.amazonaws.com
               - Sid: CreateInOwnedNetworks
                 Effect: Allow
                 Action:
