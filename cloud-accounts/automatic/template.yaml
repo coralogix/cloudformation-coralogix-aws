@@ -415,8 +415,8 @@ Resources:
                   - ec2:UnassignPrivateIpAddresses
                 Resource: "*"
                 Condition:
-                  ArnLike:
-                    lambda:SourceFunctionArn: !Sub arn:${AWS::Partition}:lambda:*:${AWS::AccountId}:function:cx-????????-????-????-????-????????????-sh
+                  "Null":
+                    lambda:SourceFunctionArn: "false"
 
   CoralogixAwsMetricsRole:
     Type: AWS::IAM::Role
