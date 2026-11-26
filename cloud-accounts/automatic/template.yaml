@@ -618,9 +618,6 @@ Resources:
                 Effect: Allow
                 Action: route53:AssociateVPCWithHostedZone
                 Resource: "*"
-                Condition:
-                  "ForAnyValue:StringEquals":
-                    aws:CalledVia: ec2.amazonaws.com
               - Sid: CreateInOwnedNetworks
                 Effect: Allow
                 Action:
