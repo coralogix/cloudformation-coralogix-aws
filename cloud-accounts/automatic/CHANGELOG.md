@@ -10,6 +10,9 @@ Support for delivering metrics over AWS PrivateLink.
 - Tag-scoped VPC, subnet, security group, and interface VPC endpoint management, including cross-region endpoints, for resources tagged `coralogix:cloud-account-owner`.
 - `route53:AssociateVPCWithHostedZone`, needed to enable private DNS on the interface VPC endpoint.
 - PrivateLink shipper Lambda management and `<RoleName>-plsh` pass permissions; `<RoleName>-fh` can invoke PrivateLink shippers.
+- Interface VPC endpoints can be created only to services owned by Amazon or by the Coralogix account of the selected region.
+- Shipper Lambda network interfaces can be created only in subnets and security groups tagged `coralogix:cloud-account-owner`, and never by the function code.
+- `logs:DeleteLogGroup` on the log groups of Coralogix Lambdas, so they are removed with the function.
 
 ## [4.0.0] - 2026-11-20
 
