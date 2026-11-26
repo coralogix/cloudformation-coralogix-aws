@@ -2,6 +2,10 @@
 
 ## infrastructure explorer
 
+### 0.0.8 / 26.11.2026 gov1 from commercial accounts
+
+- [update] With `gov1` in a commercial (`aws`) account, trust the bridge role `coralogix-ingestion-gov1` in `628155959625` instead of GovCloud account `309801239943`
+
 ### 0.0.7 / 18.11.2026 Add GovCloud (gov1) region
 
 - [update] Add `gov1` to `CoralogixRegion`, trusting `coralogix-ingestion-gov1` in AWS GovCloud account `309801239943`

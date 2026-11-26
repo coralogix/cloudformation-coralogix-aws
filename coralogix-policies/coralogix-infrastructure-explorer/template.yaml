@@ -70,11 +70,16 @@ Mappings:
     gov1:
       ID: 309801239943
       RoleSuffix: gov1
+      # Commercial accounts trust the GovCloud environment's bridge role; AssumeRole cannot cross partitions
+      CommercialBridgeID: 628155959625
     CustomEndpoint:
       ID: 000000000000
       RoleSuffix: custom
 Conditions:
   IsCustomAWSAccountId: !Not [!Equals [!Ref CustomAWSAccountId, ""]]
+  IsGovToCommercial: !And
+    - !Equals [!Ref CoralogixRegion, gov1]
+    - !Equals [!Ref "AWS::Partition", aws]
 Resources:
   CoralogixAwsMetricsRole:
     Type: AWS::IAM::Role
@@ -91,7 +96,10 @@ Resources:
                 - aws_account_id: !If
                     - IsCustomAWSAccountId
                     - !Ref CustomAWSAccountId
-                    - !FindInMap [CoralogixEnvironment, !Ref CoralogixRegion, "ID"]
+                    - !If
+                      - IsGovToCommercial
+                      - !FindInMap [CoralogixEnvironment, gov1, "CommercialBridgeID"]
+                      - !FindInMap [CoralogixEnvironment, !Ref CoralogixRegion, "ID"]
                   role_suffix:
                     !FindInMap [
                       CoralogixEnvironment,
