@@ -342,12 +342,24 @@ Resources:
                 Effect: Allow
                 Action:
                   - ec2:AssignPrivateIpAddresses
-                  - ec2:CreateNetworkInterface
                   - ec2:DeleteNetworkInterface
                   - ec2:DescribeNetworkInterfaces
                   - ec2:DescribeSubnets
                   - ec2:UnassignPrivateIpAddresses
                 Resource: "*"
+              - Sid: CreateShipperNetworkInterfaces
+                Effect: Allow
+                Action: ec2:CreateNetworkInterface
+                Resource: !Sub arn:${AWS::Partition}:ec2:*:${AWS::AccountId}:network-interface/*
+              - Sid: CreateShipperNetworkInterfacesInOwnedNetworks
+                Effect: Allow
+                Action: ec2:CreateNetworkInterface
+                Resource:
+                  - !Sub arn:${AWS::Partition}:ec2:*:${AWS::AccountId}:subnet/*
+                  - !Sub arn:${AWS::Partition}:ec2:*:${AWS::AccountId}:security-group/*
+                Condition:
+                  "Null":
+                    aws:ResourceTag/coralogix:cloud-account-owner: "false"
               - Sid: DenyShipperCodeNetworkInterfaces
                 Effect: Deny
                 Action:
