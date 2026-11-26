@@ -360,8 +360,8 @@ Resources:
                   - ec2:UnassignPrivateIpAddresses
                 Resource: "*"
                 Condition:
-                  ArnLike:
-                    lambda:SourceFunctionArn: !Sub arn:${AWS::Partition}:lambda:*:${AWS::AccountId}:function:cx-*-shipper
+                  "Null":
+                    lambda:SourceFunctionArn: "false"
 
   CoralogixPrivateLinkShipperExecutionRole:
     Type: AWS::IAM::Role
