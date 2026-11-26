@@ -756,6 +756,13 @@ Resources:
                   - lambda:UpdateFunctionCode
                   - lambda:UpdateFunctionConfiguration
                 Resource: !Sub arn:${AWS::Partition}:lambda:*:${AWS::AccountId}:function:cx-????????-????-????-????-????????????-sh
+              - Sid: DeleteCoralogixLambdaLogGroups
+                Effect: Allow
+                Action: logs:DeleteLogGroup
+                Resource:
+                  - !Sub arn:${AWS::Partition}:logs:*:${AWS::AccountId}:log-group:/aws/lambda/cx-lc-*-lm
+                  - !Sub arn:${AWS::Partition}:logs:*:${AWS::AccountId}:log-group:/aws/lambda/cx-*-shipper
+                  - !Sub arn:${AWS::Partition}:logs:*:${AWS::AccountId}:log-group:/aws/lambda/cx-????????-????-????-????-????????????-sh
               - Sid: PassPrivateLinkShipperRole
                 Effect: Allow
                 Action: iam:PassRole
