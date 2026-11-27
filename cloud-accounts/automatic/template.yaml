@@ -1,8 +1,8 @@
 AWSTemplateFormatVersion: 2010-09-09
-Description: Creates IAM roles allowing Coralogix to collect metrics and manage CloudWatch and S3 log ingestion in your AWS account.
+Description: Creates IAM roles allowing Coralogix to collect metrics, including over AWS PrivateLink, and manage CloudWatch and S3 log ingestion in your AWS account.
 
 Metadata:
-  SemanticVersion: 4.0.0
+  SemanticVersion: 5.0.0
   AWS::CloudFormation::Interface:
     ParameterGroups:
       - Label:
@@ -43,7 +43,7 @@ Parameters:
   RoleName:
     Type: String
     Default: coralogix-cloud-account
-    Description: The name of the main IAM role that will be created. Static service roles use this name with -fh, -ms, -logs, -lm, and -shipper suffixes.
+    Description: The name of the main IAM role that will be created. Static service roles use this name with -fh, -ms, -logs, -lm, -shipper, and -plsh suffixes.
     AllowedPattern: '[\w+=,.@-]+'
     MaxLength: 56
   ExternalIdSecret:
@@ -142,6 +142,17 @@ Resources:
                 Resource:
                   - !Sub arn:${AWS::Partition}:s3:::cx-*
                   - !Sub arn:${AWS::Partition}:s3:::cx-*/*
+        - PolicyName: CoralogixPrivateLinkShipperInvoke
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - lambda:GetFunctionConfiguration
+                  - lambda:InvokeFunction
+                Resource:
+                  - !Sub arn:${AWS::Partition}:lambda:*:${AWS::AccountId}:function:cx-*-shipper
+                  - !Sub arn:${AWS::Partition}:lambda:*:${AWS::AccountId}:function:cx-*-shipper:*
 
   CoralogixMetricStreamsServiceRole:
     Type: AWS::IAM::Role
@@ -328,13 +339,80 @@ Resources:
                   ArnLike:
                     lambda:SourceFunctionArn: !Sub arn:${AWS::Partition}:lambda:*:${AWS::AccountId}:function:cx-*-shipper
 
+  CoralogixPrivateLinkShipperExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${RoleName}-plsh"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: CoralogixPrivateLinkShipperExecution
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: CreateShipperLogGroups
+                Effect: Allow
+                Action: logs:CreateLogGroup
+                Resource: !Sub arn:${AWS::Partition}:logs:*:${AWS::AccountId}:log-group:/aws/lambda/cx-*-shipper
+                Condition:
+                  ArnLike:
+                    lambda:SourceFunctionArn: !Sub arn:${AWS::Partition}:lambda:*:${AWS::AccountId}:function:cx-*-shipper
+              - Sid: WriteShipperLogs
+                Effect: Allow
+                Action: [logs:CreateLogStream, logs:PutLogEvents]
+                Resource: !Sub arn:${AWS::Partition}:logs:*:${AWS::AccountId}:log-group:/aws/lambda/cx-*-shipper:log-stream:*
+                Condition:
+                  ArnLike:
+                    lambda:SourceFunctionArn: !Sub arn:${AWS::Partition}:lambda:*:${AWS::AccountId}:function:cx-*-shipper
+              - Sid: ManageShipperNetworkInterfaces
+                Effect: Allow
+                Action:
+                  - ec2:AssignPrivateIpAddresses
+                  - ec2:DeleteNetworkInterface
+                  - ec2:DescribeNetworkInterfaces
+                  - ec2:DescribeSubnets
+                  - ec2:UnassignPrivateIpAddresses
+                Resource: "*"
+              - Sid: CreateShipperNetworkInterfaces
+                Effect: Allow
+                Action: ec2:CreateNetworkInterface
+                Resource: !Sub arn:${AWS::Partition}:ec2:*:${AWS::AccountId}:network-interface/*
+              - Sid: CreateShipperNetworkInterfacesInOwnedNetworks
+                Effect: Allow
+                Action: ec2:CreateNetworkInterface
+                Resource:
+                  - !Sub arn:${AWS::Partition}:ec2:*:${AWS::AccountId}:subnet/*
+                  - !Sub arn:${AWS::Partition}:ec2:*:${AWS::AccountId}:security-group/*
+                Condition:
+                  "Null":
+                    aws:ResourceTag/coralogix:cloud-account-owner: "false"
+              - Sid: DenyShipperCodeNetworkInterfaces
+                Effect: Deny
+                Action:
+                  - ec2:AssignPrivateIpAddresses
+                  - ec2:CreateNetworkInterface
+                  - ec2:DeleteNetworkInterface
+                  - ec2:DescribeNetworkInterfaces
+                  - ec2:DescribeSubnets
+                  - ec2:DetachNetworkInterface
+                  - ec2:UnassignPrivateIpAddresses
+                Resource: "*"
+                Condition:
+                  "Null":
+                    lambda:SourceFunctionArn: "false"
+
   CoralogixAwsMetricsRole:
     Type: AWS::IAM::Role
     Properties:
       RoleName: !Ref RoleName
       Tags:
         - Key: CoralogixCloudAccountTemplateVersion
-          Value: "4"
+          Value: "5"
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -501,6 +579,127 @@ Resources:
                 Effect: Allow
                 Action: sns:Unsubscribe
                 Resource: !Sub arn:${AWS::Partition}:sns:*:${AWS::AccountId}:*
+              - Sid: CreateOwnedVpcs
+                Effect: Allow
+                Action: ec2:CreateVpc
+                Resource: !Sub arn:${AWS::Partition}:ec2:*:${AWS::AccountId}:vpc/*
+                Condition:
+                  "Null":
+                    aws:RequestTag/coralogix:cloud-account-owner: "false"
+              - Sid: CreateOwnedSubnets
+                Effect: Allow
+                Action: ec2:CreateSubnet
+                Resource: !Sub arn:${AWS::Partition}:ec2:*:${AWS::AccountId}:subnet/*
+                Condition:
+                  "Null":
+                    aws:RequestTag/coralogix:cloud-account-owner: "false"
+              - Sid: CreateOwnedSecurityGroups
+                Effect: Allow
+                Action: ec2:CreateSecurityGroup
+                Resource: !Sub arn:${AWS::Partition}:ec2:*:${AWS::AccountId}:security-group/*
+                Condition:
+                  "Null":
+                    aws:RequestTag/coralogix:cloud-account-owner: "false"
+              - Sid: CreateOwnedVpcEndpoints
+                Effect: Allow
+                Action: ec2:CreateVpcEndpoint
+                Resource: !Sub arn:${AWS::Partition}:ec2:*:${AWS::AccountId}:vpc-endpoint/*
+                Condition:
+                  "Null":
+                    aws:RequestTag/coralogix:cloud-account-owner: "false"
+                  StringEquals:
+                    ec2:VpceServiceOwner:
+                      - amazon
+                      - !If
+                        - IsCustomEndpoint
+                        - !Ref CustomAWSAccountId
+                        - !FindInMap [CoralogixEnvironment, !Ref CoralogixRegion, AwsAccountId]
+              - Sid: EnableVpcEndpointPrivateDns
+                Effect: Allow
+                Action: route53:AssociateVPCWithHostedZone
+                Resource: "*"
+              - Sid: CreateInOwnedNetworks
+                Effect: Allow
+                Action:
+                  - ec2:CreateSecurityGroup
+                  - ec2:CreateSubnet
+                  - ec2:CreateVpcEndpoint
+                Resource:
+                  - !Sub arn:${AWS::Partition}:ec2:*:${AWS::AccountId}:vpc/*
+                  - !Sub arn:${AWS::Partition}:ec2:*:${AWS::AccountId}:subnet/*
+                  - !Sub arn:${AWS::Partition}:ec2:*:${AWS::AccountId}:security-group/*
+                Condition:
+                  "Null":
+                    aws:ResourceTag/coralogix:cloud-account-owner: "false"
+              - Sid: TagOwnedNetworkResourcesOnCreate
+                Effect: Allow
+                Action: ec2:CreateTags
+                Resource:
+                  - !Sub arn:${AWS::Partition}:ec2:*:${AWS::AccountId}:vpc/*
+                  - !Sub arn:${AWS::Partition}:ec2:*:${AWS::AccountId}:subnet/*
+                  - !Sub arn:${AWS::Partition}:ec2:*:${AWS::AccountId}:security-group/*
+                  - !Sub arn:${AWS::Partition}:ec2:*:${AWS::AccountId}:vpc-endpoint/*
+                Condition:
+                  StringEquals:
+                    ec2:CreateAction:
+                      - CreateSecurityGroup
+                      - CreateSubnet
+                      - CreateVpc
+                      - CreateVpcEndpoint
+              - Sid: ManageOwnedNetworkResources
+                Effect: Allow
+                Action:
+                  - ec2:AuthorizeSecurityGroupEgress
+                  - ec2:AuthorizeSecurityGroupIngress
+                  - ec2:DeleteSecurityGroup
+                  - ec2:DeleteSubnet
+                  - ec2:DeleteVpc
+                  - ec2:DeleteVpcEndpoints
+                  - ec2:ModifyVpcAttribute
+                  - ec2:ModifyVpcEndpoint
+                  - ec2:RevokeSecurityGroupEgress
+                  - ec2:RevokeSecurityGroupIngress
+                Resource:
+                  - !Sub arn:${AWS::Partition}:ec2:*:${AWS::AccountId}:vpc/*
+                  - !Sub arn:${AWS::Partition}:ec2:*:${AWS::AccountId}:subnet/*
+                  - !Sub arn:${AWS::Partition}:ec2:*:${AWS::AccountId}:security-group/*
+                  - !Sub arn:${AWS::Partition}:ec2:*:${AWS::AccountId}:vpc-endpoint/*
+                Condition:
+                  "Null":
+                    aws:ResourceTag/coralogix:cloud-account-owner: "false"
+              - Sid: AuthorizeOwnedSecurityGroupRules
+                Effect: Allow
+                Action:
+                  - ec2:AuthorizeSecurityGroupEgress
+                  - ec2:AuthorizeSecurityGroupIngress
+                Resource: !Sub arn:${AWS::Partition}:ec2:*:${AWS::AccountId}:security-group-rule/*
+              - Sid: CreateCrossRegionVpcEndpoints
+                Effect: Allow
+                Action: vpce:AllowMultiRegion
+                Resource:
+                  - !Sub arn:${AWS::Partition}:ec2:*:${AWS::AccountId}:vpc-endpoint/*
+                  - !Sub arn:${AWS::Partition}:ec2:*:*:vpc-endpoint-service/*
+              - Sid: ManagePrivateLinkShippers
+                Effect: Allow
+                Action:
+                  - lambda:CreateFunction
+                  - lambda:DeleteFunction
+                  - lambda:UpdateFunctionCode
+                  - lambda:UpdateFunctionConfiguration
+                Resource: !Sub arn:${AWS::Partition}:lambda:*:${AWS::AccountId}:function:cx-*-shipper
+              - Sid: DeleteCoralogixLambdaLogGroups
+                Effect: Allow
+                Action: logs:DeleteLogGroup
+                Resource:
+                  - !Sub arn:${AWS::Partition}:logs:*:${AWS::AccountId}:log-group:/aws/lambda/cx-lc-*-lm
+                  - !Sub arn:${AWS::Partition}:logs:*:${AWS::AccountId}:log-group:/aws/lambda/cx-*-shipper
+              - Sid: PassPrivateLinkShipperRole
+                Effect: Allow
+                Action: iam:PassRole
+                Resource: !GetAtt CoralogixPrivateLinkShipperExecutionRole.Arn
+                Condition:
+                  StringEquals:
+                    iam:PassedToService: lambda.amazonaws.com
 
 Outputs:
   CoralogixAwsMetricsRoleArn:
