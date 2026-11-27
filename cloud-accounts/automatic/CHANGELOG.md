@@ -13,6 +13,7 @@ Support for delivering metrics over AWS PrivateLink.
 - Interface VPC endpoints can be created only to services owned by Amazon or by the Coralogix account of the selected region.
 - Shipper Lambda network interfaces can be created only in subnets and security groups tagged `coralogix:cloud-account-owner`, and never by the function code.
 - `logs:DeleteLogGroup` on the log groups of Coralogix Lambdas, so they are removed with the function.
+- S3 log shippers can run in the PrivateLink network: `<RoleName>-shipper` manages the Lambda VPC network interfaces, and tag-scoped route table management lets the network reach S3 through a gateway VPC endpoint.
 
 ## [4.0.0] - 2026-11-20
 
